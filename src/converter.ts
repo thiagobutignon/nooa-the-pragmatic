@@ -19,8 +19,7 @@ export async function convertPdfToMarkdown(buffer: Buffer): Promise<string> {
 		let nameFound = false;
 
 		for (let i = 0; i < lines.length; i++) {
-			const rawLine = lines[i];
-			if (!rawLine) continue;
+			const rawLine = lines[i]!;
 			let line = rawLine.trim();
 
 			// Preserve empty lines (structure)
@@ -71,10 +70,7 @@ export async function convertPdfToMarkdown(buffer: Buffer): Promise<string> {
 
 			// Heuristic 2: ALL CAPS lines (likely Section Headers) -> H2
 			if (isLikelySectionHeader(line)) {
-				if (
-					markdownLines.length > 0 &&
-					markdownLines[markdownLines.length - 1] !== ""
-				) {
+				if (markdownLines[markdownLines.length - 1] !== "") {
 					markdownLines.push("");
 				}
 				markdownLines.push(`## ${line}`);
@@ -82,13 +78,8 @@ export async function convertPdfToMarkdown(buffer: Buffer): Promise<string> {
 			}
 
 			// Heuristic 4: Job Titles / Sub-headers -> H3
-			// Pattern: Contains " – " or " - " AND a date-like string (year 20xx)
-			// OR specific to this resume: "Company – Role – Date"
 			if (isLikelyJobTitle(line)) {
-				if (
-					markdownLines.length > 0 &&
-					markdownLines[markdownLines.length - 1] !== ""
-				) {
+				if (markdownLines[markdownLines.length - 1] !== "") {
 					markdownLines.push("");
 				}
 				markdownLines.push(`### ${line}`);
@@ -97,10 +88,7 @@ export async function convertPdfToMarkdown(buffer: Buffer): Promise<string> {
 
 			// Heuristic 5: Technologies and Languages -> Bolded paragraph
 			if (line.match(/^Technologies and Languages:/i)) {
-				if (
-					markdownLines.length > 0 &&
-					markdownLines[markdownLines.length - 1] !== ""
-				) {
+				if (markdownLines[markdownLines.length - 1] !== "") {
 					markdownLines.push("");
 				}
 				const content = line.replace(/^Technologies and Languages:\s*/i, "");
@@ -110,10 +98,7 @@ export async function convertPdfToMarkdown(buffer: Buffer): Promise<string> {
 
 			// Heuristic 6: Awards Sub-categories (1st Place, 2nd Place, Finalist) -> H4
 			if (line.match(/^(1st|2nd|3rd) Place:/i) || line.match(/^Finalist at/i)) {
-				if (
-					markdownLines.length > 0 &&
-					markdownLines[markdownLines.length - 1] !== ""
-				) {
+				if (markdownLines[markdownLines.length - 1] !== "") {
 					markdownLines.push("");
 				}
 				markdownLines.push(`#### ${line}`);

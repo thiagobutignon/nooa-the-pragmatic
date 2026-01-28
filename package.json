@@ -8,6 +8,8 @@
     "@types/bun": "latest",
     "@types/marked": "^6.0.0",
     "@types/pdf-parse": "^1.1.5",
+    "@vitest/coverage-v8": "^4.0.18",
+    "execa": "^9.6.1",
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
@@ -19,6 +21,7 @@
   "scripts": {
     "start": "bun run index.ts",
     "test": "vitest",
+    "test:coverage": "vitest run --coverage",
     "check": "biome check .",
     "lint:fix": "biome check --write --unsafe src && biome format --write src",
     "format": "biome format src",
