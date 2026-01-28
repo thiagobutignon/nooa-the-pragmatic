@@ -72,7 +72,7 @@ export interface Skill {
 function parseContactInfo(text: string, resume: JsonResume) {
 	const parts = text.split("|").map((s) => s.trim());
 	if (!resume.basics) resolveBasics(resume);
-	const basics = resume.basics!;
+	const basics = resume.basics as NonNullable<typeof resume.basics>;
 
 	for (const part of parts) {
 		if (part.includes("@")) {

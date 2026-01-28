@@ -27,6 +27,12 @@ export async function main(
 			github: { type: "string" },
 			whatsapp: { type: "string" },
 			validate: { type: "boolean" },
+			// Bridge Options
+			op: { type: "string" },
+			param: { type: "string", multiple: true },
+			header: { type: "string", multiple: true },
+			env: { type: "string" },
+			list: { type: "boolean", short: "l" },
 		},
 		strict: true,
 		allowPositionals: true,
@@ -51,6 +57,15 @@ Flags:
   --validate             Scan for broken links in the resume.
   -v, --version          Show version.
   -h, --help             Show help.
+
+Subcommands:
+  bridge <spec-url-or-path>    Transform a REST API into CLI commands.
+    Flags for bridge:
+      --op <id>          Operation ID to execute.
+      --param <k=v>      Parameter in dot notation (can be used multiple times).
+      --header <k=v>     Custom header (can be used multiple times).
+      -l, --list         List all available operations in the spec.
+      --env <path>       Path to .env file for authentication.
 `);
 		return;
 	}
@@ -62,6 +77,79 @@ Flags:
 	}
 
 	const inputPath = positionals[2];
+	const isBridge = positionals[2] === "bridge";
+
+	if (isBridge) {
+		const specSource = positionals[3];
+		if (!specSource) {
+			console.error("Error: OpenAPI spec URL or path is required for bridge.");
+			process.exitCode = 1;
+			return;
+		}
+
+		try {
+			const { loadSpec, executeBridgeRequest } = await import(
+				"./src/bridge.js"
+			);
+			const spec = await loadSpec(specSource);
+
+			if (values.list) {
+				console.log(`\nAvailable operations in ${spec.info?.title || "API"}:`);
+				for (const [path, methods] of Object.entries(spec.paths || {})) {
+					for (const [method, op] of Object.entries(methods as any)) {
+						const o = op as any;
+						console.log(
+							`  - [${method.toUpperCase()}] ${o.operationId || "no-id"} (${path}): ${o.summary || ""}`,
+						);
+					}
+				}
+				return;
+			}
+
+			if (!values.op) {
+				console.error("Error: --op <operationId> is required.");
+				process.exitCode = 1;
+				return;
+			}
+
+			const paramsMap: Record<string, string> = {};
+			for (const p of (values.param as string[]) || []) {
+				const [k, v] = p.split("=");
+				if (k && v) paramsMap[k] = v;
+			}
+
+			const headersMap: Record<string, string> = {};
+			for (const h of (values.header as string[]) || []) {
+				const [k, v] = h.split(":");
+				if (k && v) headersMap[k.trim()] = v.trim();
+			}
+
+			// Add .env support if needed here (simple version)
+
+			console.error(`🚀 Executing ${values.op}...`);
+			const result = await executeBridgeRequest(spec, {
+				operationId: values.op as string,
+				params: paramsMap,
+				headers: headersMap,
+			});
+
+			console.error(`Response [${result.status}] ${result.statusText}`);
+			if (typeof result.data === "object") {
+				console.log(JSON.stringify(result.data, null, 2));
+			} else {
+				console.log(result.data);
+			}
+
+			if (result.status >= 400) {
+				process.exitCode = 1;
+			}
+		} catch (error: any) {
+			console.error("Bridge Error:", error.message);
+			process.exitCode = 1;
+		}
+		return;
+	}
+
 	// ... input validation ...
 	if (!inputPath) {
 		console.error("Error: Input file is required.");
@@ -159,7 +247,9 @@ Flags:
 				if (links.length === 0) {
 					console.error("No links found to validate.");
 				} else {
-					console.error(`Found ${links.length} links. Checking reachability...`);
+					console.error(
+						`Found ${links.length} links. Checking reachability...`,
+					);
 					const results = await validateAllLinks(links);
 
 					let brokenCount = 0;

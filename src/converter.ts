@@ -28,7 +28,8 @@ export async function convertPdfToMarkdown(
 		let nameFound = false;
 
 		for (let i = 0; i < lines.length; i++) {
-			const rawLine = lines[i]!;
+			const rawLine = lines[i];
+			if (rawLine === undefined) continue;
 			let line = rawLine.trim();
 
 			// Preserve empty lines (structure)
