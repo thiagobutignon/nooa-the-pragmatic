@@ -36,6 +36,28 @@ describe('convertPdfToMarkdown', () => {
         expect(result).toContain('[Whatsapp](http://wa.me/5511994899288)');
     });
 
+    it('should use custom social links when provided (WhatsApp number)', async () => {
+        const input = 'Name\nemail@example.com | LinkedIn | GitHub | Whatsapp';
+        const result = await convertPdfToMarkdown(Buffer.from(input), {
+            linkedin: 'https://linkedin.com/in/custom',
+            github: 'https://github.com/custom',
+            whatsapp: '123456789'
+        });
+
+        expect(result).toContain('[LinkedIn](https://linkedin.com/in/custom)');
+        expect(result).toContain('[GitHub](https://github.com/custom)');
+        expect(result).toContain('[Whatsapp](http://wa.me/123456789)');
+    });
+
+    it('should use custom social links when provided (WhatsApp URL)', async () => {
+        const input = 'Name\nemail@example.com | LinkedIn | GitHub | Whatsapp';
+        const result = await convertPdfToMarkdown(Buffer.from(input), {
+            whatsapp: 'https://wa.me/987654321'
+        });
+
+        expect(result).toContain('[Whatsapp](https://wa.me/987654321)');
+    });
+
     it('should promote ALL CAPS lines to H2', async () => {
         const input = 'Header\nEXPERIENCE\nDetails';
         const result = await convertPdfToMarkdown(Buffer.from(input));

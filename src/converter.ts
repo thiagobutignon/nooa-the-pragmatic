@@ -1,6 +1,15 @@
 import { PDFParse } from "pdf-parse";
 
-export async function convertPdfToMarkdown(buffer: Buffer): Promise<string> {
+export interface ConverterOptions {
+	linkedin?: string;
+	github?: string;
+	whatsapp?: string;
+}
+
+export async function convertPdfToMarkdown(
+	buffer: Buffer,
+	options: ConverterOptions = {},
+): Promise<string> {
 	const parser = new PDFParse({ data: buffer });
 	try {
 		const result = await parser.getText();
@@ -50,19 +59,18 @@ export async function convertPdfToMarkdown(buffer: Buffer): Promise<string> {
 					"<$1>",
 				);
 
-				// Inject recovered links
-				line = line.replace(
-					/LinkedIn/g,
-					"[LinkedIn](https://linkedin.com/in/thiagobutignon)",
-				);
-				line = line.replace(
-					/GitHub/g,
-					"[GitHub](https://github.com/thiagobutignon)",
-				);
-				line = line.replace(
-					/Whatsapp/g,
-					"[Whatsapp](http://wa.me/5511994899288)",
-				);
+				// Inject links (provided via options or defaults)
+				const linkedin =
+					options.linkedin || "https://linkedin.com/in/thiagobutignon";
+				const github = options.github || "https://github.com/thiagobutignon";
+				const whatsapp = options.whatsapp || "5511994899288";
+				const whatsappUrl = whatsapp.startsWith("http")
+					? whatsapp
+					: `http://wa.me/${whatsapp.replace(/\D/g, "")}`;
+
+				line = line.replace(/LinkedIn/g, `[LinkedIn](${linkedin})`);
+				line = line.replace(/GitHub/g, `[GitHub](${github})`);
+				line = line.replace(/Whatsapp/g, `[Whatsapp](${whatsappUrl})`);
 
 				markdownLines.push(line);
 				continue;

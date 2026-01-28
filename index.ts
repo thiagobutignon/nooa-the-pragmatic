@@ -26,6 +26,15 @@ export async function main(args: string[] = typeof Bun !== "undefined" ? Bun.arg
                 type: "boolean",
                 short: "h",
             },
+            linkedin: {
+                type: "string",
+            },
+            github: {
+                type: "string",
+            },
+            whatsapp: {
+                type: "string",
+            },
         },
         strict: true,
         allowPositionals: true,
@@ -42,6 +51,9 @@ Flags:
   -o, --output <file>    Output file path.
   --to-pdf               Convert input Markdown to PDF.
   --json                 Output structure as JSON (extraction only).
+  --linkedin <url>       LinkedIn profile URL.
+  --github <url>         GitHub profile URL.
+  --whatsapp <phone>     WhatsApp number or URL.
   -v, --version          Show version.
   -h, --help             Show help.
 `);
@@ -82,7 +94,11 @@ Flags:
         } else {
             // PDF to Markdown mode
             const buffer = Buffer.from(await file.arrayBuffer());
-            const markdown = await convertPdfToMarkdown(buffer);
+            const markdown = await convertPdfToMarkdown(buffer, {
+                linkedin: values.linkedin,
+                github: values.github,
+                whatsapp: values.whatsapp,
+            });
 
             const outputContent = values.json
                 ? JSON.stringify({ content: markdown }, null, 2)

@@ -88,6 +88,24 @@ describe('main function', () => {
         expect(JSON.parse(outputJSON!)).toHaveProperty('content', '# Mocked Markdown');
     });
 
+    it('should pass social link flags to the converter', async () => {
+        const { convertPdfToMarkdown } = await import('../src/converter');
+        const mockedConverter = vi.mocked(convertPdfToMarkdown);
+
+        await main([
+            'bun', 'index.ts', 'input.pdf',
+            '--linkedin', 'https://linkedin.com/in/user',
+            '--github', 'https://github.com/user',
+            '--whatsapp', '987654321'
+        ]);
+
+        expect(mockedConverter).toHaveBeenCalledWith(expect.any(Buffer), {
+            linkedin: 'https://linkedin.com/in/user',
+            github: 'https://github.com/user',
+            whatsapp: '987654321'
+        });
+    });
+
     it('should handle errors during processing gracefully', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         const { convertPdfToMarkdown } = await import('../src/converter');
