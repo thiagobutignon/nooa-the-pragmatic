@@ -85,8 +85,18 @@ export async function validateLink(
 			status: response.status,
 		};
 	} catch (error: unknown) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		const errorName = error instanceof Error ? error.name : "";
+		let errorMessage = String(error);
+		let errorName = "";
+
+		if (error instanceof Error) {
+			errorMessage = error.message;
+			errorName = error.name;
+		} else if (typeof error === "object" && error !== null) {
+			const e = error as Record<string, unknown>;
+			if (typeof e.message === "string") errorMessage = e.message;
+			if (typeof e.name === "string") errorName = e.name;
+		}
+
 		return {
 			url,
 			ok: false,
