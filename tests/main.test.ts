@@ -1,118 +1,171 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { main } from '../index';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { main } from "../index";
 
 // Mock dependencies
-vi.mock('../src/converter', () => ({
-    convertPdfToMarkdown: vi.fn().mockResolvedValue('# Mocked Markdown'),
+vi.mock("../src/converter", () => ({
+	convertPdfToMarkdown: vi.fn().mockResolvedValue("# Mocked Markdown"),
 }));
 
-vi.mock('../src/pdf-generator', () => ({
-    generatePdfFromMarkdown: vi.fn().mockResolvedValue(undefined),
+vi.mock("../src/pdf-generator", () => ({
+	generatePdfFromMarkdown: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('fs/promises', () => ({
-    writeFile: vi.fn().mockResolvedValue(undefined),
+vi.mock("fs/promises", () => ({
+	writeFile: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../src/json-resume", () => ({
+	convertMarkdownToJsonResume: vi
+		.fn()
+		.mockReturnValue({ basics: { name: "JSON Resume" } }),
+	convertJsonResumeToMarkdown: vi.fn().mockReturnValue("# Markdown from JSON"),
 }));
 
 // Mock Bun global
-if (typeof (global as any).Bun === 'undefined') {
-    (global as any).Bun = {
-        file: (path: string) => ({
-            exists: async () => path !== 'non-existent-at-all.pdf',
-            text: async () => 'mock-content',
-            arrayBuffer: async () => new ArrayBuffer(0),
-        }),
-        argv: ['bun', 'index.ts'],
-        main: 'index.ts',
-    };
+if (typeof (global as any).Bun === "undefined") {
+	(global as any).Bun = {
+		file: (path: string) => ({
+			exists: async () => path !== "non-existent-at-all.pdf",
+			text: async () =>
+				path.endsWith(".json")
+					? '{"basics": {"name": "Source JSON"}}'
+					: "mock-content",
+			arrayBuffer: async () => new ArrayBuffer(0),
+		}),
+		argv: ["bun", "index.ts"],
+		main: "index.ts",
+	};
 }
 
-describe('main function', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        process.exitCode = 0;
-    });
+describe("main function", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		process.exitCode = 0;
+	});
 
-    it('should show help with --help', async () => {
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
-        await main(['bun', 'index.ts', '--help']);
-        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'));
-    });
+	it("should show help with --help", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		await main(["bun", "index.ts", "--help"]);
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage:"));
+	});
 
-    it('should show version with --version', async () => {
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
-        await main(['bun', 'index.ts', '--version']);
-        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('v1.1.0'));
-    });
+	it("should show version with --version", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		await main(["bun", "index.ts", "--version"]);
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("v1.1.0"));
+	});
 
-    it('should fail if no input is provided', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-        await main(['bun', 'index.ts']);
-        expect(process.exitCode).toBe(1);
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Input file is required'));
-    });
+	it("should fail if no input is provided", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		await main(["bun", "index.ts"]);
+		expect(process.exitCode).toBe(1);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Input file is required"),
+		);
+	});
 
-    it('should fail if file does not exist', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-        await main(['bun', 'index.ts', 'non-existent-at-all.pdf']);
-        expect(process.exitCode).toBe(1);
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('File not found'));
-    });
+	it("should fail if file does not exist", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		await main(["bun", "index.ts", "non-existent-at-all.pdf"]);
+		expect(process.exitCode).toBe(1);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("File not found"),
+		);
+	});
 
-    it('should successfully convert PDF to Markdown and print to stdout', async () => {
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
-        await main(['bun', 'index.ts', 'input.pdf']);
-        expect(logSpy).toHaveBeenCalledWith('# Mocked Markdown');
-        expect(process.exitCode).toBe(0);
-    });
+	it("should successfully convert PDF to Markdown and print to stdout", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		await main(["bun", "index.ts", "input.pdf"]);
+		expect(logSpy).toHaveBeenCalledWith("# Mocked Markdown");
+		expect(process.exitCode).toBe(0);
+	});
 
-    it('should successfully convert PDF to Markdown and write to file', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-        await main(['bun', 'index.ts', 'input.pdf', '-o', 'out.md']);
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Successfully converted'));
-        expect(process.exitCode).toBe(0);
-    });
+	it("should successfully convert PDF to Markdown and write to file", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		await main(["bun", "index.ts", "input.pdf", "-o", "out.md"]);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Successfully converted"),
+		);
+		expect(process.exitCode).toBe(0);
+	});
 
-    it('should successfully convert Markdown to PDF', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-        await main(['bun', 'index.ts', 'input.md', '--to-pdf']);
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Successfully generated PDF'));
-        expect(process.exitCode).toBe(0);
-    });
+	it("should successfully convert Markdown to PDF", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		await main(["bun", "index.ts", "input.md", "--to-pdf"]);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Successfully generated PDF"),
+		);
+		expect(process.exitCode).toBe(0);
+	});
 
-    it('should successfully output JSON structure', async () => {
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
-        await main(['bun', 'index.ts', 'input.pdf', '--json']);
-        const outputJSON = logSpy.mock.calls[0]?.[0];
-        expect(outputJSON).toBeDefined();
-        expect(JSON.parse(outputJSON!)).toHaveProperty('content', '# Mocked Markdown');
-    });
+	it("should successfully output JSON structure", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		await main(["bun", "index.ts", "input.pdf", "--json"]);
+		const outputJSON = logSpy.mock.calls[0]?.[0];
+		expect(outputJSON).toBeDefined();
+		expect(JSON.parse(outputJSON!)).toHaveProperty(
+			"content",
+			"# Mocked Markdown",
+		);
+	});
 
-    it('should pass social link flags to the converter', async () => {
-        const { convertPdfToMarkdown } = await import('../src/converter');
-        const mockedConverter = vi.mocked(convertPdfToMarkdown);
+	it("should pass social link flags to the converter", async () => {
+		const { convertPdfToMarkdown } = await import("../src/converter");
+		const mockedConverter = vi.mocked(convertPdfToMarkdown);
 
-        await main([
-            'bun', 'index.ts', 'input.pdf',
-            '--linkedin', 'https://linkedin.com/in/user',
-            '--github', 'https://github.com/user',
-            '--whatsapp', '987654321'
-        ]);
+		await main([
+			"bun",
+			"index.ts",
+			"input.pdf",
+			"--linkedin",
+			"https://linkedin.com/in/user",
+			"--github",
+			"https://github.com/user",
+			"--whatsapp",
+			"987654321",
+		]);
 
-        expect(mockedConverter).toHaveBeenCalledWith(expect.any(Buffer), {
-            linkedin: 'https://linkedin.com/in/user',
-            github: 'https://github.com/user',
-            whatsapp: '987654321'
-        });
-    });
+		expect(mockedConverter).toHaveBeenCalledWith(expect.any(Buffer), {
+			linkedin: "https://linkedin.com/in/user",
+			github: "https://github.com/user",
+			whatsapp: "987654321",
+		});
+	});
 
-    it('should handle errors during processing gracefully', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-        const { convertPdfToMarkdown } = await import('../src/converter');
-        vi.mocked(convertPdfToMarkdown).mockRejectedValueOnce(new Error('Boom!'));
+	it("should handle errors during processing gracefully", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const { convertPdfToMarkdown } = await import("../src/converter");
+		vi.mocked(convertPdfToMarkdown).mockRejectedValueOnce(new Error("Boom!"));
 
-        await main(['bun', 'index.ts', 'input.pdf']);
-        expect(process.exitCode).toBe(1);
-        expect(errorSpy).toHaveBeenCalledWith('Error:', 'Boom!');
-    });
+		await main(["bun", "index.ts", "input.pdf"]);
+		expect(process.exitCode).toBe(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error:", "Boom!");
+	});
+
+	it("should convert Markdown/PDF to JSON Resume with --to-json-resume", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		await main(["bun", "index.ts", "input.pdf", "--to-json-resume"]);
+		const output = logSpy.mock.calls[0]?.[0];
+		expect(output).toContain('"name": "JSON Resume"');
+	});
+
+	it("should convert JSON Resume to Markdown with --from-json-resume", async () => {
+		const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		await main(["bun", "index.ts", "input.json", "--from-json-resume"]);
+		expect(logSpy).toHaveBeenCalledWith("# Markdown from JSON");
+	});
+
+	it("should convert JSON Resume directly to PDF with --from-json-resume --to-pdf", async () => {
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		await main([
+			"bun",
+			"index.ts",
+			"input.json",
+			"--from-json-resume",
+			"--to-pdf",
+		]);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Successfully generated PDF from JSON Resume"),
+		);
+	});
 });
