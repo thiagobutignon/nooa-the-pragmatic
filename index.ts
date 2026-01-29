@@ -10,7 +10,7 @@ import { generatePdfFromMarkdown } from "./src/pdf-generator.js";
 
 // ... existing main function signature ...
 export async function main(
-	args: string[] = typeof Bun !== "undefined" ? Bun.argv : [],
+	args: string[] = typeof Bun !== "undefined" ? Bun.argv.slice(2) : [],
 ) {
 	const { values, positionals } = parseArgs({
 		args,
@@ -33,6 +33,11 @@ export async function main(
 			header: { type: "string", multiple: true },
 			env: { type: "string" },
 			list: { type: "boolean", short: "l" },
+			// Jobs Options
+			search: { type: "string", short: "s" },
+			provider: { type: "string", multiple: true },
+			apply: { type: "string" },
+			cron: { type: "string" },
 		},
 		strict: true,
 		allowPositionals: true,
@@ -64,8 +69,15 @@ Subcommands:
       --op <id>          Operation ID to execute.
       --param <k=v>      Parameter in dot notation (can be used multiple times).
       --header <k=v>     Custom header (can be used multiple times).
-      -l, --list         List all available operations in the spec.
-      --env <path>       Path to .env file for authentication.
+      - --env <path>       Path to .env file for authentication.
+
+  jobs <resume-path>    Search for jobs and match against your resume.
+    Flags for jobs:
+      -s, --search <q>   Search query for jobs.
+      --provider <key>   Job board provider (default: arbeitnow).
+      -l, --list         List saved jobs from database.
+      --apply <id>       Mark a saved job as applied.
+      --cron <expr>      Schedule periodic fetch (e.g., "0 * * * *").
 `);
 		return;
 	}
@@ -76,11 +88,11 @@ Subcommands:
 		return;
 	}
 
-	const inputPath = positionals[2];
-	const isBridge = positionals[2] === "bridge";
+	const inputPath = positionals[0];
+	const isBridge = positionals[0] === "bridge";
 
 	if (isBridge) {
-		const specSource = positionals[3];
+		const specSource = positionals[1];
 		if (!specSource) {
 			console.error("Error: OpenAPI spec URL or path is required for bridge.");
 			process.exitCode = 1;
@@ -150,6 +162,70 @@ Subcommands:
 		return;
 	}
 
+	const isJobs = positionals[0] === "jobs";
+	if (isJobs) {
+		try {
+			const { searchAndMatchJobs, listJobs, applyToJob } = await import(
+				"./src/jobs.js"
+			);
+
+			if (values.apply) {
+				applyToJob(Number.parseInt(values.apply));
+				return;
+			}
+
+			if (values.list) {
+				const jobs = listJobs();
+				console.log("\n📋 Saved Jobs (ranked by match score):");
+				for (const j of jobs) {
+					console.log(
+						`[ID: ${j.id}] ${Math.round(j.match_score * 100)}% - ${j.title} @ ${j.company} [${j.status}]`,
+					);
+					console.log(`     Link: ${j.url}\n`);
+				}
+				return;
+			}
+
+			const resumePath = positionals[1];
+			if (!resumePath || !values.search) {
+				console.error("Error: 'jobs <resume-path> --search <query>' is required.");
+				process.exitCode = 1;
+				return;
+			}
+
+			const providers = (values.provider as string[]) || ["arbeitnow"];
+
+			if (values.cron) {
+				const { scheduleJobFetch } = await import("./src/automation.js");
+				scheduleJobFetch(
+					values.cron as string,
+					resumePath,
+					values.search as string,
+					providers,
+				);
+				// Keep process alive for cron
+				console.error("🚀 Keep-alive for scheduled tasks. Press Ctrl+C to stop.");
+				// Bun.cron keeps the process alive by default, but we can add a simple interval if needed.
+				return;
+			}
+
+			for (const provider of providers) {
+				await searchAndMatchJobs(
+					resumePath,
+					values.search as string,
+					provider,
+				);
+			}
+
+			console.log(`\n✅ Done! Found matches across ${providers.length} providers.`);
+			console.log("Run 'nooa jobs --list' to see all saved jobs.");
+		} catch (error: any) {
+			console.error("Jobs error:", error.message);
+			process.exitCode = 1;
+		}
+		return;
+	}
+
 	// ... input validation ...
 	if (!inputPath) {
 		console.error("Error: Input file is required.");
@@ -195,14 +271,35 @@ Subcommands:
 			const outputPath = values.output || "resume.pdf";
 			await generatePdfFromMarkdown(markdown, outputPath);
 			console.error(`Successfully generated PDF at ${outputPath}`);
+		} else if (values["to-json-resume"]) {
+			// Markdown -> JSON Resume
+			const markdown = await file.text();
+			const jsonResume = convertMarkdownToJsonResume(markdown);
+			const outputContent = JSON.stringify(jsonResume, null, 2);
+			if (values.output) {
+				await writeFile(values.output, outputContent);
+				console.error(`Successfully converted Markdown to JSON Resume at ${values.output}`);
+			} else {
+				console.log(outputContent);
+			}
 		} else {
-			// PDF -> Markdown -> (optional) JSON Resume
+			// PDF -> Markdown -> (optional) JSON Resume (default mode)
 			const buffer = Buffer.from(await file.arrayBuffer());
-			const markdown = await convertPdfToMarkdown(buffer, {
-				linkedin: values.linkedin,
-				github: values.github,
-				whatsapp: values.whatsapp,
-			});
+			let markdown: string;
+			try {
+				markdown = await convertPdfToMarkdown(buffer, {
+					linkedin: values.linkedin,
+					github: values.github,
+					whatsapp: values.whatsapp,
+				});
+			} catch (pdfError: any) {
+				// If validation is requested and PDF parsing fails, maybe it's already markdown?
+				if (values.validate && inputPath.endsWith(".md")) {
+					markdown = await file.text();
+				} else {
+					throw pdfError;
+				}
+			}
 
 			if (values["to-json-resume"]) {
 				const jsonResume = convertMarkdownToJsonResume(markdown);

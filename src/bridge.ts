@@ -1,5 +1,13 @@
 import { readFile } from "node:fs/promises";
 
+export const JobProviders = {
+    arbeitnow: {
+        specUrl: "https://www.arbeitnow.com/api/job-board-api", // This is just a placeholder, Arbeitnow actually uses a simple JSON API
+        isJsonApi: true,
+        baseUrl: "https://www.arbeitnow.com/api/job-board-api"
+    }
+};
+
 export interface BridgeOptions {
     operationId: string;
     params: Record<string, string>;
