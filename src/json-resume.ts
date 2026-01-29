@@ -134,8 +134,6 @@ export function convertMarkdownToJsonResume(markdown: string): JsonResume {
 	let currentEdu: Education | null = null;
 
 	for (const token of tokens) {
-		// console.log('TOKEN:', token.type); // Debug if needed
-
 		if (token.type === "heading") {
 			const h = token as Tokens.Heading;
 			if (h.depth === 1) {
@@ -155,6 +153,8 @@ export function convertMarkdownToJsonResume(markdown: string): JsonResume {
 					currentSection = "education";
 				} else if (sectionTitle.includes("AWARDS")) {
 					currentSection = "awards";
+				} else if (sectionTitle.includes("SKILLS")) {
+					currentSection = "skills";
 				} else {
 					currentSection = null;
 				}
@@ -186,13 +186,31 @@ export function convertMarkdownToJsonResume(markdown: string): JsonResume {
 				continue;
 			}
 
-			if (h.depth === 4 && currentSection === "awards") {
-				const parts = h.text.split(":").map((s) => s.trim());
+			if (h.depth >= 3 && currentSection === "awards") {
+				const headerText = h.text.replace(/^[#\s]+/, "");
+				let title = headerText;
+				let date = "";
+				let summary = "";
+
+				// Date check first
+				if (headerText.includes(" – ")) {
+					const parts = headerText.split(" – ").map((s) => s.trim());
+					title = parts[0] as string;
+					date = parts[1] as string;
+				} else if (headerText.includes(":")) {
+					const parts = headerText.split(":").map((s) => s.trim());
+					title = parts[0] as string;
+					summary = parts[1] as string;
+				}
+
 				resume.awards = resume.awards || [];
-				resume.awards.push({
-					title: parts[0],
-					summary: parts[1] || "",
-				});
+				resume.awards.push({ title, date, summary });
+				continue;
+			}
+
+			if (h.depth >= 3 && currentSection === "skills") {
+				resume.skills = resume.skills || [];
+				resume.skills.push({ name: h.text, keywords: [] });
 				continue;
 			}
 		}
@@ -227,6 +245,17 @@ export function convertMarkdownToJsonResume(markdown: string): JsonResume {
 		if (token.type === "paragraph") {
 			const p = token as Tokens.Paragraph;
 
+			if (currentSection === "awards") {
+				const lastAward =
+					resume.awards && resume.awards.length > 0
+						? resume.awards[resume.awards.length - 1]
+						: null;
+				if (lastAward && !lastAward.summary) {
+					lastAward.summary = p.text;
+					continue;
+				}
+			}
+
 			if (currentSection === "work" && currentWork) {
 				const lines = p.text.split("\n");
 				for (const line of lines) {
@@ -255,7 +284,21 @@ export function convertMarkdownToJsonResume(markdown: string): JsonResume {
 			const list = token as Tokens.List;
 			for (const item of list.items) {
 				currentWork.highlights = currentWork.highlights || [];
-				currentWork.highlights.push(item.text);
+				// item.text in marked includes nested lists as markdown text
+				currentWork.highlights.push(item.text.trim());
+			}
+		}
+
+		if (token.type === "paragraph" && currentSection === "skills" && resume.skills) {
+			const lastSkill = resume.skills[resume.skills.length - 1];
+			if (lastSkill && token.text.includes("**Keywords:**")) {
+				const keywords = token.text
+					.replace("**Keywords:**", "")
+					.replace("**Technologies and Languages:**", "")
+					.split(",")
+					.map((s: string) => s.trim().replace(/[.,]+$/, ""))
+					.filter(Boolean);
+				lastSkill.keywords = (lastSkill.keywords || []).concat(keywords);
 			}
 		}
 
