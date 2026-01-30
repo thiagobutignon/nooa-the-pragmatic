@@ -126,6 +126,24 @@ describe("code command execute", () => {
         expect(content).toBe("line one\nline 2\n");
     });
 
+    test("patch subcommand: implies patch mode", async () => {
+        const filePath = join(TEST_DIR, "to_patch_sub.txt");
+        const patchPath = join(TEST_DIR, "sub.patch");
+        await writeFile(filePath, "original\n");
+        await writeFile(patchPath, `--- a/to_patch_sub.txt\n+++ b/to_patch_sub.txt\n@@ -1 +1 @@\n-original\n+subcommand\n`);
+
+        const context = {
+            args: ["code", "patch", filePath],
+            values: { "patch-from": patchPath } as any,
+            bus,
+        };
+
+        await codeCommand.execute(context);
+
+        const content = await readFile(filePath, "utf-8");
+        expect(content).toBe("subcommand\n");
+    });
+
     test("help: displays help and returns", async () => {
         const context = {
             args: ["code"],
@@ -135,7 +153,7 @@ describe("code command execute", () => {
 
         let helpCalled = false;
         spyOn(console, "log").mockImplementation((msg: string) => {
-            if (msg.includes("Usage: nooa code write")) helpCalled = true;
+            if (msg.includes("Usage: nooa code <write|patch>")) helpCalled = true;
         });
 
         await codeCommand.execute(context);
@@ -256,7 +274,7 @@ describe("code command execute", () => {
 
         let helpCalled = false;
         spyOn(console, "log").mockImplementation((msg: string) => {
-            if (msg.includes("Usage: nooa code write")) helpCalled = true;
+            if (msg.includes("Usage: nooa code <write|patch>")) helpCalled = true;
         });
 
         await codeCommand.execute(context);

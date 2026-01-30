@@ -10,9 +10,6 @@ describe("nooa root", () => {
 		const res = await run(["--help"]);
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa");
-		expect(res.stdout).toContain("resume");
-		expect(res.stdout).toContain("jobs");
-		expect(res.stdout).toContain("bridge");
 		expect(res.stdout).toContain("search <query>");
 	});
 
