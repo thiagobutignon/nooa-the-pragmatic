@@ -34,7 +34,7 @@ describe("code command execute", () => {
 
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(2);
-        process.exitCode = undefined; // reset
+        process.exitCode = 0; // reset for Bun (undefined keeps previous exitCode)
     });
 
     test("write: success - basic write", async () => {
@@ -68,7 +68,7 @@ describe("code command execute", () => {
         await codeCommand.execute(context);
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(2);
-        process.exitCode = undefined;
+        process.exitCode = 0;
     });
 
     test("write: dry-run", async () => {
@@ -157,7 +157,7 @@ describe("code command execute", () => {
         await codeCommand.execute(context);
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(2);
-        process.exitCode = undefined;
+        process.exitCode = 0;
     });
 
     test("patch: missing input error", async () => {
@@ -175,7 +175,7 @@ describe("code command execute", () => {
         await codeCommand.execute(context);
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(2);
-        process.exitCode = undefined;
+        process.exitCode = 0;
     });
 
     test("patch: json output", async () => {
@@ -244,7 +244,7 @@ describe("code command execute", () => {
         await codeCommand.execute(context);
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(1);
-        process.exitCode = undefined;
+        process.exitCode = 0;
     });
 
     test("unknown action: displays help", async () => {

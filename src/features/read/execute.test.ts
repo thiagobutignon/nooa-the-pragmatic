@@ -43,7 +43,7 @@ describe("read command", () => {
         (process.stdin as any).isTTY = originalTTY;
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(2);
-        process.exitCode = undefined;
+        process.exitCode = 0;
     });
 
     test("success: read path from stdin", async () => {
@@ -98,7 +98,7 @@ describe("read command", () => {
         await readCommand.execute({ args: ["read", "nonexistent.txt"], values: {} as any, bus });
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(1);
-        process.exitCode = undefined;
+        process.exitCode = 0;
     });
 
     test("error handling: other error", async () => {
@@ -111,6 +111,6 @@ describe("read command", () => {
         await readCommand.execute({ args: ["read", TEST_DIR], values: {} as any, bus });
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(1);
-        process.exitCode = undefined;
+        process.exitCode = 0;
     });
 });
