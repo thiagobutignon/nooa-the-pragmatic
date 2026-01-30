@@ -3,7 +3,7 @@ import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 
 const codeWriteHelp = `
-Usage: nooa code write <path> [flags]
+Usage: nooa code <write|patch> <path> [flags]
 
 Arguments:
   <path>              Destination file path.
@@ -19,6 +19,7 @@ Flags:
 
 Notes:
   Mutually exclusive: --patch/--patch-from cannot be combined with --from or non-patch stdin.
+  Subcommand 'patch' implies --patch.
 `;
 
 const codeCommand: Command = {
@@ -36,7 +37,7 @@ const codeCommand: Command = {
 			return;
 		}
 
-		if (action === "write") {
+		if (action === "write" || action === "patch") {
 			const targetPath = args[2];
 			if (!targetPath) {
 				console.error("Error: Destination path is required.");
@@ -61,7 +62,8 @@ const codeCommand: Command = {
 
 			try {
 				const { readFile, writeFile } = await import("node:fs/promises");
-				const isPatchMode = Boolean(values.patch || values["patch-from"]);
+				const isPatchMode =
+					action === "patch" || Boolean(values.patch || values["patch-from"]);
 				let content = "";
 				let patched = false;
 
