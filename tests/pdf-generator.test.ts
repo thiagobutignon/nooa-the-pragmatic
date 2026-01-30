@@ -1,34 +1,50 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generatePdfFromMarkdown } from "../src/pdf-generator";
+import { beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
-// Hoist mocks to avoid reference errors during vi.mock execution
-const mocks = vi.hoisted(() => ({
+const mocks = {
 	mockPage: {
-		setContent: vi.fn(),
-		pdf: vi.fn(),
-		close: vi.fn(),
+		setContent: () => {},
+		pdf: () => {},
+		close: () => {},
 	},
 	mockBrowser: {
-		newPage: vi.fn(),
-		close: vi.fn(),
+		newPage: async () => mocks.mockPage,
+		close: () => {},
 	},
+};
+
+const setContentSpy = spyOn(mocks.mockPage, "setContent");
+const pdfSpy = spyOn(mocks.mockPage, "pdf");
+const pageCloseSpy = spyOn(mocks.mockPage, "close");
+const newPageSpy = spyOn(mocks.mockBrowser, "newPage");
+const browserCloseSpy = spyOn(mocks.mockBrowser, "close");
+
+const puppeteerMocks = {
+	launch: async () => mocks.mockBrowser,
+};
+
+const launchSpy = spyOn(puppeteerMocks, "launch");
+
+mock.module("puppeteer", () => ({
+	default: puppeteerMocks,
 }));
 
-mocks.mockBrowser.newPage.mockResolvedValue(mocks.mockPage);
+let generatePdfFromMarkdown: typeof import("../src/pdf-generator").generatePdfFromMarkdown;
 
-// Mock puppeteer
-vi.mock("puppeteer", () => ({
-	default: {
-		launch: vi.fn().mockResolvedValue(mocks.mockBrowser),
-	},
-}));
-
-// Mock 'marked' isn't arguably strictly necessary if we just check the HTML passed to setContent matches expectation,
-// but let's assume marked works. We can check if setContent receives converted HTML.
+beforeAll(async () => {
+	({ generatePdfFromMarkdown } = await import("../src/pdf-generator"));
+});
 
 describe("generatePdfFromMarkdown", () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		setContentSpy.mockReset();
+		pdfSpy.mockReset();
+		pageCloseSpy.mockReset();
+		newPageSpy.mockReset();
+		browserCloseSpy.mockReset();
+		launchSpy.mockReset();
+		newPageSpy.mockResolvedValue(mocks.mockPage);
+		launchSpy.mockResolvedValue(mocks.mockBrowser);
+		mock.clearAllMocks();
 	});
 
 	it("should generate PDF from markdown", async () => {
@@ -37,25 +53,25 @@ describe("generatePdfFromMarkdown", () => {
 
 		await generatePdfFromMarkdown(markdown, outputPath);
 
-		expect(mocks.mockBrowser.newPage).toHaveBeenCalled();
-		expect(mocks.mockPage.setContent).toHaveBeenCalled();
-		expect(mocks.mockPage.pdf).toHaveBeenCalledWith({
+		expect(newPageSpy).toHaveBeenCalled();
+		expect(setContentSpy).toHaveBeenCalled();
+		expect(pdfSpy).toHaveBeenCalledWith({
 			path: outputPath,
 			format: "A4",
 			printBackground: true,
 			margin: expect.any(Object),
 		});
-		expect(mocks.mockBrowser.close).toHaveBeenCalled();
+		expect(browserCloseSpy).toHaveBeenCalled();
 	});
 
 	it("should handle setContent arguments containing converted HTML", async () => {
 		const markdown = "# Test Header";
 		await generatePdfFromMarkdown(markdown, "test.pdf");
 
-		const setContentCall = mocks.mockPage.setContent.mock.calls[0];
+		const setContentCall = setContentSpy.mock.calls[0];
 		expect(setContentCall).toBeDefined();
 		const htmlContent = setContentCall?.[0];
 		expect(htmlContent).toContain("<h1>Test Header</h1>");
-		expect(htmlContent).toContain("<style>"); // Should include CSS
+		expect(htmlContent).toContain("<style>");
 	});
 });

@@ -1,9 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-import { convertPdfToMarkdown } from "../src/converter";
+import { beforeAll, describe, expect, it, mock } from "bun:test";
 
-// Mock pdf-parse to return the buffer content as the "parsed text"
-// This allows us to inject test cases directly via Buffer.from()
-vi.mock("pdf-parse", () => {
+mock.module("pdf-parse", () => {
 	return {
 		PDFParse: class {
 			data: any;
@@ -16,6 +13,12 @@ vi.mock("pdf-parse", () => {
 			async destroy() {}
 		},
 	};
+});
+
+let convertPdfToMarkdown: typeof import("../src/converter").convertPdfToMarkdown;
+
+beforeAll(async () => {
+	({ convertPdfToMarkdown } = await import("../src/converter"));
 });
 
 describe("convertPdfToMarkdown", () => {
@@ -111,7 +114,6 @@ describe("convertPdfToMarkdown", () => {
 	it("should handle Award as the first non-empty line", async () => {
 		const input = "1st Place: Award Name";
 		const result = await convertPdfToMarkdown(Buffer.from(input));
-		// First line is always H1 regardless of content
 		expect(result).toContain("# 1st Place: Award Name");
 	});
 
@@ -142,7 +144,6 @@ describe("convertPdfToMarkdown", () => {
 		const input =
 			"Name\n\nEXPERIENCE\n\nCompany - Role - 2024\n\nTechnologies and Languages: Rust\n\n1st Place: Hackathon";
 		const result = await convertPdfToMarkdown(Buffer.from(input));
-		// Verify no double newlines around these
 		expect(result).not.toContain("\n\n\n");
 		expect(result).toContain("## EXPERIENCE");
 		expect(result).toContain("### Company");

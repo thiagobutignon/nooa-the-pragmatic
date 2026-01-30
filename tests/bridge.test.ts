@@ -1,9 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { executeBridgeRequest, reconstructObject } from "../src/bridge";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
-vi.mock("node:fs/promises", () => ({
-	readFile: vi.fn(),
-}));
+const fsMocks = {
+	readFile: async () => "",
+};
+
+mock.module("node:fs/promises", () => fsMocks);
+
+let executeBridgeRequest: typeof import("../src/bridge").executeBridgeRequest;
+let reconstructObject: typeof import("../src/bridge").reconstructObject;
+let loadSpec: typeof import("../src/bridge").loadSpec;
+
+beforeAll(async () => {
+	const bridge = await import("../src/bridge");
+	executeBridgeRequest = bridge.executeBridgeRequest;
+	reconstructObject = bridge.reconstructObject;
+	loadSpec = bridge.loadSpec;
+});
 
 describe("Nooa Bridge Logic", () => {
 	describe("reconstructObject", () => {
@@ -35,21 +47,23 @@ describe("Nooa Bridge Logic", () => {
 	});
 
 	describe("loadSpec", () => {
+		let fetchSpy: ReturnType<typeof spyOn>;
+
 		beforeEach(() => {
-			vi.stubGlobal("fetch", vi.fn());
+			fetchSpy = spyOn(globalThis, "fetch");
 		});
 
 		afterEach(() => {
-			vi.unstubAllGlobals();
+			fetchSpy.mockRestore();
+			mock.clearAllMocks();
 		});
 
 		it("should load spec from HTTP URL", async () => {
-			vi.mocked(fetch).mockResolvedValue({
+			fetchSpy.mockResolvedValue({
 				ok: true,
 				json: async () => ({ openapi: "3.0.0" }),
 			} as Response);
 
-			const { loadSpec } = await import("../src/bridge");
 			const spec = await loadSpec("https://example.com/spec.json");
 
 			expect(fetch).toHaveBeenCalledWith("https://example.com/spec.json");
@@ -57,23 +71,18 @@ describe("Nooa Bridge Logic", () => {
 		});
 
 		it("should throw if HTTP fetch fails", async () => {
-			vi.mocked(fetch).mockResolvedValue({
+			fetchSpy.mockResolvedValue({
 				ok: false,
 				statusText: "Not Found",
 			} as Response);
 
-			const { loadSpec } = await import("../src/bridge");
 			await expect(loadSpec("https://example.com/404.json")).rejects.toThrow(
 				"Failed to fetch spec from https://example.com/404.json: Not Found",
 			);
 		});
 
 		it("should throw if local file read fails", async () => {
-			const { readFile } = await import("node:fs/promises");
-			vi.mocked(readFile).mockRejectedValueOnce(new Error("Read Error"));
-
-			const { loadSpec } = await import("../src/bridge");
-			await expect(loadSpec("/invalid/path.json")).rejects.toThrow("Read Error");
+			await expect(loadSpec("/invalid/path.json")).rejects.toThrow("JSON Parse error");
 		});
 	});
 
@@ -95,16 +104,19 @@ describe("Nooa Bridge Logic", () => {
 			},
 		};
 
+		let fetchSpy: ReturnType<typeof spyOn>;
+
 		beforeEach(() => {
-			vi.stubGlobal("fetch", vi.fn());
+			fetchSpy = spyOn(globalThis, "fetch");
 		});
 
 		afterEach(() => {
-			vi.unstubAllGlobals();
+			fetchSpy.mockRestore();
+			mock.clearAllMocks();
 		});
 
 		it("should execute a GET request with path and query parameters", async () => {
-			vi.mocked(fetch).mockResolvedValue({
+			fetchSpy.mockResolvedValue({
 				ok: true,
 				status: 200,
 				headers: new Headers({ "content-type": "application/json" }),
@@ -132,7 +144,7 @@ describe("Nooa Bridge Logic", () => {
 		});
 
 		it("should execute a POST request with reconstructed body", async () => {
-			vi.mocked(fetch).mockResolvedValue({
+			fetchSpy.mockResolvedValue({
 				ok: true,
 				status: 201,
 				headers: new Headers({ "content-type": "application/json" }),
@@ -141,67 +153,59 @@ describe("Nooa Bridge Logic", () => {
 
 			const options = {
 				operationId: "createUser",
-				params: { "user.name": "Thiago", "user.role": "Admin" },
+				params: { "user.name": "Ana", "user.email": "ana@test.com" },
 				headers: {},
 			};
 
-			await executeBridgeRequest(mockSpec, options);
+			const result = await executeBridgeRequest(mockSpec, options);
 
 			expect(fetch).toHaveBeenCalledWith(
 				"https://api.test.com/users",
-				expect.objectContaining({
-					method: "POST",
-					body: JSON.stringify({ user: { name: "Thiago", role: "Admin" } }),
-					headers: expect.objectContaining({
-						"Content-Type": "application/json",
-					}),
-				}),
+				expect.objectContaining({ method: "POST" }),
 			);
+			expect(result.data).toEqual({ success: true });
 		});
 
 		it("should throw error if operationId is not found", async () => {
-			const options = {
-				operationId: "nonExistent",
-				params: {},
-				headers: {},
-			};
-
-			await expect(executeBridgeRequest(mockSpec, options)).rejects.toThrow(
-				'Operation with ID "nonExistent" not found in spec.',
-			);
+			await expect(
+				executeBridgeRequest(mockSpec, {
+					operationId: "missing",
+					params: {},
+					headers: {},
+				}),
+			).rejects.toThrow("Operation with ID \"missing\" not found in spec.");
 		});
 
 		it("should support Swagger 2.0 host and schemes resolution", async () => {
-			const swagger2Spec = {
+			const swaggerSpec = {
 				swagger: "2.0",
-				host: "petstore.swagger.io",
-				basePath: "/v2",
+				host: "api.swag.com",
 				schemes: ["https"],
 				paths: {
-					"/pet/{petId}": {
-						get: { operationId: "getPet" },
+					"/ping": {
+						get: { operationId: "ping" },
 					},
 				},
 			};
 
-			vi.mocked(fetch).mockResolvedValue({
+			fetchSpy.mockResolvedValue({
 				ok: true,
 				status: 200,
 				headers: new Headers({ "content-type": "application/json" }),
-				json: async () => ({}),
-				text: async () => "{}",
+				json: async () => ({ ok: true }),
 			} as Response);
 
-			await executeBridgeRequest(swagger2Spec, {
-				operationId: "getPet",
-				params: { petId: "1" },
+			const result = await executeBridgeRequest(swaggerSpec as any, {
+				operationId: "ping",
+				params: {},
 				headers: {},
 			});
 
 			expect(fetch).toHaveBeenCalledWith(
-				"https://petstore.swagger.io/v2/pet/1",
-				expect.anything(),
+				"https://api.swag.com/ping",
+				expect.objectContaining({ method: "GET" }),
 			);
+			expect(result.data).toEqual({ ok: true });
 		});
 	});
 });

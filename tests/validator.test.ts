@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { extractLinks, validateAllLinks, validateLink } from "../src/validator";
 
 describe("Link Validator Logic", () => {
@@ -31,16 +31,19 @@ describe("Link Validator Logic", () => {
 	});
 
 	describe("validateLink", () => {
+		let fetchSpy: ReturnType<typeof spyOn>;
+
 		beforeEach(() => {
-			vi.stubGlobal("fetch", vi.fn());
+			fetchSpy = spyOn(globalThis, "fetch");
 		});
 
 		afterEach(() => {
-			vi.unstubAllGlobals();
+			fetchSpy.mockRestore();
+			mock.clearAllMocks();
 		});
 
 		it("should return ok for a successful HEAD request", async () => {
-			vi.mocked(fetch).mockResolvedValue({ ok: true, status: 200 } as Response);
+			fetchSpy.mockResolvedValue({ ok: true, status: 200 } as Response);
 			const result = await validateLink("https://ok.com");
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe(200);
@@ -51,7 +54,7 @@ describe("Link Validator Logic", () => {
 		});
 
 		it("should fallback to GET if HEAD returns 405", async () => {
-			vi.mocked(fetch)
+			fetchSpy
 				.mockResolvedValueOnce({ ok: false, status: 405 } as Response)
 				.mockResolvedValueOnce({ ok: true, status: 200 } as Response);
 
@@ -62,7 +65,7 @@ describe("Link Validator Logic", () => {
 		});
 
 		it("should return not ok for 404", async () => {
-			vi.mocked(fetch).mockResolvedValue({
+			fetchSpy.mockResolvedValue({
 				ok: false,
 				status: 404,
 			} as Response);
@@ -72,7 +75,7 @@ describe("Link Validator Logic", () => {
 		});
 
 		it("should handle timeouts", async () => {
-			vi.mocked(fetch).mockRejectedValue({ name: "AbortError" });
+			fetchSpy.mockRejectedValue({ name: "AbortError" });
 			const result = await validateLink("https://slow.com", 10);
 			expect(result.ok).toBe(false);
 			expect(result.error).toBe("Timeout");
@@ -87,15 +90,13 @@ describe("Link Validator Logic", () => {
 
 	describe("validateAllLinks", () => {
 		it("should validate multiple links in parallel", async () => {
-			vi.stubGlobal(
-				"fetch",
-				vi.fn().mockResolvedValue({ ok: true, status: 200 }),
-			);
+			const localFetchSpy = spyOn(globalThis, "fetch");
+			localFetchSpy.mockResolvedValue({ ok: true, status: 200 } as Response);
 			const urls = ["https://a.com", "https://b.com", "https://c.com"];
 			const results = await validateAllLinks(urls, 2);
 			expect(results).toHaveLength(3);
 			expect(results.every((r) => r.ok)).toBe(true);
-			vi.unstubAllGlobals();
+			localFetchSpy.mockRestore();
 		});
 	});
 });
