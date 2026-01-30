@@ -107,6 +107,7 @@ Subcommands:
   resume <input>                Convert resumes (PDF/Markdown/JSON Resume).
   bridge <spec-url-or-path>     Transform a REST API into CLI commands.
   jobs <resume-path>            Search for jobs and match against your resume.
+  search <query> [path]         Search files and file contents.
 
 Flags:
   -o, --output <file>    Output file path.

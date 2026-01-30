@@ -13,6 +13,7 @@ describe("nooa root", () => {
 		expect(res.stdout).toContain("resume");
 		expect(res.stdout).toContain("jobs");
 		expect(res.stdout).toContain("bridge");
+		expect(res.stdout).toContain("search <query>");
 	});
 
 	test("nooa --version prints 0.0.1", async () => {
