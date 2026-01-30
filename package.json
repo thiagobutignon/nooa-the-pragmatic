@@ -21,6 +21,7 @@
 		"test": "bun test",
 		"test:coverage": "bun test --coverage",
 		"check": "biome check .",
+		"linter": "biome lint .",
 		"lint:fix": "biome check --write --unsafe src && biome format --write src",
 		"format": "biome format src",
 		"format:fix": "biome format src --write"
