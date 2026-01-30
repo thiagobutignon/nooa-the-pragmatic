@@ -1,31 +1,88 @@
-# Nooa The Pragmatic
+# NOOA The Pragmatic
 
-## Agent-First Development: The CLI-First Approach
+NOOA The Pragmatic is a **CLI-first Programming Agent** for **hypergrowth software development**. The goal is to outperform tools like Claude Code and Codex by delivering a personalized development experience with **active Markdown memory**, **deep codebase context**, and **disciplined, test-first execution**.
 
-This project demonstrates a shift from "Mobile First" to **"AI First"**.
+## Objective (OKR)
 
-In an AI-driven development era, the most efficient workflow is **CLI First**. Agents thrive on text-based interfaces, structured inputs/outputs, and rapid feedback loops. Building a CLI before a GUI reduces friction, enables easy testing, and creates a solid foundation that can later be wrapped in APIs, MCP Servers, or UI frontends.
+Be superior to Claude Code and Codex by delivering a personalized development experience:
+- Reads `docs/` and code to understand the project deeply.
+- Maintains **active memory between sessions in Markdown**.
+- Understands the developer and the company context.
+- **Auto-evolves** as the codebase evolves, including adjusting OKRs when justified.
+- When a bug is found, it **creates a worktree, writes tests, implements, validates, and merges**.
 
-### The Insight
-- **Traditional Flow:** Database -> API -> SDK (Optional) -> Frontend -> Mobile (High friction, many layers)
-- **Agent-First Flow:** CLI -> Logic/Core -> Test Verification -> Database -> API/MCP Server -> SDK (Optional) -> Frontend -> Mobile
+Repository: https://github.com/thiagobutignon/nooa-the-pragmatic
 
-By starting with a CLI:
-1.  **Zero-Friction Testing:** Agents can execute the tool, parse the output, and verify correctness instantly.
-2.  **Focus on Logic:** We solve the core problem without getting bogged down in UI state management or component libraries initially.
-3.  **Composability:** The CLI becomes a primitive that can be orchestrated by other agents or scripts.
+## Focus Rules (Non-negotiable)
 
-### Process
-1.  **Define the Interface:** Treat the CLI help text (`--help`) as the requirements spec.
-2.  **Test-Driven:** Write tests that invoke the CLI and assert the output.
-3.  **Implement:** Build the core logic to satisfy the CLI contract.
-4.  **Polish:** Refine heuristics and formatting (as seen in the PDF resume conversion).
+Every project has **Objective, Cost, and Deadline**. The agent must keep the developer focused and engaged, provide support, and explain difficult topics. If needed, it should build small interactive HTML/CSS/JS examples to clarify concepts.
 
-*This project evolved from a simple PDF reading task to a full-featured Resume Conversion CLI (PDF <-> Markdown) in just a few efficient prompts, proving the efficacy of this workflow.*
+## Never Break These Capabilities
+
+- `writeFile`
+- `readFile`
+- `searchFile`
+- `commit`
+- `push`
+
+If any of these fail, restoring them is the top priority.
+
+## How NOOA Evolves
+
+The system prompt knows the project. At any time, NOOA can:
+- clone the repo
+- create a worktree
+- commit changes
+- open a PR and review it
+
+## Operating Principles
+
+- **CLI First**
+- **Agent First**
+- **AI First**
+- **Intent > abstraction**
+- **No incomplete code** (no `// TODO`, `// MOCK`, or “implement later” in production)
+- **No technical debt left behind**
+
+Old flow: `API -> Mobile/Web`  
+New flow: `CLI -> Docs -> Agent -> AI -> API/MCP -> SDK -> Mobile/Web`
+
+## Workflow (Dogfooding Standard)
+
+0. Create worktree  
+1. TDD (RED): write tests and run `bun test` (expect fail)  
+2. Production code  
+2.1 `bun test`  
+2.2 `bun check`  
+2.3 `bun run linter`  
+2.4 Commit  
+3. Verify observability/telemetry (errors must be debuggable)  
+4. Bug finding must be surgical: minimal tokens/CPU/memory
+
+## Search Philosophy
+
+AI is statistical. A good agent is surgical.  
+NOOA should use **hybrid search (lexical + embeddings)** and prioritize files by signals (recent changes, hotspots, failing tests, blame) before deep dives.
+
+## Architecture & Constraints
+
+**DB:** MySql Lite with vectorization  
+**Models:** Qwen-2.5-Coder:14b + nomic-embed-text  
+**Resources:** Twitter, GitHub, crypto wallet (for distribution and sustainability)
+
+## Example Scenarios
+
+- No web access? Create a worktree, implement a web-search skill, test it, validate it, and merge if it works.
+- Need code review? Build a review skill/agent that flags bugs, readability issues, missing tests, and observability gaps.
+
+## Folder Convention
+
+Feature-based, vertical-slice structure (URLs as mental model):
+`example.com/blog/nooa-is-the-best-agent`
 
 ## Project Structure (Feature-Based + Co-located Tests)
 
-We use a vertical-slice, feature-based layout. Each feature owns its runtime code and its tests in the same folder for fast search and lower context switching.
+We use a vertical-slice layout. Each feature owns its runtime code and its tests in the same folder.
 
 ```
 src/
@@ -74,19 +131,15 @@ index.nooa.test.ts
 index.read.test.ts
 ```
 
-To install dependencies:
+## Install & Run
 
 ```bash
 bun install
 ```
 
-To run:
-
 ```bash
 bun run index.ts
 ```
-
-To test and verify:
 
 ```bash
 bun test
