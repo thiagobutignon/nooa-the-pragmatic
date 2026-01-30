@@ -53,7 +53,7 @@ export async function main(
 	const isCode = subcommand === "code";
 	const codeAction = positionals[1];
 
-	const codeWriteHelp = `
+const codeWriteHelp = `
 Usage: nooa code write <path> [flags]
 
 Arguments:
@@ -61,10 +61,15 @@ Arguments:
 
 Flags:
   --from <path>       Read content from a file (otherwise stdin is used).
+  --patch             Read a unified diff from stdin and apply to <path>.
+  --patch-from <path> Read a unified diff from a file and apply to <path>.
   --overwrite         Overwrite destination if it exists.
   --json              Output result as JSON.
   --dry-run           Do not write the file.
   -h, --help          Show help.
+
+Notes:
+  Mutually exclusive: --patch/--patch-from cannot be combined with --from or non-patch stdin.
 `;
 
 	if (values.help && isResume) {
