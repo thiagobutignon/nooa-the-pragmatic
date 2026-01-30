@@ -21,6 +21,7 @@ describe("code command execute", () => {
     test("write: failure - missing path", async () => {
         const context = {
             args: ["code", "write"],
+            rawArgs: ["code", "write"],
             values: {} as any,
             bus,
         };
@@ -41,6 +42,7 @@ describe("code command execute", () => {
         const filePath = join(TEST_DIR, "test.txt");
         const context = {
             args: ["code", "write", filePath],
+            rawArgs: ["code", "write", filePath, "--from", join(TEST_DIR, "input.txt")],
             values: { from: join(TEST_DIR, "input.txt") } as any,
             bus,
         };
@@ -56,6 +58,7 @@ describe("code command execute", () => {
         const filePath = join(TEST_DIR, "test.txt");
         const context = {
             args: ["code", "write", filePath],
+            rawArgs: ["code", "write", filePath],
             values: {} as any, // no --from, and stdin is TTY in tests usually
             bus,
         };
@@ -75,6 +78,7 @@ describe("code command execute", () => {
         const filePath = join(TEST_DIR, "dry.txt");
         const context = {
             args: ["code", "write", filePath],
+            rawArgs: ["code", "write", filePath, "--from", join(TEST_DIR, "in.txt"), "--dry-run"],
             values: { from: join(TEST_DIR, "in.txt"), "dry-run": true } as any,
             bus,
         };
@@ -90,6 +94,7 @@ describe("code command execute", () => {
         const filePath = join(TEST_DIR, "test.json");
         const context = {
             args: ["code", "write", filePath],
+            rawArgs: ["code", "write", filePath, "--from", join(TEST_DIR, "in.txt"), "--json"],
             values: { from: join(TEST_DIR, "in.txt"), json: true } as any,
             bus,
         };
@@ -116,6 +121,7 @@ describe("code command execute", () => {
 
         const context = {
             args: ["code", "write", filePath], // code write <path> --patch-from <path>
+            rawArgs: ["code", "write", filePath, "--patch-from", patchPath],
             values: { "patch-from": patchPath } as any,
             bus,
         };
@@ -134,6 +140,7 @@ describe("code command execute", () => {
 
         const context = {
             args: ["code", "patch", filePath],
+            rawArgs: ["code", "patch", filePath, "--patch-from", patchPath],
             values: { "patch-from": patchPath } as any,
             bus,
         };
@@ -147,6 +154,7 @@ describe("code command execute", () => {
     test("help: displays help and returns", async () => {
         const context = {
             args: ["code"],
+            rawArgs: ["code", "--help"],
             values: { help: true } as any,
             bus,
         };
@@ -163,6 +171,7 @@ describe("code command execute", () => {
     test("error handling: patch exclusive with from", async () => {
         const context = {
             args: ["code", "write", "any.txt"],
+            rawArgs: ["code", "write", "any.txt", "--patch", "--from", "some.txt"],
             values: { patch: true, from: "some.txt" } as any,
             bus,
         };
@@ -181,6 +190,7 @@ describe("code command execute", () => {
     test("patch: missing input error", async () => {
         const context = {
             args: ["code", "write", "target.txt"],
+            rawArgs: ["code", "write", "target.txt", "--patch"],
             values: { patch: true } as any, // no --patch-from, and stdin is TTY
             bus,
         };
@@ -204,6 +214,7 @@ describe("code command execute", () => {
 
         const context = {
             args: ["code", "write", filePath],
+            rawArgs: ["code", "write", filePath, "--patch-from", patchPath, "--json"],
             values: { "patch-from": patchPath, json: true } as any,
             bus,
         };
@@ -224,6 +235,7 @@ describe("code command execute", () => {
         const filePath = join(TEST_DIR, "stdin_out.txt");
         const context = {
             args: ["code", "write", filePath],
+            rawArgs: ["code", "write", filePath],
             values: {} as any,
             bus,
         };
@@ -249,6 +261,7 @@ describe("code command execute", () => {
     test("error handling: unexpected error", async () => {
         const context = {
             args: ["code", "write", TEST_DIR], // Writing to a directory should fail
+            rawArgs: ["code", "write", TEST_DIR, "--from", join(TEST_DIR, "any.txt")],
             values: { from: join(TEST_DIR, "any.txt") } as any,
             bus,
         };
@@ -268,6 +281,7 @@ describe("code command execute", () => {
     test("unknown action: displays help", async () => {
         const context = {
             args: ["code", "unknown"],
+            rawArgs: ["code", "unknown"],
             values: {} as any,
             bus,
         };

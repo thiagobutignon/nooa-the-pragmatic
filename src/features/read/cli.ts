@@ -16,7 +16,20 @@ Flags:
 const readCommand: Command = {
 	name: "read",
 	description: "Read file contents",
-	execute: async ({ args, values, bus }: CommandContext) => {
+	options: {}, // No specific flags other than global help/json
+	execute: async ({ rawArgs, values: globalValues, bus }: CommandContext) => {
+		const { parseArgs } = await import("node:util");
+		const { values, positionals } = parseArgs({
+			args: rawArgs,
+			options: {
+				...readCommand.options,
+				help: { type: "boolean", short: "h" },
+				json: { type: "boolean" }, // shared
+			},
+			strict: true,
+			allowPositionals: true,
+		}) as any;
+
 		const traceId = createTraceId();
 		const startTime = Date.now();
 		logger.setContext({ trace_id: traceId, command: "read" });
@@ -27,7 +40,7 @@ const readCommand: Command = {
 			return;
 		}
 
-		let path = args[1];
+		let path = positionals[1];
 
 		// Handle stdin if no path provided
 		if (!path && !process.stdin.isTTY) {

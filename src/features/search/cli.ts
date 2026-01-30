@@ -41,14 +41,40 @@ function resolveEngineName(forced?: string, detected?: boolean) {
 const searchCommand: Command = {
 	name: "search",
 	description: "Search files and file contents",
-	execute: async ({ args, values, bus }: CommandContext) => {
+	options: {
+		regex: { type: "boolean" },
+		"case-sensitive": { type: "boolean" },
+		"files-only": { type: "boolean" },
+		"max-results": { type: "string" },
+		include: { type: "string", multiple: true },
+		exclude: { type: "string", multiple: true },
+		plain: { type: "boolean" },
+		"no-color": { type: "boolean" },
+		context: { type: "string" },
+		"ignore-case": { type: "boolean", short: "i" },
+		count: { type: "boolean", short: "c" },
+		hidden: { type: "boolean" },
+	},
+	execute: async ({ rawArgs, values: globalValues, bus }: CommandContext) => {
+		const { parseArgs } = await import("node:util");
+		const { values, positionals } = parseArgs({
+			args: rawArgs,
+			options: {
+				...searchCommand.options,
+				help: { type: "boolean", short: "h" },
+				json: { type: "boolean" },
+			},
+			strict: true,
+			allowPositionals: true,
+		}) as any;
+
 		if (values.help) {
 			console.log(searchHelp);
 			return;
 		}
 
-		const query = args[1];
-		const root = args[2] ?? ".";
+		const query = positionals[1];
+		const root = positionals[2] ?? ".";
 		if (!query) {
 			console.error("Error: Query is required.");
 			process.exitCode = 2;

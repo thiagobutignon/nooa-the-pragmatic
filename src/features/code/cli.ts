@@ -25,8 +25,27 @@ Notes:
 const codeCommand: Command = {
 	name: "code",
 	description: "Code operations (write, patch)",
-	execute: async ({ args, values, bus }: CommandContext) => {
-		const action = args[1];
+	options: {
+		from: { type: "string" },
+		overwrite: { type: "boolean" },
+		"dry-run": { type: "boolean" },
+		patch: { type: "boolean" },
+		"patch-from": { type: "string" },
+	},
+	execute: async ({ rawArgs, values: globalValues, bus }: CommandContext) => {
+		const { parseArgs } = await import("node:util");
+		const { values, positionals } = parseArgs({
+			args: rawArgs,
+			options: {
+				...codeCommand.options,
+				help: { type: "boolean", short: "h" },
+				json: { type: "boolean" }, // shared
+			},
+			strict: true,
+			allowPositionals: true,
+		}) as any;
+
+		const action = positionals[1];
 		const traceId = createTraceId();
 		const startTime = Date.now();
 		logger.setContext({ trace_id: traceId, command: "code", action });
@@ -38,7 +57,7 @@ const codeCommand: Command = {
 		}
 
 		if (action === "write" || action === "patch") {
-			const targetPath = args[2];
+			const targetPath = positionals[2];
 			if (!targetPath) {
 				console.error("Error: Destination path is required.");
 				telemetry.track(
