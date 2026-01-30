@@ -1,66 +1,54 @@
-import { beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-
-const converterMocks = {
-	convertPdfToMarkdown: async () => "# Mocked Markdown",
-};
-const converterSpy = spyOn(converterMocks, "convertPdfToMarkdown");
-mock.module("../src/converter", () => converterMocks);
-
-const pdfGeneratorMocks = {
-	generatePdfFromMarkdown: async () => undefined,
-};
-const pdfGeneratorSpy = spyOn(pdfGeneratorMocks, "generatePdfFromMarkdown");
-mock.module("../src/pdf-generator", () => pdfGeneratorMocks);
-
-const fsMocks = {
-	writeFile: async () => undefined,
-};
-const writeFileSpy = spyOn(fsMocks, "writeFile");
-mock.module("fs/promises", () => fsMocks);
-
-const jsonResumeMocks = {
-	convertMarkdownToJsonResume: (_input: string) => ({ basics: { name: "JSON Resume" } }),
-	convertJsonResumeToMarkdown: (_input: any) => "# Markdown from JSON",
-};
-const convertMarkdownToJsonResumeSpy = spyOn(
-	jsonResumeMocks,
-	"convertMarkdownToJsonResume",
-);
-const convertJsonResumeToMarkdownSpy = spyOn(
-	jsonResumeMocks,
-	"convertJsonResumeToMarkdown",
-);
-mock.module("../src/json-resume", () => jsonResumeMocks);
-
-const bridgeMocks = {
-	loadSpec: async () => ({
-		info: { title: "Mock API" },
-		paths: {
-			"/test": { get: { operationId: "testOp", summary: "Test Summary" } },
-		},
-	}),
-	executeBridgeRequest: async () => ({
-		status: 200,
-		statusText: "OK",
-		data: { result: "success" },
-	}),
-};
-const loadSpecSpy = spyOn(bridgeMocks, "loadSpec");
-const executeBridgeRequestSpy = spyOn(bridgeMocks, "executeBridgeRequest");
-mock.module("../src/bridge", () => bridgeMocks);
-
-const validatorMocks = {
-	extractLinks: (_md: string) => [],
-	validateAllLinks: async (_links: string[]) => [],
-};
-const extractLinksSpy = spyOn(validatorMocks, "extractLinks");
-const validateAllLinksSpy = spyOn(validatorMocks, "validateAllLinks");
-mock.module("../src/validator", () => validatorMocks);
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 let main: typeof import("../index").main;
 
+let converterSpy: ReturnType<typeof spyOn>;
+let pdfGeneratorSpy: ReturnType<typeof spyOn>;
+let writeFileSpy: ReturnType<typeof spyOn>;
+let convertMarkdownToJsonResumeSpy: ReturnType<typeof spyOn>;
+let convertJsonResumeToMarkdownSpy: ReturnType<typeof spyOn>;
+let loadSpecSpy: ReturnType<typeof spyOn>;
+let executeBridgeRequestSpy: ReturnType<typeof spyOn>;
+let extractLinksSpy: ReturnType<typeof spyOn>;
+let validateAllLinksSpy: ReturnType<typeof spyOn>;
+
 beforeAll(async () => {
+	const converter = await import("../src/converter");
+	const pdfGenerator = await import("../src/pdf-generator");
+	const fsPromises = await import("fs/promises");
+	const jsonResume = await import("../src/json-resume");
+	const bridge = await import("../src/bridge");
+	const validator = await import("../src/validator");
+
+	converterSpy = spyOn(converter, "convertPdfToMarkdown");
+	pdfGeneratorSpy = spyOn(pdfGenerator, "generatePdfFromMarkdown");
+	writeFileSpy = spyOn(fsPromises, "writeFile");
+	convertMarkdownToJsonResumeSpy = spyOn(
+		jsonResume,
+		"convertMarkdownToJsonResume",
+	);
+	convertJsonResumeToMarkdownSpy = spyOn(
+		jsonResume,
+		"convertJsonResumeToMarkdown",
+	);
+	loadSpecSpy = spyOn(bridge, "loadSpec");
+	executeBridgeRequestSpy = spyOn(bridge, "executeBridgeRequest");
+	extractLinksSpy = spyOn(validator, "extractLinks");
+	validateAllLinksSpy = spyOn(validator, "validateAllLinks");
+
 	({ main } = await import("../index"));
+});
+
+afterAll(() => {
+	converterSpy.mockRestore();
+	pdfGeneratorSpy.mockRestore();
+	writeFileSpy.mockRestore();
+	convertMarkdownToJsonResumeSpy.mockRestore();
+	convertJsonResumeToMarkdownSpy.mockRestore();
+	loadSpecSpy.mockRestore();
+	executeBridgeRequestSpy.mockRestore();
+	extractLinksSpy.mockRestore();
+	validateAllLinksSpy.mockRestore();
 });
 
 describe("main function", () => {
@@ -107,6 +95,10 @@ describe("main function", () => {
 					: "mock-content",
 			arrayBuffer: async () => new ArrayBuffer(0),
 		}));
+	});
+
+	afterEach(() => {
+		bunFileSpy.mockRestore();
 	});
 
 	it("should show help with --help", async () => {

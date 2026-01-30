@@ -1,19 +1,20 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-
-const converterMocks = {
-	convertPdfToMarkdown: async () => "# Resume\n\n[Valid](https://ok.com) and [Broken](https://error.com)",
-};
-mock.module("../src/converter", () => converterMocks);
-
-const pdfGeneratorMocks = {
-	generatePdfFromMarkdown: async () => undefined,
-};
-mock.module("../src/pdf-generator", () => pdfGeneratorMocks);
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 let main: typeof import("../index").main;
+let converterSpy: ReturnType<typeof spyOn>;
+let pdfGeneratorSpy: ReturnType<typeof spyOn>;
 
 beforeAll(async () => {
+	const converter = await import("../src/converter");
+	const pdfGenerator = await import("../src/pdf-generator");
+	converterSpy = spyOn(converter, "convertPdfToMarkdown");
+	pdfGeneratorSpy = spyOn(pdfGenerator, "generatePdfFromMarkdown");
 	({ main } = await import("../index"));
+});
+
+afterAll(() => {
+	converterSpy.mockRestore();
+	pdfGeneratorSpy.mockRestore();
 });
 
 describe("CLI --validate integration", () => {
@@ -22,6 +23,12 @@ describe("CLI --validate integration", () => {
 
 	beforeEach(() => {
 		fetchSpy = spyOn(globalThis, "fetch");
+		converterSpy.mockReset();
+		converterSpy.mockResolvedValue(
+			"# Resume\n\n[Valid](https://ok.com) and [Broken](https://error.com)",
+		);
+		pdfGeneratorSpy.mockReset();
+		pdfGeneratorSpy.mockResolvedValue(undefined);
 		bunFileSpy = spyOn(Bun, "file");
 		bunFileSpy.mockImplementation((_path: string) => ({
 			exists: async () => true,
@@ -35,6 +42,7 @@ describe("CLI --validate integration", () => {
 	afterEach(() => {
 		fetchSpy.mockRestore();
 		bunFileSpy.mockRestore();
+		process.exitCode = 0;
 		mock.clearAllMocks();
 	});
 
