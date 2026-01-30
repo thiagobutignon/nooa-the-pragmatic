@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import { readFile } from "node:fs/promises";
 import { describe, expect, test } from "vitest";
 
 const run = (args: string[]) =>
@@ -21,7 +22,7 @@ describe("nooa root", () => {
 	});
 
 	test("package.json exposes nooa bin", async () => {
-		const pkg = await Bun.file("package.json").json();
+		const pkg = JSON.parse(await readFile("package.json", "utf-8"));
 		expect(pkg.bin.nooa).toBe("index.ts");
 	});
 });
