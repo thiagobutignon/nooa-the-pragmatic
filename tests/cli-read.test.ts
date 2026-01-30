@@ -38,4 +38,14 @@ describe("nooa read", () => {
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toBe("stdin-read");
 	});
+
+	test("outputs json with metadata", async () => {
+		await writeFile(OUT, "json-read");
+		const res = await run(["read", OUT, "--json"]);
+		expect(res.exitCode).toBe(0);
+		const payload = JSON.parse(res.stdout);
+		expect(payload.path).toBe(OUT);
+		expect(payload.bytes).toBe(9);
+		expect(payload.content).toBe("json-read");
+	});
 });
