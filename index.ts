@@ -45,10 +45,12 @@ export async function main(
 
 	if (values.help) {
 		console.log(`
-Usage: resume2md [flags] <input>
+Usage: nooa [flags] <subcommand> [args]
 
-Arguments:
-  <input>    Path to the source file (PDF for extraction, Markdown for generation, or JSON for conversion).
+Subcommands:
+  resume <input>                Convert resumes (PDF/Markdown/JSON Resume).
+  bridge <spec-url-or-path>     Transform a REST API into CLI commands.
+  jobs <resume-path>            Search for jobs and match against your resume.
 
 Flags:
   -o, --output <file>    Output file path.
@@ -63,28 +65,25 @@ Flags:
   -v, --version          Show version.
   -h, --help             Show help.
 
-Subcommands:
-  bridge <spec-url-or-path>    Transform a REST API into CLI commands.
-    Flags for bridge:
-      --op <id>          Operation ID to execute.
-      --param <k=v>      Parameter in dot notation (can be used multiple times).
-      --header <k=v>     Custom header (can be used multiple times).
-      - --env <path>       Path to .env file for authentication.
+Bridge flags:
+  --op <id>          Operation ID to execute.
+  --param <k=v>      Parameter in dot notation (can be used multiple times).
+  --header <k=v>     Custom header (can be used multiple times).
+  --env <path>       Path to .env file for authentication.
 
-  jobs <resume-path>    Search for jobs and match against your resume.
-    Flags for jobs:
-      -s, --search <q>   Search query for jobs.
-      --provider <key>   Job board provider (default: arbeitnow).
-      -l, --list         List saved jobs from database.
-      --apply <id>       Mark a saved job as applied.
-      --cron <expr>      Schedule periodic fetch (e.g., "0 * * * *").
+Jobs flags:
+  -s, --search <q>   Search query for jobs.
+  --provider <key>   Job board provider (default: arbeitnow).
+  -l, --list         List saved jobs from database.
+  --apply <id>       Mark a saved job as applied.
+  --cron <expr>      Schedule periodic fetch (e.g., "0 * * * *").
 `);
 		return;
 	}
 
 	// ... version check ...
 	if (values.version) {
-		console.log("resume2md v1.1.0");
+		console.log("nooa v0.0.1");
 		return;
 	}
 
