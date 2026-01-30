@@ -1,4 +1,7 @@
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import type { Command } from "./command";
+
 
 export class CommandRegistry {
     private commands = new Map<string, Command>();
@@ -15,3 +18,32 @@ export class CommandRegistry {
         return Array.from(this.commands.values());
     }
 }
+
+export async function loadCommands(featuresDir: string): Promise<CommandRegistry> {
+    const registry = new CommandRegistry();
+
+    // Check if directory exists first
+    try {
+        await readdir(featuresDir);
+    } catch {
+        return registry;
+    }
+
+    const entries = await readdir(featuresDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+        if (entry.isDirectory()) {
+            try {
+                const cliPath = join(featuresDir, entry.name, "cli.ts");
+                const module = await import(cliPath);
+                if (module.default && module.default.name) {
+                    registry.register(module.default);
+                }
+            } catch (e) {
+                // Ignore missing cli.ts or import errors
+            }
+        }
+    }
+    return registry;
+}
+
