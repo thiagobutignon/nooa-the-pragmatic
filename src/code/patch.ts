@@ -21,9 +21,7 @@ function parseHunkHeader(header: string): Hunk {
 	}
 
 	const startOriginal = Number.parseInt(match[1], 10);
-	const lengthOriginal = match[2]
-		? Number.parseInt(match[2], 10)
-		: 1;
+	const lengthOriginal = match[2] ? Number.parseInt(match[2], 10) : 1;
 	const startNew = Number.parseInt(match[3], 10);
 	const lengthNew = match[4] ? Number.parseInt(match[4], 10) : 1;
 
@@ -50,7 +48,11 @@ export function applyPatch(original: string, patch: string): string {
 			continue;
 		}
 		if (currentHunk) {
-			if (line.startsWith("+") || line.startsWith("-") || line.startsWith(" ")) {
+			if (
+				line.startsWith("+") ||
+				line.startsWith("-") ||
+				line.startsWith(" ")
+			) {
 				currentHunk.lines.push(line);
 			}
 		}

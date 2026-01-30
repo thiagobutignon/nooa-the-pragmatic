@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { execa } from "execa";
 import { readFile, rm, writeFile } from "node:fs/promises";
+import { execa } from "execa";
 
 const run = (args: string[], input?: string) =>
 	execa("bun", ["index.ts", ...args], { reject: false, input });

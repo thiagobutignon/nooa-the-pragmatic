@@ -55,7 +55,7 @@ export async function main(
 	const isCode = subcommand === "code";
 	const codeAction = positionals[1];
 
-const codeWriteHelp = `
+	const codeWriteHelp = `
 Usage: nooa code write <path> [flags]
 
 Arguments:
@@ -179,7 +179,9 @@ Jobs flags:
 				}
 
 				if (!patchText) {
-					console.error("Error: Missing patch input. Use --patch-from or stdin.");
+					console.error(
+						"Error: Missing patch input. Use --patch-from or stdin.",
+					);
 					process.exitCode = 2;
 					return;
 				}
