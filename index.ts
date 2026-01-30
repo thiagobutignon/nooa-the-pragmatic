@@ -142,6 +142,57 @@ Jobs flags:
 		await runJobsCommand(values, positionals.slice(1), bus);
 		return;
 	}
+
+	if (isCode && codeAction === "write") {
+		const targetPath = positionals[2];
+		if (!targetPath) {
+			console.error("Error: Destination path is required.");
+			process.exitCode = 2;
+			return;
+		}
+
+		try {
+			const { readFile } = await import("node:fs/promises");
+			let content = "";
+
+			if (values.from) {
+				content = await readFile(values.from, "utf-8");
+			} else {
+				console.error("Error: Missing input. Use --from or stdin.");
+				process.exitCode = 2;
+				return;
+			}
+
+			const { writeCodeFile } = await import("./src/code/write.js");
+			const result = await writeCodeFile({
+				path: targetPath,
+				content,
+				overwrite: Boolean(values.overwrite),
+				dryRun: Boolean(values["dry-run"]),
+			});
+
+			if (values.json) {
+				console.log(
+					JSON.stringify(
+						{
+							path: result.path,
+							bytes: result.bytes,
+							overwritten: result.overwritten,
+							dryRun: Boolean(values["dry-run"]),
+						},
+						null,
+						2,
+					),
+				);
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(`Error: ${message}`);
+			process.exitCode = 1;
+		}
+		return;
+	}
+
 	const { runResumeCommand } = await import("./src/cli/resume.js");
 	const resumeArgs = isResume ? positionals.slice(1) : positionals;
 	await runResumeCommand(values, resumeArgs, bus);
