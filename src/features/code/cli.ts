@@ -151,7 +151,12 @@ const codeCommand: Command = {
 					}
 				} else {
 					if (!values.from && !process.stdin.isTTY) {
-						const stdinText = await new Response(process.stdin).text();
+						let stdinText = "";
+						try {
+							stdinText = await new Response(process.stdin).text();
+						} catch {
+							stdinText = "";
+						}
 						if (stdinText.length > 0) {
 							content = stdinText;
 						}
