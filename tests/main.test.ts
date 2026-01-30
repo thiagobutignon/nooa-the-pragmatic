@@ -1,81 +1,128 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { main } from "../index";
+import { beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
-// Mock dependencies
-vi.mock("../src/converter", () => ({
-	convertPdfToMarkdown: vi.fn().mockResolvedValue("# Mocked Markdown"),
-}));
+const converterMocks = {
+	convertPdfToMarkdown: async () => "# Mocked Markdown",
+};
+const converterSpy = spyOn(converterMocks, "convertPdfToMarkdown");
+mock.module("../src/converter", () => converterMocks);
 
-vi.mock("../src/pdf-generator", () => ({
-	generatePdfFromMarkdown: vi.fn().mockResolvedValue(undefined),
-}));
+const pdfGeneratorMocks = {
+	generatePdfFromMarkdown: async () => undefined,
+};
+const pdfGeneratorSpy = spyOn(pdfGeneratorMocks, "generatePdfFromMarkdown");
+mock.module("../src/pdf-generator", () => pdfGeneratorMocks);
 
-vi.mock("fs/promises", () => ({
-	writeFile: vi.fn().mockResolvedValue(undefined),
-}));
+const fsMocks = {
+	writeFile: async () => undefined,
+};
+const writeFileSpy = spyOn(fsMocks, "writeFile");
+mock.module("fs/promises", () => fsMocks);
 
-vi.mock("../src/json-resume", () => ({
-	convertMarkdownToJsonResume: vi
-		.fn()
-		.mockReturnValue({ basics: { name: "JSON Resume" } }),
-	convertJsonResumeToMarkdown: vi.fn().mockReturnValue("# Markdown from JSON"),
-}));
+const jsonResumeMocks = {
+	convertMarkdownToJsonResume: (_input: string) => ({ basics: { name: "JSON Resume" } }),
+	convertJsonResumeToMarkdown: (_input: any) => "# Markdown from JSON",
+};
+const convertMarkdownToJsonResumeSpy = spyOn(
+	jsonResumeMocks,
+	"convertMarkdownToJsonResume",
+);
+const convertJsonResumeToMarkdownSpy = spyOn(
+	jsonResumeMocks,
+	"convertJsonResumeToMarkdown",
+);
+mock.module("../src/json-resume", () => jsonResumeMocks);
 
-vi.mock("../src/bridge", () => ({
-	loadSpec: vi.fn().mockResolvedValue({
+const bridgeMocks = {
+	loadSpec: async () => ({
 		info: { title: "Mock API" },
 		paths: {
 			"/test": { get: { operationId: "testOp", summary: "Test Summary" } },
 		},
 	}),
-	executeBridgeRequest: vi.fn().mockResolvedValue({
+	executeBridgeRequest: async () => ({
 		status: 200,
 		statusText: "OK",
 		data: { result: "success" },
 	}),
-}));
+};
+const loadSpecSpy = spyOn(bridgeMocks, "loadSpec");
+const executeBridgeRequestSpy = spyOn(bridgeMocks, "executeBridgeRequest");
+mock.module("../src/bridge", () => bridgeMocks);
 
-vi.mock("../src/validator", () => ({
-	extractLinks: vi.fn().mockReturnValue([]),
-	validateAllLinks: vi.fn().mockResolvedValue([]),
-}));
+const validatorMocks = {
+	extractLinks: (_md: string) => [],
+	validateAllLinks: async (_links: string[]) => [],
+};
+const extractLinksSpy = spyOn(validatorMocks, "extractLinks");
+const validateAllLinksSpy = spyOn(validatorMocks, "validateAllLinks");
+mock.module("../src/validator", () => validatorMocks);
 
-// Mock Bun global
-if (typeof (global as any).Bun === "undefined") {
-	(global as any).Bun = {
-		file: (path: string) => ({
+let main: typeof import("../index").main;
+
+beforeAll(async () => {
+	({ main } = await import("../index"));
+});
+
+describe("main function", () => {
+	let bunFileSpy: ReturnType<typeof spyOn>;
+
+	beforeEach(() => {
+		mock.clearAllMocks();
+		process.exitCode = 0;
+
+		converterSpy.mockReset();
+		converterSpy.mockResolvedValue("# Mocked Markdown");
+		pdfGeneratorSpy.mockReset();
+		pdfGeneratorSpy.mockResolvedValue(undefined);
+		writeFileSpy.mockReset();
+		writeFileSpy.mockResolvedValue(undefined);
+		convertMarkdownToJsonResumeSpy.mockReset();
+		convertMarkdownToJsonResumeSpy.mockReturnValue({ basics: { name: "JSON Resume" } });
+		convertJsonResumeToMarkdownSpy.mockReset();
+		convertJsonResumeToMarkdownSpy.mockReturnValue("# Markdown from JSON");
+		loadSpecSpy.mockReset();
+		loadSpecSpy.mockResolvedValue({
+			info: { title: "Mock API" },
+			paths: {
+				"/test": { get: { operationId: "testOp", summary: "Test Summary" } },
+			},
+		});
+		executeBridgeRequestSpy.mockReset();
+		executeBridgeRequestSpy.mockResolvedValue({
+			status: 200,
+			statusText: "OK",
+			data: { result: "success" },
+		});
+		extractLinksSpy.mockReset();
+		extractLinksSpy.mockReturnValue([]);
+		validateAllLinksSpy.mockReset();
+		validateAllLinksSpy.mockResolvedValue([]);
+
+		bunFileSpy = spyOn(Bun, "file");
+		bunFileSpy.mockImplementation((path: string) => ({
 			exists: async () => path !== "non-existent-at-all.pdf",
 			text: async () =>
 				path.endsWith(".json")
 					? '{"basics": {"name": "Source JSON"}}'
 					: "mock-content",
 			arrayBuffer: async () => new ArrayBuffer(0),
-		}),
-		argv: ["bun", "index.ts"],
-		main: "index.ts",
-	};
-}
-
-describe("main function", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		process.exitCode = 0;
+		}));
 	});
 
 	it("should show help with --help", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
 		await main(["--help"]);
 		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage:"));
 	});
 
 	it("should show version with --version", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
 		await main(["--version"]);
 		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("nooa v0.0.1"));
 	});
 
 	it("should fail if no input is provided", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 		await main(["resume"]);
 		expect(process.exitCode).toBe(1);
 		expect(errorSpy).toHaveBeenCalledWith(
@@ -84,7 +131,7 @@ describe("main function", () => {
 	});
 
 	it("should fail if file does not exist", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 		await main(["resume", "non-existent-at-all.pdf"]);
 		expect(process.exitCode).toBe(1);
 		expect(errorSpy).toHaveBeenCalledWith(
@@ -93,14 +140,14 @@ describe("main function", () => {
 	});
 
 	it("should successfully convert PDF to Markdown and print to stdout", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
 		await main(["resume", "input.pdf"]);
 		expect(logSpy).toHaveBeenCalledWith("# Mocked Markdown");
 		expect(process.exitCode).toBe(0);
 	});
 
 	it("should successfully convert PDF to Markdown and write to file", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 		await main(["resume", "input.pdf", "-o", "out.md"]);
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining("Successfully converted"),
@@ -109,7 +156,7 @@ describe("main function", () => {
 	});
 
 	it("should successfully convert Markdown to PDF", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 		await main(["resume", "input.md", "--to-pdf"]);
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining("Successfully generated PDF"),
@@ -118,7 +165,7 @@ describe("main function", () => {
 	});
 
 	it("should successfully output JSON structure", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
 		await main(["resume", "input.pdf", "--json"]);
 		const outputJSON = logSpy.mock.calls[0]?.[0];
 		expect(outputJSON).toBeDefined();
@@ -129,9 +176,6 @@ describe("main function", () => {
 	});
 
 	it("should pass social link flags to the converter", async () => {
-		const { convertPdfToMarkdown } = await import("../src/converter");
-		const mockedConverter = vi.mocked(convertPdfToMarkdown);
-
 		await main([
 			"resume",
 			"input.pdf",
@@ -143,7 +187,7 @@ describe("main function", () => {
 			"987654321",
 		]);
 
-		expect(mockedConverter).toHaveBeenCalledWith(expect.any(Buffer), {
+		expect(converterSpy).toHaveBeenCalledWith(expect.any(Buffer), {
 			linkedin: "https://linkedin.com/in/user",
 			github: "https://github.com/user",
 			whatsapp: "987654321",
@@ -151,9 +195,8 @@ describe("main function", () => {
 	});
 
 	it("should handle errors during processing gracefully", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
-		const { convertPdfToMarkdown } = await import("../src/converter");
-		vi.mocked(convertPdfToMarkdown).mockRejectedValueOnce(new Error("Boom!"));
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		converterSpy.mockRejectedValueOnce(new Error("Boom!"));
 
 		await main(["resume", "input.pdf"]);
 		expect(process.exitCode).toBe(1);
@@ -161,54 +204,48 @@ describe("main function", () => {
 	});
 
 	it("should convert Markdown/PDF to JSON Resume with --to-json-resume", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
 		await main(["resume", "input.pdf", "--to-json-resume"]);
 		const output = logSpy.mock.calls[0]?.[0];
 		expect(output).toContain('"name": "JSON Resume"');
 	});
 
 	it("should convert JSON Resume to Markdown with --from-json-resume", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
 		await main(["resume", "input.json", "--from-json-resume"]);
 		expect(logSpy).toHaveBeenCalledWith("# Markdown from JSON");
 	});
 
 	it("should convert JSON Resume directly to PDF with --from-json-resume --to-pdf", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
-		await main([
-			"resume",
-			"input.json",
-			"--from-json-resume",
-			"--to-pdf",
-		]);
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		await main(["resume", "input.json", "--from-json-resume", "--to-pdf"]);
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining("Successfully generated PDF from JSON Resume"),
 		);
 	});
 
 	it("should support bridge mode --list", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
 		await main(["bridge", "https://api.com/spec.json", "--list"]);
-		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Available operations in Mock API"));
-		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("[GET] testOp (/test): Test Summary"));
+		expect(logSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Available operations in Mock API"),
+		);
+		expect(logSpy).toHaveBeenCalledWith(
+			expect.stringContaining("[GET] testOp (/test): Test Summary"),
+		);
 	});
 
 	it("should support bridge mode execute operation", async () => {
-		const logSpy = vi.spyOn(console, "log").mockImplementation(() => { });
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
-		await main([
-			"bridge",
-			"https://api.com/spec.json",
-			"--op",
-			"testOp",
-		]);
-		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('"result": "success"'));
+		const logSpy = spyOn(console, "log").mockImplementation(() => {});
+		await main(["bridge", "https://api.com/spec.json", "--op", "testOp"]);
+		expect(logSpy).toHaveBeenCalledWith(
+			expect.stringContaining('"result": "success"'),
+		);
 	});
 
 	it("should handle bridge mode failure gracefully", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
-		const { executeBridgeRequest } = await import("../src/bridge");
-		vi.mocked(executeBridgeRequest).mockRejectedValueOnce(new Error("Bridge Failed"));
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		executeBridgeRequestSpy.mockRejectedValueOnce(new Error("Bridge Failed"));
 
 		await main(["bridge", "spec.json", "--op", "testOp"]);
 		expect(process.exitCode).toBe(1);
@@ -216,16 +253,17 @@ describe("main function", () => {
 	});
 
 	it("should fail bridge mode if spec is missing", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 		await main(["bridge"]);
 		expect(process.exitCode).toBe(1);
-		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("OpenAPI spec URL or path is required"));
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("OpenAPI spec URL or path is required"),
+		);
 	});
 
 	it("should handle link validation with no links found", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => { });
-		const { extractLinks } = await import("../src/validator");
-		vi.mocked(extractLinks).mockReturnValueOnce([]);
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		extractLinksSpy.mockReturnValueOnce([]);
 
 		await main(["resume", "input.pdf", "--validate"]);
 		expect(errorSpy).toHaveBeenCalledWith("No links found to validate.");
