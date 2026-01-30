@@ -91,7 +91,11 @@ const codeCommand: Command = {
 					if (values["patch-from"]) {
 						patchText = await readFile(String(values["patch-from"]), "utf-8");
 					} else if (!process.stdin.isTTY) {
-						patchText = await new Response(process.stdin).text();
+						try {
+							patchText = await new Response(process.stdin).text();
+						} catch {
+							patchText = "";
+						}
 					}
 
 					if (!patchText) {
