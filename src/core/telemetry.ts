@@ -61,9 +61,7 @@ export class TelemetryStore {
         `);
 
 		db.run("CREATE INDEX IF NOT EXISTS idx_event ON telemetry(event)");
-		db.run(
-			"CREATE INDEX IF NOT EXISTS idx_timestamp ON telemetry(timestamp)",
-		);
+		db.run("CREATE INDEX IF NOT EXISTS idx_timestamp ON telemetry(timestamp)");
 		db.run("CREATE INDEX IF NOT EXISTS idx_trace ON telemetry(trace_id)");
 	}
 
@@ -85,8 +83,7 @@ export class TelemetryStore {
 			$duration_ms: event.duration_ms ?? null,
 			$metadata: event.metadata ? JSON.stringify(event.metadata) : null,
 			$trace_id: event.trace_id ?? null,
-			$success:
-				event.success === undefined ? null : event.success ? 1 : 0,
+			$success: event.success === undefined ? null : event.success ? 1 : 0,
 		});
 
 		bus?.emit("telemetry.tracked", {

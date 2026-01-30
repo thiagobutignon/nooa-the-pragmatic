@@ -56,11 +56,7 @@ export class Logger {
 		this.log("warn", event, metadata, message);
 	}
 
-	error(
-		event: string,
-		error: Error,
-		metadata?: Record<string, unknown>,
-	) {
+	error(event: string, error: Error, metadata?: Record<string, unknown>) {
 		this.log("error", event, {
 			...metadata,
 			error_message: error.message,
