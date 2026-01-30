@@ -1,10 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-
-const fsMocks = {
-	readFile: async () => "",
-};
-
-mock.module("node:fs/promises", () => fsMocks);
+import * as fsPromises from "node:fs/promises";
 
 let executeBridgeRequest: typeof import("../src/bridge").executeBridgeRequest;
 let reconstructObject: typeof import("../src/bridge").reconstructObject;
@@ -82,7 +77,10 @@ describe("Nooa Bridge Logic", () => {
 		});
 
 		it("should throw if local file read fails", async () => {
-			await expect(loadSpec("/invalid/path.json")).rejects.toThrow("JSON Parse error");
+			const readFileSpy = spyOn(fsPromises, "readFile");
+			readFileSpy.mockRejectedValueOnce(new Error("Read Error"));
+			await expect(loadSpec("/invalid/path.json")).rejects.toThrow("Read Error");
+			readFileSpy.mockRestore();
 		});
 	});
 
