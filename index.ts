@@ -31,6 +31,10 @@ export async function main(
 			provider: { type: "string", multiple: true },
 			apply: { type: "string" },
 			cron: { type: "string" },
+			// Code write options
+			from: { type: "string" },
+			overwrite: { type: "boolean" },
+			"dry-run": { type: "boolean" },
 		},
 		strict: true,
 		allowPositionals: true,
@@ -46,6 +50,22 @@ export async function main(
 	const isBridge = subcommand === "bridge";
 	const isJobs = subcommand === "jobs";
 	const isResume = subcommand === "resume";
+	const isCode = subcommand === "code";
+	const codeAction = positionals[1];
+
+	const codeWriteHelp = `
+Usage: nooa code write <path> [flags]
+
+Arguments:
+  <path>              Destination file path.
+
+Flags:
+  --from <path>       Read content from a file (otherwise stdin is used).
+  --overwrite         Overwrite destination if it exists.
+  --json              Output result as JSON.
+  --dry-run           Do not write the file.
+  -h, --help          Show help.
+`;
 
 	if (values.help && isResume) {
 		const { runResumeCommand } = await import("./src/cli/resume.js");
@@ -60,6 +80,10 @@ export async function main(
 	if (values.help && isBridge) {
 		const { runBridgeCommand } = await import("./src/cli/bridge.js");
 		await runBridgeCommand(values, positionals.slice(1), bus);
+		return;
+	}
+	if (values.help && isCode && codeAction === "write") {
+		console.log(codeWriteHelp);
 		return;
 	}
 
