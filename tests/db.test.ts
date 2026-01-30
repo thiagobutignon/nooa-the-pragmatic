@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "bun:test";
 import { unlinkSync, existsSync } from "node:fs";
 
 const TEST_DB = "test.db";

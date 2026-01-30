@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { EventBus } from "../src/core/event-bus";
 
 describe("EventBus", () => {

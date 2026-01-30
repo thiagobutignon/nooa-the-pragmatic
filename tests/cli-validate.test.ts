@@ -1,45 +1,48 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { main } from "../index";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
-// Mock dependencies
-vi.mock("../src/converter", () => ({
-	convertPdfToMarkdown: vi.fn(),
-}));
+const converterMocks = {
+	convertPdfToMarkdown: async () => "# Resume\n\n[Valid](https://ok.com) and [Broken](https://error.com)",
+};
+mock.module("../src/converter", () => converterMocks);
 
-vi.mock("../src/pdf-generator", () => ({
-	generatePdfFromMarkdown: vi.fn(),
-}));
+const pdfGeneratorMocks = {
+	generatePdfFromMarkdown: async () => undefined,
+};
+mock.module("../src/pdf-generator", () => pdfGeneratorMocks);
 
-// Mock Bun global
-if (typeof (global as any).Bun === "undefined") {
-	(global as any).Bun = {
-		file: (_path: string) => ({
+let main: typeof import("../index").main;
+
+beforeAll(async () => {
+	({ main } = await import("../index"));
+});
+
+describe("CLI --validate integration", () => {
+	let fetchSpy: ReturnType<typeof spyOn>;
+	let bunFileSpy: ReturnType<typeof spyOn>;
+
+	beforeEach(() => {
+		fetchSpy = spyOn(globalThis, "fetch");
+		bunFileSpy = spyOn(Bun, "file");
+		bunFileSpy.mockImplementation((_path: string) => ({
 			exists: async () => true,
 			text: async () =>
 				"# Resume\n\n[Valid](https://ok.com) and [Broken](https://error.com)",
 			arrayBuffer: async () => new ArrayBuffer(0),
-		}),
-		argv: ["bun", "index.ts"],
-		main: "index.ts",
-	};
-}
-
-describe("CLI --validate integration", () => {
-	beforeEach(() => {
-		vi.stubGlobal("fetch", vi.fn());
+		}));
 		process.exitCode = 0;
 	});
 
 	afterEach(() => {
-		vi.unstubAllGlobals();
-		vi.clearAllMocks();
+		fetchSpy.mockRestore();
+		bunFileSpy.mockRestore();
+		mock.clearAllMocks();
 	});
 
 	it("should pass and return exit code 0 when all links are valid", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		vi.mocked(fetch).mockResolvedValue({ ok: true, status: 200 } as Response);
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		fetchSpy.mockResolvedValue({ ok: true, status: 200 } as Response);
 
-		await main(["bun", "index.ts", "resume.md", "--validate"]);
+		await main(["resume", "resume.md", "--validate"]);
 
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining("All links are valid!"),
@@ -48,14 +51,13 @@ describe("CLI --validate integration", () => {
 	});
 
 	it("should fail and return exit code 1 when a link is broken", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 
-		// Mock success for first link, failure for second
-		vi.mocked(fetch)
+		fetchSpy
 			.mockResolvedValueOnce({ ok: true, status: 200 } as Response)
 			.mockResolvedValueOnce({ ok: false, status: 404 } as Response);
 
-		await main(["bun", "index.ts", "resume.md", "--validate"]);
+		await main(["resume", "resume.md", "--validate"]);
 
 		expect(errorSpy).toHaveBeenCalledWith(
 			expect.stringContaining("Validation failed: 1 link(s) are unreachable."),
@@ -64,11 +66,11 @@ describe("CLI --validate integration", () => {
 	});
 
 	it("should report specific error for timeouts", async () => {
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 
-		vi.mocked(fetch).mockRejectedValue({ name: "AbortError" });
+		fetchSpy.mockRejectedValue({ name: "AbortError" });
 
-		await main(["bun", "index.ts", "resume.md", "--validate"]);
+		await main(["resume", "resume.md", "--validate"]);
 
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Timeout"));
 		expect(process.exitCode).toBe(1);
