@@ -3,6 +3,7 @@ import { execa } from "execa";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { TelemetryStore } from "../../core/telemetry";
 
 const binPath = "./index.ts";
 
@@ -58,5 +59,32 @@ describe("nooa search", () => {
 		lines.forEach((line) => {
 			expect(line).not.toContain(":");
 		});
+	});
+
+	it("records telemetry", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-search-"));
+		const dbPath = join(root, "telemetry.db");
+		await writeFile(join(root, "example.txt"), "TODO: find me\n");
+
+		const res = await execa(
+			"bun",
+			[binPath, "search", "TODO", root, "--plain"],
+			{
+				reject: false,
+				env: {
+					...process.env,
+					NOOA_SEARCH_ENGINE: "native",
+					NOOA_DB_PATH: dbPath,
+				},
+			},
+		);
+
+		const telemetry = new TelemetryStore(dbPath);
+		const rows = telemetry.list({ event: "search.success" });
+		telemetry.close();
+		await rm(root, { recursive: true, force: true });
+
+		expect(res.exitCode).toBe(0);
+		expect(rows.length).toBeGreaterThan(0);
 	});
 });
