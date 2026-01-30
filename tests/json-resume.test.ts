@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import type { JsonResume } from "../src/json-resume";
 import {
     convertJsonResumeToMarkdown,
