@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { execa } from "execa";
+import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 
 const run = (args: string[]) =>
@@ -62,5 +63,22 @@ describe("nooa code write", () => {
 		expect(res.exitCode).toBe(0);
 		const text = await readFile(OUT, "utf-8");
 		expect(text).toBe("from-stdin");
+	});
+
+	test("dry-run reports without writing", async () => {
+		await writeFile(SRC, "dry-run");
+		const res = await run([
+			"code",
+			"write",
+			OUT,
+			"--from",
+			SRC,
+			"--dry-run",
+			"--json",
+		]);
+		expect(res.exitCode).toBe(0);
+		const payload = JSON.parse(res.stdout);
+		expect(payload.dryRun).toBe(true);
+		expect(existsSync(OUT)).toBe(false);
 	});
 });
