@@ -155,9 +155,18 @@ Jobs flags:
 			const { readFile } = await import("node:fs/promises");
 			let content = "";
 
-			if (values.from) {
+			if (!values.from && !process.stdin.isTTY) {
+				const stdinText = await new Response(process.stdin).text();
+				if (stdinText.length > 0) {
+					content = stdinText;
+				}
+			}
+
+			if (!content && values.from) {
 				content = await readFile(values.from, "utf-8");
-			} else {
+			}
+
+			if (!content) {
 				console.error("Error: Missing input. Use --from or stdin.");
 				process.exitCode = 2;
 				return;

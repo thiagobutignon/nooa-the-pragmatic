@@ -53,4 +53,14 @@ describe("nooa code write", () => {
 		const text = await readFile(OUT, "utf-8");
 		expect(text).toBe("new");
 	});
+
+	test("writes from stdin", async () => {
+		const res = await execa("bun", ["index.ts", "code", "write", OUT], {
+			input: "from-stdin",
+			reject: false,
+		});
+		expect(res.exitCode).toBe(0);
+		const text = await readFile(OUT, "utf-8");
+		expect(text).toBe("from-stdin");
+	});
 });
