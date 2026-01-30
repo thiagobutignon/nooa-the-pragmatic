@@ -1,12 +1,5 @@
 #!/usr/bin/env bun
-import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { convertPdfToMarkdown } from "./src/converter.js";
-import {
-	convertJsonResumeToMarkdown,
-	convertMarkdownToJsonResume,
-} from "./src/json-resume.js";
-import { generatePdfFromMarkdown } from "./src/pdf-generator.js";
 
 // ... existing main function signature ...
 export async function main(
@@ -42,6 +35,17 @@ export async function main(
 		strict: true,
 		allowPositionals: true,
 	});
+
+	const subcommand = positionals[0];
+	const isBridge = subcommand === "bridge";
+	const isJobs = subcommand === "jobs";
+	const isResume = subcommand === "resume";
+
+	if (values.help && isResume) {
+		const { runResumeCommand } = await import("./src/cli/resume.js");
+		await runResumeCommand(values, positionals.slice(1));
+		return;
+	}
 
 	if (values.help) {
 		console.log(`
@@ -86,9 +90,6 @@ Jobs flags:
 		console.log("nooa v0.0.1");
 		return;
 	}
-
-	const inputPath = positionals[0];
-	const isBridge = positionals[0] === "bridge";
 
 	if (isBridge) {
 		const specSource = positionals[1];
@@ -161,7 +162,6 @@ Jobs flags:
 		return;
 	}
 
-	const isJobs = positionals[0] === "jobs";
 	if (isJobs) {
 		try {
 			const { searchAndMatchJobs, listJobs, applyToJob } = await import(
@@ -224,157 +224,9 @@ Jobs flags:
 		}
 		return;
 	}
-
-	// ... input validation ...
-	if (!inputPath) {
-		console.error("Error: Input file is required.");
-		console.error("Run with --help for usage.");
-		process.exitCode = 1;
-		return;
-	}
-
-	const file = Bun.file(inputPath);
-	if (!(await file.exists())) {
-		console.error(`Error: File not found: ${inputPath}`);
-		process.exitCode = 1;
-		return;
-	}
-
-	try {
-		if (values["from-json-resume"]) {
-			// JSON Resume -> Markdown -> (optional) PDF
-			const jsonText = await file.text();
-			const jsonResume = JSON.parse(jsonText);
-			const markdown = convertJsonResumeToMarkdown(jsonResume);
-
-			if (values["to-pdf"]) {
-				const outputPath = values.output || "resume.pdf";
-				await generatePdfFromMarkdown(markdown, outputPath);
-				console.error(
-					`Successfully generated PDF from JSON Resume at ${outputPath}`,
-				);
-			} else {
-				const outputContent = markdown;
-				if (values.output) {
-					await writeFile(values.output, outputContent);
-					console.error(
-						`Successfully converted JSON Resume to Markdown at ${values.output}`,
-					);
-				} else {
-					console.log(outputContent);
-				}
-			}
-		} else if (values["to-pdf"]) {
-			// Markdown -> PDF
-			const markdown = await file.text();
-			const outputPath = values.output || "resume.pdf";
-			await generatePdfFromMarkdown(markdown, outputPath);
-			console.error(`Successfully generated PDF at ${outputPath}`);
-		} else if (values["to-json-resume"]) {
-			// Markdown -> JSON Resume
-			const markdown = await file.text();
-			const jsonResume = convertMarkdownToJsonResume(markdown);
-			const outputContent = JSON.stringify(jsonResume, null, 2);
-			if (values.output) {
-				await writeFile(values.output, outputContent);
-				console.error(`Successfully converted Markdown to JSON Resume at ${values.output}`);
-			} else {
-				console.log(outputContent);
-			}
-		} else {
-			// PDF -> Markdown -> (optional) JSON Resume (default mode)
-			const buffer = Buffer.from(await file.arrayBuffer());
-			let markdown: string;
-			try {
-				markdown = await convertPdfToMarkdown(buffer, {
-					linkedin: values.linkedin,
-					github: values.github,
-					whatsapp: values.whatsapp,
-				});
-			} catch (pdfError: any) {
-				// If validation is requested and PDF parsing fails, maybe it's already markdown?
-				if (values.validate && inputPath.endsWith(".md")) {
-					markdown = await file.text();
-				} else {
-					throw pdfError;
-				}
-			}
-
-			if (values["to-json-resume"]) {
-				const jsonResume = convertMarkdownToJsonResume(markdown);
-				const outputContent = JSON.stringify(jsonResume, null, 2);
-				if (values.output) {
-					await writeFile(values.output, outputContent);
-					console.error(
-						`Successfully converted to JSON Resume at ${values.output}`,
-					);
-				} else {
-					console.log(outputContent);
-				}
-			} else {
-				// Normal mode
-				const outputContent = values.json
-					? JSON.stringify({ content: markdown }, null, 2)
-					: markdown;
-
-				if (values.output) {
-					await writeFile(values.output, outputContent);
-					console.error(
-						`Successfully converted ${inputPath} to ${values.output}`,
-					);
-				} else {
-					console.log(outputContent);
-				}
-			}
-
-			// Link Validation Logic
-			if (values.validate) {
-				const { extractLinks, validateAllLinks } = await import(
-					"./src/validator.js"
-				);
-				// We might be in a mode where markdown was just generated
-				// or we are reading it from inputPath
-				const markdownToValidate =
-					typeof markdown !== "undefined" ? markdown : await file.text();
-
-				console.error("\n🔍 Validating links...");
-				const links = extractLinks(markdownToValidate);
-
-				if (links.length === 0) {
-					console.error("No links found to validate.");
-				} else {
-					console.error(
-						`Found ${links.length} links. Checking reachability...`,
-					);
-					const results = await validateAllLinks(links);
-
-					let brokenCount = 0;
-					for (const res of results) {
-						if (res.ok) {
-							console.error(`  ✅ [${res.status}] ${res.url}`);
-						} else {
-							console.error(
-								`  ❌ [${res.status || "ERR"}] ${res.url}${res.error ? ` (${res.error})` : ""}`,
-							);
-							brokenCount++;
-						}
-					}
-
-					if (brokenCount > 0) {
-						console.error(
-							`\n⚠️ Validation failed: ${brokenCount} link(s) are unreachable.`,
-						);
-						process.exitCode = 1;
-					} else {
-						console.error("\n✨ All links are valid!");
-					}
-				}
-			}
-		}
-	} catch (error: any) {
-		console.error("Error:", error.message);
-		process.exitCode = 1;
-	}
+	const { runResumeCommand } = await import("./src/cli/resume.js");
+	const resumeArgs = isResume ? positionals.slice(1) : positionals;
+	await runResumeCommand(values, resumeArgs);
 }
 
 // Run if this is the main entry point
