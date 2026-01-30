@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
+import { createTraceId, logger } from "../../core/logger";
+import { telemetry } from "../../core/telemetry";
 import { git } from "./git";
 
 const worktreeHelp = `
@@ -19,28 +21,72 @@ const branchPattern = /^[A-Za-z0-9/_-]+$/;
 
 const worktreeCommand: Command = {
 	name: "worktree",
-	execute: async ({ args, values }: CommandContext) => {
+	execute: async ({ args, values, bus }: CommandContext) => {
 		if (values.help) {
 			console.log(worktreeHelp);
 			return;
 		}
 
+		const traceId = createTraceId();
+		logger.setContext({ trace_id: traceId, command: "worktree" });
+		const startTime = Date.now();
 		const branch = args[1];
 		if (!branch) {
 			console.error("Error: Branch name is required.");
 			process.exitCode = 2;
+			telemetry.track(
+				{
+					event: "worktree.failure",
+					level: "error",
+					success: false,
+					trace_id: traceId,
+					metadata: { error_message: "Branch name is required." },
+				},
+				bus,
+			);
 			return;
 		}
 		if (!branchPattern.test(branch)) {
 			console.error("Error: Invalid branch name.");
 			process.exitCode = 2;
+			telemetry.track(
+				{
+					event: "worktree.failure",
+					level: "error",
+					success: false,
+					trace_id: traceId,
+					metadata: { error_message: "Invalid branch name." },
+				},
+				bus,
+			);
 			return;
 		}
+
+		telemetry.track(
+			{
+				event: "worktree.started",
+				level: "info",
+				success: true,
+				trace_id: traceId,
+				metadata: { branch },
+			},
+			bus,
+		);
 
 		const repoRoot = await git(["rev-parse", "--show-toplevel"], process.cwd());
 		if (repoRoot.exitCode !== 0) {
 			console.error("Error: Not a git repository.");
 			process.exitCode = 2;
+			telemetry.track(
+				{
+					event: "worktree.failure",
+					level: "error",
+					success: false,
+					trace_id: traceId,
+					metadata: { error_message: "Not a git repository." },
+				},
+				bus,
+			);
 			return;
 		}
 		const root = repoRoot.stdout.trim();
@@ -50,6 +96,16 @@ const worktreeCommand: Command = {
 		if (baseRef.exitCode !== 0) {
 			console.error(`Error: Base branch '${base}' not found.`);
 			process.exitCode = 2;
+			telemetry.track(
+				{
+					event: "worktree.failure",
+					level: "error",
+					success: false,
+					trace_id: traceId,
+					metadata: { error_message: `Base branch '${base}' not found.` },
+				},
+				bus,
+			);
 			return;
 		}
 
@@ -63,6 +119,16 @@ const worktreeCommand: Command = {
 		if (existsSync(worktreePath)) {
 			console.error(`Error: Worktree '${branch}' already exists.`);
 			process.exitCode = 2;
+			telemetry.track(
+				{
+					event: "worktree.failure",
+					level: "error",
+					success: false,
+					trace_id: traceId,
+					metadata: { error_message: `Worktree '${branch}' already exists.` },
+				},
+				bus,
+			);
 			return;
 		}
 
@@ -97,6 +163,16 @@ const worktreeCommand: Command = {
 		if (addResult.exitCode !== 0) {
 			console.error(`Error: Git worktree failed: ${addResult.stderr}`);
 			process.exitCode = 1;
+			telemetry.track(
+				{
+					event: "worktree.failure",
+					level: "error",
+					success: false,
+					trace_id: traceId,
+					metadata: { error_message: String(addResult.stderr).trim() },
+				},
+				bus,
+			);
 			return;
 		}
 
@@ -118,6 +194,16 @@ const worktreeCommand: Command = {
 			if (installResult.exitCode !== 0) {
 				console.error("Error: Dependency install failed.");
 				process.exitCode = 1;
+				telemetry.track(
+					{
+						event: "worktree.failure",
+						level: "error",
+						success: false,
+						trace_id: traceId,
+						metadata: { error_message: "Dependency install failed." },
+					},
+					bus,
+				);
 				return;
 			}
 		}
@@ -134,9 +220,43 @@ const worktreeCommand: Command = {
 					console.error(testResult.stderr);
 				}
 				process.exitCode = 1;
+				telemetry.track(
+					{
+						event: "worktree.failure",
+						level: "error",
+						success: false,
+						trace_id: traceId,
+						metadata: { error_message: "Tests failed." },
+					},
+					bus,
+				);
 				return;
 			}
 		}
+
+		const durationMs = Date.now() - startTime;
+		telemetry.track(
+			{
+				event: "worktree.success",
+				level: "info",
+				success: true,
+				trace_id: traceId,
+				metadata: {
+					branch,
+					base,
+					worktree_path: worktreePath,
+					skip_install: skipInstall,
+					skip_test: skipTest,
+					duration_ms: durationMs,
+				},
+			},
+			bus,
+		);
+
+		console.error(`Worktree created: ${worktreePath}`);
+		console.error(`Branch: ${branch} (from ${base})`);
+		console.error(`Install: ${skipInstall ? "skipped" : "done"}`);
+		console.error(`Tests: ${skipTest ? "skipped" : "passed"}`);
 	},
 };
 
