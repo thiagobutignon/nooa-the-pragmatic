@@ -68,6 +68,7 @@ Subcommands:
   read <path>                   Read file contents.
   code <write|patch>            Code operations.
   search <query> [path]         Search files and file contents.
+  worktree <branch>             Create a git worktree.
 
 Flags:
   --json                 Output structure as JSON.
