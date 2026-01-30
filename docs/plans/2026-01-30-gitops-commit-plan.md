@@ -8,6 +8,12 @@
 
 **Tech Stack:** Bun, TypeScript, execa, ripgrep (if available).
 
+**Implementation Notes (from worktree execution):**
+- In CLI tests, resolve `binPath` via `fileURLToPath(new URL("../../../index.ts", import.meta.url))` so tests work when `cwd` changes.
+- Temp git repos in tests must set user.name/user.email for commits.
+- If tests create a repo, rename default branch to `main` for consistency.
+- Avoid assuming stdin is open; Bun coverage can close stdin (`Premature close`). When reading stdin, guard with try/catch and treat as empty.
+
 ### Task 1: Add CLI help contract for `nooa commit`
 
 **Files:**
@@ -19,8 +25,9 @@
 ```ts
 import { describe, it, expect } from "bun:test";
 import { execa } from "execa";
+import { fileURLToPath } from "node:url";
 
-const binPath = "./index.ts";
+const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
 describe("nooa commit", () => {
   it("shows help", async () => {
@@ -67,7 +74,8 @@ git commit -m "feat: add commit help"
 **Step 1: Write the failing test**
 
 ```ts
-// create temp repo, add a file with TODO, expect exit code 2 and message
+// create temp repo, set user.name/user.email, rename branch to main
+// add a file with TODO, expect exit code 2 and message
 ```
 
 **Step 2: Run test to verify it fails**
@@ -105,6 +113,7 @@ git commit -m "feat: add commit guardrails"
 
 ```ts
 // commit succeeds on clean repo with staged changes
+// ensure repo has user.name/user.email configured for git commit
 ```
 
 **Step 2: Run test to verify it fails**
