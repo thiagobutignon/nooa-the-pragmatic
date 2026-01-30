@@ -1,4 +1,4 @@
-import type { JsonResume } from "./json-resume";
+import type { JsonResume } from "../resume/json-resume";
 
 export interface MatchResult {
 	score: number;

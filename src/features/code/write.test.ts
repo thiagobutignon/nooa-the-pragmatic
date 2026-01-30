@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFile, rm, writeFile } from "node:fs/promises";
-import { writeCodeFile } from "../src/code/write";
+import { writeCodeFile } from "./write";
 
 const OUT = "tmp-code-write.txt";
 

@@ -15,10 +15,10 @@ mock.module("pdf-parse", () => {
 	};
 });
 
-let convertPdfToMarkdown: typeof import("../src/converter").convertPdfToMarkdown;
+let convertPdfToMarkdown: typeof import("./converter").convertPdfToMarkdown;
 
 beforeAll(async () => {
-	({ convertPdfToMarkdown } = await import("../src/converter"));
+	({ convertPdfToMarkdown } = await import("./converter"));
 });
 
 describe("convertPdfToMarkdown", () => {

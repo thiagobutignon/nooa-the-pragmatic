@@ -9,8 +9,8 @@ const describeIfBun =
 		: describe;
 
 describeIfBun("JobDatabase", () => {
-	let JobDatabase: typeof import("../src/db").JobDatabase | undefined;
-	let db: InstanceType<typeof import("../src/db").JobDatabase>;
+	let JobDatabase: typeof import("./db").JobDatabase | undefined;
+	let db: InstanceType<typeof import("./db").JobDatabase>;
 	type JobRow = {
 		id: number;
 		title: string;
@@ -21,7 +21,7 @@ describeIfBun("JobDatabase", () => {
 	beforeEach(async () => {
 		if (existsSync(TEST_DB)) unlinkSync(TEST_DB);
 		if (!JobDatabase) {
-			const mod = await import("../src/db");
+			const mod = await import("./db");
 			JobDatabase = mod.JobDatabase;
 		}
 		db = new JobDatabase(TEST_DB);

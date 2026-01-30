@@ -1,4 +1,4 @@
-import type { EventBus } from "../core/event-bus";
+import type { EventBus } from "../../core/event-bus";
 
 const jobsHelp = `
 Usage: nooa jobs <resume-path> [flags]
@@ -36,7 +36,7 @@ export async function runJobsCommand(
 
 	try {
 		const { searchAndMatchJobs, listJobs, applyToJob } = await import(
-			"../jobs.js"
+			"./jobs.js"
 		);
 
 		if (values.apply) {
@@ -81,7 +81,7 @@ export async function runJobsCommand(
 		const providers = values.provider || ["arbeitnow"];
 
 		if (values.cron) {
-			const { scheduleJobFetch } = await import("../automation.js");
+			const { scheduleJobFetch } = await import("./automation.js");
 			scheduleJobFetch(values.cron, resumePath, values.search, providers);
 			console.error("🚀 Keep-alive for scheduled tasks. Press Ctrl+C to stop.");
 			bus?.emit("jobs.saved", {

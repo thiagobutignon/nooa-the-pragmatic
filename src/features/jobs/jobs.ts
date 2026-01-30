@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
-import { JobProviders } from "./bridge";
+import { JobProviders } from "../bridge/bridge";
+import { convertMarkdownToJsonResume } from "../resume/json-resume";
 import { db, type Job } from "./db";
-import { convertMarkdownToJsonResume } from "./json-resume";
 import { calculateMatchScore } from "./matcher";
 
 type ArbeitnowJob = {

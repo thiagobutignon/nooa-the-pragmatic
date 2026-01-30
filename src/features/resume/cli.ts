@@ -1,11 +1,11 @@
 import { writeFile } from "node:fs/promises";
-import { convertPdfToMarkdown } from "../converter.js";
-import type { EventBus } from "../core/event-bus";
+import type { EventBus } from "../../core/event-bus";
+import { convertPdfToMarkdown } from "./converter.js";
 import {
 	convertJsonResumeToMarkdown,
 	convertMarkdownToJsonResume,
-} from "../json-resume.js";
-import { generatePdfFromMarkdown } from "../pdf-generator.js";
+} from "./json-resume.js";
+import { generatePdfFromMarkdown } from "./pdf-generator.js";
 
 const resumeHelp = `
 Usage: nooa resume [flags] <input>
@@ -211,7 +211,7 @@ export async function runResumeCommand(
 
 			if (values.validate) {
 				const { extractLinks, validateAllLinks } = await import(
-					"../validator.js"
+					"./validator.js"
 				);
 				const markdownToValidate =
 					typeof markdown !== "undefined" ? markdown : await file.text();

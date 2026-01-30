@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import type { JsonResume } from "../src/json-resume";
-import { calculateMatchScore } from "../src/matcher";
+import type { JsonResume } from "../resume/json-resume";
+import { calculateMatchScore } from "./matcher";
 
 describe("Matcher Engine", () => {
 	const mockResume: JsonResume = {

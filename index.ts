@@ -87,17 +87,17 @@ Flags:
 `;
 
 	if (values.help && isResume) {
-		const { runResumeCommand } = await import("./src/cli/resume.js");
+		const { runResumeCommand } = await import("./src/features/resume/cli.js");
 		await runResumeCommand(values, positionals.slice(1), bus);
 		return;
 	}
 	if (values.help && isJobs) {
-		const { runJobsCommand } = await import("./src/cli/jobs.js");
+		const { runJobsCommand } = await import("./src/features/jobs/cli.js");
 		await runJobsCommand(values, positionals.slice(1), bus);
 		return;
 	}
 	if (values.help && isBridge) {
-		const { runBridgeCommand } = await import("./src/cli/bridge.js");
+		const { runBridgeCommand } = await import("./src/features/bridge/cli.js");
 		await runBridgeCommand(values, positionals.slice(1), bus);
 		return;
 	}
@@ -155,13 +155,13 @@ Jobs flags:
 	}
 
 	if (isBridge) {
-		const { runBridgeCommand } = await import("./src/cli/bridge.js");
+		const { runBridgeCommand } = await import("./src/features/bridge/cli.js");
 		await runBridgeCommand(values, positionals.slice(1), bus);
 		return;
 	}
 
 	if (isJobs) {
-		const { runJobsCommand } = await import("./src/cli/jobs.js");
+		const { runJobsCommand } = await import("./src/features/jobs/cli.js");
 		await runJobsCommand(values, positionals.slice(1), bus);
 		return;
 	}
@@ -246,7 +246,7 @@ Jobs flags:
 					return;
 				}
 
-				const { applyPatch } = await import("./src/code/patch.js");
+				const { applyPatch } = await import("./src/features/code/patch.js");
 				const originalText = await readFile(targetPath, "utf-8");
 				content = applyPatch(originalText, patchText);
 				patched = true;
@@ -271,7 +271,7 @@ Jobs flags:
 					return;
 				}
 
-				const { writeCodeFile } = await import("./src/code/write.js");
+				const { writeCodeFile } = await import("./src/features/code/write.js");
 				const result = await writeCodeFile({
 					path: targetPath,
 					content,
@@ -323,7 +323,7 @@ Jobs flags:
 		return;
 	}
 
-	const { runResumeCommand } = await import("./src/cli/resume.js");
+	const { runResumeCommand } = await import("./src/features/resume/cli.js");
 	const resumeArgs = isResume ? positionals.slice(1) : positionals;
 	await runResumeCommand(values, resumeArgs, bus);
 }

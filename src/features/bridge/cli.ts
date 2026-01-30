@@ -1,5 +1,5 @@
-import type { OpenApiSpec } from "../bridge.js";
-import type { EventBus } from "../core/event-bus";
+import type { EventBus } from "../../core/event-bus";
+import type { OpenApiSpec } from "./bridge.js";
 
 const bridgeHelp = `
 Usage: nooa bridge <spec-url-or-path> [flags]
@@ -48,7 +48,7 @@ export async function runBridgeCommand(
 	}
 
 	try {
-		const { loadSpec, executeBridgeRequest } = await import("../bridge.js");
+		const { loadSpec, executeBridgeRequest } = await import("./bridge.js");
 		const spec = (await loadSpec(specSource)) as OpenApiSpec;
 
 		if (values.list) {

@@ -9,14 +9,14 @@ import {
 	spyOn,
 } from "bun:test";
 import * as fsPromises from "node:fs/promises";
-import type { OpenApiSpec } from "../src/bridge";
+import type { OpenApiSpec } from "./bridge";
 
-let executeBridgeRequest: typeof import("../src/bridge").executeBridgeRequest;
-let reconstructObject: typeof import("../src/bridge").reconstructObject;
-let loadSpec: typeof import("../src/bridge").loadSpec;
+let executeBridgeRequest: typeof import("./bridge").executeBridgeRequest;
+let reconstructObject: typeof import("./bridge").reconstructObject;
+let loadSpec: typeof import("./bridge").loadSpec;
 
 beforeAll(async () => {
-	const bridge = await import("../src/bridge");
+	const bridge = await import("./bridge");
 	executeBridgeRequest = bridge.executeBridgeRequest;
 	reconstructObject = bridge.reconstructObject;
 	loadSpec = bridge.loadSpec;

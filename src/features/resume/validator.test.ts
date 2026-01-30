@@ -7,7 +7,7 @@ import {
 	mock,
 	spyOn,
 } from "bun:test";
-import { extractLinks, validateAllLinks, validateLink } from "../src/validator";
+import { extractLinks, validateAllLinks, validateLink } from "./validator";
 
 describe("Link Validator Logic", () => {
 	describe("extractLinks", () => {

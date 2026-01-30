@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import type { JsonResume } from "../src/json-resume";
+import type { JsonResume } from "./json-resume";
 import {
 	convertJsonResumeToMarkdown,
 	convertMarkdownToJsonResume,
-} from "../src/json-resume";
+} from "./json-resume";
 
 describe("JSON Resume Converter", () => {
 	const mockMarkdown = `# John Doe

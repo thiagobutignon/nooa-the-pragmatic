@@ -10,7 +10,7 @@ import {
 	spyOn,
 } from "bun:test";
 
-let main: typeof import("../index").main;
+let main: typeof import("./index").main;
 
 let converterSpy: ReturnType<typeof spyOn>;
 let pdfGeneratorSpy: ReturnType<typeof spyOn>;
@@ -23,12 +23,12 @@ let extractLinksSpy: ReturnType<typeof spyOn>;
 let validateAllLinksSpy: ReturnType<typeof spyOn>;
 
 beforeAll(async () => {
-	const converter = await import("../src/converter");
-	const pdfGenerator = await import("../src/pdf-generator");
+	const converter = await import("./src/features/resume/converter");
+	const pdfGenerator = await import("./src/features/resume/pdf-generator");
 	const fsPromises = await import("node:fs/promises");
-	const jsonResume = await import("../src/json-resume");
-	const bridge = await import("../src/bridge");
-	const validator = await import("../src/validator");
+	const jsonResume = await import("./src/features/resume/json-resume");
+	const bridge = await import("./src/features/bridge/bridge");
+	const validator = await import("./src/features/resume/validator");
 
 	converterSpy = spyOn(converter, "convertPdfToMarkdown");
 	pdfGeneratorSpy = spyOn(pdfGenerator, "generatePdfFromMarkdown");
@@ -46,7 +46,7 @@ beforeAll(async () => {
 	extractLinksSpy = spyOn(validator, "extractLinks");
 	validateAllLinksSpy = spyOn(validator, "validateAllLinks");
 
-	({ main } = await import("../index"));
+	({ main } = await import("./index"));
 });
 
 afterAll(() => {

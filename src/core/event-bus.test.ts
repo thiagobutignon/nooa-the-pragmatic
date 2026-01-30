@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { EventBus } from "../src/core/event-bus";
+import { EventBus } from "./event-bus";
 
 describe("EventBus", () => {
 	test("publishes events to subscribers", () => {

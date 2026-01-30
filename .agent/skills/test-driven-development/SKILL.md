@@ -324,6 +324,13 @@ PASS
 **REFACTOR**
 Extract validation for multiple fields if needed.
 
+## Test Location Standard
+
+Default: co-locate tests with their feature files for fast search and context.
+
+- Use `src/features/<feature>/` and keep `*.test.ts` next to the code under test.
+- Only separate tests when the runtime or tooling requires it; document the exception.
+
 ## Verification Checklist
 
 Before marking work complete:
@@ -336,6 +343,7 @@ Before marking work complete:
 - [ ] Output pristine (no errors, warnings)
 - [ ] Tests use real code (mocks only if unavoidable)
 - [ ] Edge cases and errors covered
+- [ ] Tests are co-located with feature code by default
 
 Can't check all boxes? You skipped TDD. Start over.
 

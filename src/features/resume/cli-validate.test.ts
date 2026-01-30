@@ -10,16 +10,16 @@ import {
 	spyOn,
 } from "bun:test";
 
-let main: typeof import("../index").main;
+let main: typeof import("../../../index").main;
 let converterSpy: ReturnType<typeof spyOn>;
 let pdfGeneratorSpy: ReturnType<typeof spyOn>;
 
 beforeAll(async () => {
-	const converter = await import("../src/converter");
-	const pdfGenerator = await import("../src/pdf-generator");
+	const converter = await import("./converter");
+	const pdfGenerator = await import("./pdf-generator");
 	converterSpy = spyOn(converter, "convertPdfToMarkdown");
 	pdfGeneratorSpy = spyOn(pdfGenerator, "generatePdfFromMarkdown");
-	({ main } = await import("../index"));
+	({ main } = await import("../../../index"));
 });
 
 afterAll(() => {

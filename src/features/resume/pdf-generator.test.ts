@@ -36,10 +36,10 @@ mock.module("puppeteer", () => ({
 	default: puppeteerMocks,
 }));
 
-let generatePdfFromMarkdown: typeof import("../src/pdf-generator").generatePdfFromMarkdown;
+let generatePdfFromMarkdown: typeof import("./pdf-generator").generatePdfFromMarkdown;
 
 beforeAll(async () => {
-	({ generatePdfFromMarkdown } = await import("../src/pdf-generator"));
+	({ generatePdfFromMarkdown } = await import("./pdf-generator"));
 });
 
 describe("generatePdfFromMarkdown", () => {
