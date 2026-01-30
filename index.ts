@@ -46,6 +46,11 @@ export async function main(
 		await runResumeCommand(values, positionals.slice(1));
 		return;
 	}
+	if (values.help && isJobs) {
+		const { runJobsCommand } = await import("./src/cli/jobs.js");
+		await runJobsCommand(values, positionals.slice(1));
+		return;
+	}
 
 	if (values.help) {
 		console.log(`
@@ -163,65 +168,8 @@ Jobs flags:
 	}
 
 	if (isJobs) {
-		try {
-			const { searchAndMatchJobs, listJobs, applyToJob } = await import(
-				"./src/jobs.js"
-			);
-
-			if (values.apply) {
-				applyToJob(Number.parseInt(values.apply));
-				return;
-			}
-
-			if (values.list) {
-				const jobs = listJobs();
-				console.log("\n📋 Saved Jobs (ranked by match score):");
-				for (const j of jobs) {
-					console.log(
-						`[ID: ${j.id}] ${Math.round(j.match_score * 100)}% - ${j.title} @ ${j.company} [${j.status}]`,
-					);
-					console.log(`     Link: ${j.url}\n`);
-				}
-				return;
-			}
-
-			const resumePath = positionals[1];
-			if (!resumePath || !values.search) {
-				console.error("Error: 'jobs <resume-path> --search <query>' is required.");
-				process.exitCode = 1;
-				return;
-			}
-
-			const providers = (values.provider as string[]) || ["arbeitnow"];
-
-			if (values.cron) {
-				const { scheduleJobFetch } = await import("./src/automation.js");
-				scheduleJobFetch(
-					values.cron as string,
-					resumePath,
-					values.search as string,
-					providers,
-				);
-				// Keep process alive for cron
-				console.error("🚀 Keep-alive for scheduled tasks. Press Ctrl+C to stop.");
-				// Bun.cron keeps the process alive by default, but we can add a simple interval if needed.
-				return;
-			}
-
-			for (const provider of providers) {
-				await searchAndMatchJobs(
-					resumePath,
-					values.search as string,
-					provider,
-				);
-			}
-
-			console.log(`\n✅ Done! Found matches across ${providers.length} providers.`);
-			console.log("Run 'nooa jobs --list' to see all saved jobs.");
-		} catch (error: any) {
-			console.error("Jobs error:", error.message);
-			process.exitCode = 1;
-		}
+		const { runJobsCommand } = await import("./src/cli/jobs.js");
+		await runJobsCommand(values, positionals.slice(1));
 		return;
 	}
 	const { runResumeCommand } = await import("./src/cli/resume.js");
