@@ -51,6 +51,11 @@ export async function main(
 		await runJobsCommand(values, positionals.slice(1));
 		return;
 	}
+	if (values.help && isBridge) {
+		const { runBridgeCommand } = await import("./src/cli/bridge.js");
+		await runBridgeCommand(values, positionals.slice(1));
+		return;
+	}
 
 	if (values.help) {
 		console.log(`
@@ -97,73 +102,8 @@ Jobs flags:
 	}
 
 	if (isBridge) {
-		const specSource = positionals[1];
-		if (!specSource) {
-			console.error("Error: OpenAPI spec URL or path is required for bridge.");
-			process.exitCode = 1;
-			return;
-		}
-
-		try {
-			const { loadSpec, executeBridgeRequest } = await import(
-				"./src/bridge.js"
-			);
-			const spec = await loadSpec(specSource);
-
-			if (values.list) {
-				console.log(`\nAvailable operations in ${spec.info?.title || "API"}:`);
-				for (const [path, methods] of Object.entries(spec.paths || {})) {
-					for (const [method, op] of Object.entries(methods as any)) {
-						const o = op as any;
-						console.log(
-							`  - [${method.toUpperCase()}] ${o.operationId || "no-id"} (${path}): ${o.summary || ""}`,
-						);
-					}
-				}
-				return;
-			}
-
-			if (!values.op) {
-				console.error("Error: --op <operationId> is required.");
-				process.exitCode = 1;
-				return;
-			}
-
-			const paramsMap: Record<string, string> = {};
-			for (const p of (values.param as string[]) || []) {
-				const [k, v] = p.split("=");
-				if (k && v) paramsMap[k] = v;
-			}
-
-			const headersMap: Record<string, string> = {};
-			for (const h of (values.header as string[]) || []) {
-				const [k, v] = h.split(":");
-				if (k && v) headersMap[k.trim()] = v.trim();
-			}
-
-			// Add .env support if needed here (simple version)
-
-			console.error(`🚀 Executing ${values.op}...`);
-			const result = await executeBridgeRequest(spec, {
-				operationId: values.op as string,
-				params: paramsMap,
-				headers: headersMap,
-			});
-
-			console.error(`Response [${result.status}] ${result.statusText}`);
-			if (typeof result.data === "object") {
-				console.log(JSON.stringify(result.data, null, 2));
-			} else {
-				console.log(result.data);
-			}
-
-			if (result.status >= 400) {
-				process.exitCode = 1;
-			}
-		} catch (error: any) {
-			console.error("Bridge Error:", error.message);
-			process.exitCode = 1;
-		}
+		const { runBridgeCommand } = await import("./src/cli/bridge.js");
+		await runBridgeCommand(values, positionals.slice(1));
 		return;
 	}
 
