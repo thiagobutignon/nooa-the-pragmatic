@@ -17,6 +17,19 @@ export async function main(
 			"dry-run": { type: "boolean" },
 			patch: { type: "boolean" },
 			"patch-from": { type: "string" },
+			// Search options
+			regex: { type: "boolean" },
+			"case-sensitive": { type: "boolean" },
+			"files-only": { type: "boolean" },
+			"max-results": { type: "string" },
+			include: { type: "string", multiple: true },
+			exclude: { type: "string", multiple: true },
+			plain: { type: "boolean" },
+			"no-color": { type: "boolean" },
+			context: { type: "string" },
+			"ignore-case": { type: "boolean", short: "i" },
+			count: { type: "boolean", short: "c" },
+			hidden: { type: "boolean" },
 		},
 		strict: true,
 		allowPositionals: true,
@@ -50,6 +63,10 @@ Usage: nooa [flags] <subcommand> [args]
 Subcommands:
   read <path>                   Read file contents.
   code <write|patch>            Code operations.
+  resume <input>                Convert resumes (PDF/Markdown/JSON Resume).
+  bridge <spec-url-or-path>     Transform a REST API into CLI commands.
+  jobs <resume-path>            Search for jobs and match against your resume.
+  search <query> [path]         Search files and file contents.
 
 Flags:
   --json                 Output structure as JSON.
