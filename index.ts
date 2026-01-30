@@ -35,6 +35,8 @@ export async function main(
 			from: { type: "string" },
 			overwrite: { type: "boolean" },
 			"dry-run": { type: "boolean" },
+			patch: { type: "boolean" },
+			"patch-from": { type: "string" },
 		},
 		strict: true,
 		allowPositionals: true,
@@ -157,42 +159,94 @@ Jobs flags:
 		}
 
 		try {
-			const { readFile } = await import("node:fs/promises");
+			const { readFile, writeFile } = await import("node:fs/promises");
+			const isPatchMode = Boolean(values.patch || values["patch-from"]);
 			let content = "";
+			let patched = false;
 
-			if (!values.from && !process.stdin.isTTY) {
-				const stdinText = await new Response(process.stdin).text();
-				if (stdinText.length > 0) {
-					content = stdinText;
-				}
-			}
-
-			if (!content && values.from) {
-				content = await readFile(values.from, "utf-8");
-			}
-
-			if (!content) {
-				console.error("Error: Missing input. Use --from or stdin.");
+			if (isPatchMode && values.from) {
+				console.error("Error: --patch is mutually exclusive with --from.");
 				process.exitCode = 2;
 				return;
 			}
 
-			const { writeCodeFile } = await import("./src/code/write.js");
-			const result = await writeCodeFile({
-				path: targetPath,
-				content,
-				overwrite: Boolean(values.overwrite),
-				dryRun: Boolean(values["dry-run"]),
-			});
+			if (isPatchMode) {
+				let patchText = "";
+				if (values["patch-from"]) {
+					patchText = await readFile(values["patch-from"], "utf-8");
+				} else if (!process.stdin.isTTY) {
+					patchText = await new Response(process.stdin).text();
+				}
+
+				if (!patchText) {
+					console.error("Error: Missing patch input. Use --patch-from or stdin.");
+					process.exitCode = 2;
+					return;
+				}
+
+				const { applyPatch } = await import("./src/code/patch.js");
+				const originalText = await readFile(targetPath, "utf-8");
+				content = applyPatch(originalText, patchText);
+				patched = true;
+				if (!values["dry-run"]) {
+					await writeFile(targetPath, content, "utf-8");
+				}
+			} else {
+				if (!values.from && !process.stdin.isTTY) {
+					const stdinText = await new Response(process.stdin).text();
+					if (stdinText.length > 0) {
+						content = stdinText;
+					}
+				}
+
+				if (!content && values.from) {
+					content = await readFile(values.from, "utf-8");
+				}
+
+				if (!content) {
+					console.error("Error: Missing input. Use --from or stdin.");
+					process.exitCode = 2;
+					return;
+				}
+
+				const { writeCodeFile } = await import("./src/code/write.js");
+				const result = await writeCodeFile({
+					path: targetPath,
+					content,
+					overwrite: Boolean(values.overwrite),
+					dryRun: Boolean(values["dry-run"]),
+				});
+
+				if (values.json) {
+					console.log(
+						JSON.stringify(
+							{
+								path: result.path,
+								bytes: result.bytes,
+								overwritten: result.overwritten,
+								dryRun: Boolean(values["dry-run"]),
+								mode: "write",
+								patched: false,
+							},
+							null,
+							2,
+						),
+					);
+				}
+
+				return;
+			}
 
 			if (values.json) {
 				console.log(
 					JSON.stringify(
 						{
-							path: result.path,
-							bytes: result.bytes,
-							overwritten: result.overwritten,
+							path: targetPath,
+							bytes: Buffer.byteLength(content),
+							overwritten: true,
 							dryRun: Boolean(values["dry-run"]),
+							mode: "patch",
+							patched,
 						},
 						null,
 						2,
