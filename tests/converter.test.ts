@@ -3,8 +3,8 @@ import { beforeAll, describe, expect, it, mock } from "bun:test";
 mock.module("pdf-parse", () => {
 	return {
 		PDFParse: class {
-			data: any;
-			constructor(options: any) {
+			data: Uint8Array;
+			constructor(options: { data: Uint8Array }) {
 				this.data = options.data;
 			}
 			async getText() {

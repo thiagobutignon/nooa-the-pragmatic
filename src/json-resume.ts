@@ -289,7 +289,11 @@ export function convertMarkdownToJsonResume(markdown: string): JsonResume {
 			}
 		}
 
-		if (token.type === "paragraph" && currentSection === "skills" && resume.skills) {
+		if (
+			token.type === "paragraph" &&
+			currentSection === "skills" &&
+			resume.skills
+		) {
 			const lastSkill = resume.skills[resume.skills.length - 1];
 			if (lastSkill && token.text.includes("**Keywords:**")) {
 				const keywords = token.text

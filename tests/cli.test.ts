@@ -1,6 +1,6 @@
+import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { execa } from "execa";
-import { describe, expect, it } from "bun:test";
 
 describe("CLI (index.ts)", () => {
 	const binPath = join(process.cwd(), "index.ts");

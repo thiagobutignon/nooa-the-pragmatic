@@ -1,4 +1,14 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	mock,
+	spyOn,
+} from "bun:test";
 
 let main: typeof import("../index").main;
 
@@ -15,7 +25,7 @@ let validateAllLinksSpy: ReturnType<typeof spyOn>;
 beforeAll(async () => {
 	const converter = await import("../src/converter");
 	const pdfGenerator = await import("../src/pdf-generator");
-	const fsPromises = await import("fs/promises");
+	const fsPromises = await import("node:fs/promises");
 	const jsonResume = await import("../src/json-resume");
 	const bridge = await import("../src/bridge");
 	const validator = await import("../src/validator");
@@ -65,7 +75,9 @@ describe("main function", () => {
 		writeFileSpy.mockReset();
 		writeFileSpy.mockResolvedValue(undefined);
 		convertMarkdownToJsonResumeSpy.mockReset();
-		convertMarkdownToJsonResumeSpy.mockReturnValue({ basics: { name: "JSON Resume" } });
+		convertMarkdownToJsonResumeSpy.mockReturnValue({
+			basics: { name: "JSON Resume" },
+		});
 		convertJsonResumeToMarkdownSpy.mockReset();
 		convertJsonResumeToMarkdownSpy.mockReturnValue("# Markdown from JSON");
 		loadSpecSpy.mockReset();
@@ -161,7 +173,10 @@ describe("main function", () => {
 		await main(["resume", "input.pdf", "--json"]);
 		const outputJSON = logSpy.mock.calls[0]?.[0];
 		expect(outputJSON).toBeDefined();
-		expect(JSON.parse(outputJSON!)).toHaveProperty(
+		if (typeof outputJSON !== "string") {
+			throw new Error("Expected JSON output string");
+		}
+		expect(JSON.parse(outputJSON)).toHaveProperty(
 			"content",
 			"# Mocked Markdown",
 		);

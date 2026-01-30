@@ -40,7 +40,7 @@ export async function runJobsCommand(
 		);
 
 		if (values.apply) {
-			applyToJob(Number.parseInt(values.apply));
+			applyToJob(Number.parseInt(values.apply, 10));
 			bus?.emit("jobs.applied", {
 				command: "jobs",
 				status: "ok",
@@ -63,7 +63,9 @@ export async function runJobsCommand(
 
 		const resumePath = positionals[0];
 		if (!resumePath || !values.search) {
-			console.error("Error: 'jobs <resume-path> --search <query>' is required.");
+			console.error(
+				"Error: 'jobs <resume-path> --search <query>' is required.",
+			);
 			bus?.emit("cli.error", {
 				command: "jobs",
 				status: "error",
@@ -80,12 +82,7 @@ export async function runJobsCommand(
 
 		if (values.cron) {
 			const { scheduleJobFetch } = await import("../automation.js");
-			scheduleJobFetch(
-				values.cron,
-				resumePath,
-				values.search,
-				providers,
-			);
+			scheduleJobFetch(values.cron, resumePath, values.search, providers);
 			console.error("🚀 Keep-alive for scheduled tasks. Press Ctrl+C to stop.");
 			bus?.emit("jobs.saved", {
 				command: "jobs",
@@ -99,19 +96,22 @@ export async function runJobsCommand(
 			await searchAndMatchJobs(resumePath, values.search, provider);
 		}
 
-		console.log(`\n✅ Done! Found matches across ${providers.length} providers.`);
+		console.log(
+			`\n✅ Done! Found matches across ${providers.length} providers.`,
+		);
 		console.log("Run 'nooa jobs --list' to see all saved jobs.");
 		bus?.emit("jobs.matched", {
 			command: "jobs",
 			status: "ok",
 			metadata: { providers, query: values.search },
 		});
-	} catch (error: any) {
-		console.error("Jobs error:", error.message);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		console.error("Jobs error:", message);
 		bus?.emit("cli.error", {
 			command: "jobs",
 			status: "error",
-			error: { code: "EXCEPTION", message: error.message },
+			error: { code: "EXCEPTION", message },
 		});
 		process.exitCode = 1;
 	}

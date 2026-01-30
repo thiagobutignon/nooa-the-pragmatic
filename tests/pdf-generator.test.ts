@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import {
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	mock,
+	spyOn,
+} from "bun:test";
 
 const mocks = {
 	mockPage: {

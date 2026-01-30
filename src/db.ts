@@ -1,32 +1,32 @@
 import { Database } from "bun:sqlite";
 
 export interface Job {
-    id?: number;
-    provider: string;
-    externalId: string;
-    title: string;
-    company: string;
-    url: string;
-    location?: string;
-    description?: string;
-    matchScore: number;
-    status: "saved" | "applied" | "ignored";
-    createdAt?: string;
-    rawPayload?: string;
+	id?: number;
+	provider: string;
+	externalId: string;
+	title: string;
+	company: string;
+	url: string;
+	location?: string;
+	description?: string;
+	matchScore: number;
+	status: "saved" | "applied" | "ignored";
+	createdAt?: string;
+	rawPayload?: string;
 }
 
 const DB_PATH = "nooa.db";
 
 export class JobDatabase {
-    private db: Database;
+	private db: Database;
 
-    constructor(path: string = DB_PATH) {
-        this.db = new Database(path);
-        this.init();
-    }
+	constructor(path: string = DB_PATH) {
+		this.db = new Database(path);
+		this.init();
+	}
 
-    private init() {
-        this.db.run(`
+	private init() {
+		this.db.run(`
             CREATE TABLE IF NOT EXISTS jobs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 provider TEXT NOT NULL,
@@ -43,7 +43,7 @@ export class JobDatabase {
             )
         `);
 
-        this.db.run(`
+		this.db.run(`
             CREATE TABLE IF NOT EXISTS applications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 job_id INTEGER NOT NULL,
@@ -52,10 +52,10 @@ export class JobDatabase {
                 FOREIGN KEY (job_id) REFERENCES jobs(id)
             )
         `);
-    }
+	}
 
-    saveJob(job: Job): number | bigint {
-        const query = this.db.prepare(`
+	saveJob(job: Job): number | bigint {
+		const query = this.db.prepare(`
             INSERT INTO jobs (
                 provider, external_id, title, company, url, location, description, match_score, status, raw_payload
             ) VALUES (
@@ -66,56 +66,58 @@ export class JobDatabase {
                 status = CASE WHEN jobs.status = 'ignored' THEN 'ignored' ELSE jobs.status END
         `);
 
-        const result = query.run({
-            $provider: job.provider,
-            $externalId: job.externalId,
-            $title: job.title,
-            $company: job.company,
-            $url: job.url,
-            $location: job.location || null,
-            $description: job.description || null,
-            $matchScore: job.matchScore,
-            $status: job.status,
-            $rawPayload: job.rawPayload || null,
-        });
+		const result = query.run({
+			$provider: job.provider,
+			$externalId: job.externalId,
+			$title: job.title,
+			$company: job.company,
+			$url: job.url,
+			$location: job.location || null,
+			$description: job.description || null,
+			$matchScore: job.matchScore,
+			$status: job.status,
+			$rawPayload: job.rawPayload || null,
+		});
 
-        return result.lastInsertRowid;
-    }
+		return result.lastInsertRowid;
+	}
 
-    listJobs(filters: { status?: string; provider?: string } = {}): any[] {
-        let sql = "SELECT * FROM jobs";
-        const params: any = {};
+	listJobs(
+		filters: { status?: string; provider?: string } = {},
+	): Array<Record<string, unknown>> {
+		let sql = "SELECT * FROM jobs";
+		const params: Record<string, string> = {};
 
-        const clauses: string[] = [];
-        if (filters.status) {
-            clauses.push("status = $status");
-            params.$status = filters.status;
-        }
-        if (filters.provider) {
-            clauses.push("provider = $provider");
-            params.$provider = filters.provider;
-        }
+		const clauses: string[] = [];
+		if (filters.status) {
+			clauses.push("status = $status");
+			params.$status = filters.status;
+		}
+		if (filters.provider) {
+			clauses.push("provider = $provider");
+			params.$provider = filters.provider;
+		}
 
-        if (clauses.length > 0) {
-            sql += " WHERE " + clauses.join(" AND ");
-        }
+		if (clauses.length > 0) {
+			sql += ` WHERE ${clauses.join(" AND ")}`;
+		}
 
-        sql += " ORDER BY match_score DESC, created_at DESC";
+		sql += " ORDER BY match_score DESC, created_at DESC";
 
-        return this.db.query(sql).all(params);
-    }
+		return this.db.query(sql).all(params) as Array<Record<string, unknown>>;
+	}
 
-    updateJobStatus(id: number, status: "saved" | "applied" | "ignored") {
-        this.db.run("UPDATE jobs SET status = ? WHERE id = ?", [status, id]);
+	updateJobStatus(id: number, status: "saved" | "applied" | "ignored") {
+		this.db.run("UPDATE jobs SET status = ? WHERE id = ?", [status, id]);
 
-        if (status === "applied") {
-            this.db.run("INSERT INTO applications (job_id) VALUES (?)", [id]);
-        }
-    }
+		if (status === "applied") {
+			this.db.run("INSERT INTO applications (job_id) VALUES (?)", [id]);
+		}
+	}
 
-    close() {
-        this.db.close();
-    }
+	close() {
+		this.db.close();
+	}
 }
 
 export const db = new JobDatabase();

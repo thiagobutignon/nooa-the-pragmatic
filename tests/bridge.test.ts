@@ -1,5 +1,15 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import {
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	mock,
+	spyOn,
+} from "bun:test";
 import * as fsPromises from "node:fs/promises";
+import type { OpenApiSpec } from "../src/bridge";
 
 let executeBridgeRequest: typeof import("../src/bridge").executeBridgeRequest;
 let reconstructObject: typeof import("../src/bridge").reconstructObject;
@@ -79,7 +89,9 @@ describe("Nooa Bridge Logic", () => {
 		it("should throw if local file read fails", async () => {
 			const readFileSpy = spyOn(fsPromises, "readFile");
 			readFileSpy.mockRejectedValueOnce(new Error("Read Error"));
-			await expect(loadSpec("/invalid/path.json")).rejects.toThrow("Read Error");
+			await expect(loadSpec("/invalid/path.json")).rejects.toThrow(
+				"Read Error",
+			);
 			readFileSpy.mockRestore();
 		});
 	});
@@ -171,11 +183,11 @@ describe("Nooa Bridge Logic", () => {
 					params: {},
 					headers: {},
 				}),
-			).rejects.toThrow("Operation with ID \"missing\" not found in spec.");
+			).rejects.toThrow('Operation with ID "missing" not found in spec.');
 		});
 
 		it("should support Swagger 2.0 host and schemes resolution", async () => {
-			const swaggerSpec = {
+			const swaggerSpec: OpenApiSpec = {
 				swagger: "2.0",
 				host: "api.swag.com",
 				schemes: ["https"],
@@ -193,7 +205,7 @@ describe("Nooa Bridge Logic", () => {
 				json: async () => ({ ok: true }),
 			} as Response);
 
-			const result = await executeBridgeRequest(swaggerSpec as any, {
+			const result = await executeBridgeRequest(swaggerSpec, {
 				operationId: "ping",
 				params: {},
 				headers: {},

@@ -1,6 +1,6 @@
-import { execa } from "execa";
-import { readFile } from "node:fs/promises";
 import { describe, expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
+import { execa } from "execa";
 
 const run = (args: string[]) =>
 	execa("bun", ["index.ts", ...args], { reject: false });

@@ -1,3 +1,4 @@
+import type { OpenApiSpec } from "../bridge.js";
 import type { EventBus } from "../core/event-bus";
 
 const bridgeHelp = `
@@ -48,31 +49,30 @@ export async function runBridgeCommand(
 
 	try {
 		const { loadSpec, executeBridgeRequest } = await import("../bridge.js");
-		const spec = await loadSpec(specSource);
+		const spec = (await loadSpec(specSource)) as OpenApiSpec;
 
 		if (values.list) {
 			console.log(`\nAvailable operations in ${spec.info?.title || "API"}:`);
 			for (const [path, methods] of Object.entries(spec.paths || {})) {
-				for (const [method, op] of Object.entries(methods as any)) {
-					const o = op as any;
+				for (const [method, op] of Object.entries(methods)) {
 					console.log(
-						`  - [${method.toUpperCase()}] ${o.operationId || "no-id"} (${path}): ${o.summary || ""}`,
+						`  - [${method.toUpperCase()}] ${op.operationId || "no-id"} (${path}): ${op.summary || ""}`,
 					);
 				}
 			}
 			return;
 		}
 
-			if (!values.op) {
-				console.error("Error: --op <operationId> is required.");
-				bus?.emit("cli.error", {
-					command: "bridge",
-					status: "error",
-					error: { code: "MISSING_INPUT", message: "--op is required" },
-				});
-				process.exitCode = 1;
-				return;
-			}
+		if (!values.op) {
+			console.error("Error: --op <operationId> is required.");
+			bus?.emit("cli.error", {
+				command: "bridge",
+				status: "error",
+				error: { code: "MISSING_INPUT", message: "--op is required" },
+			});
+			process.exitCode = 1;
+			return;
+		}
 
 		const paramsMap: Record<string, string> = {};
 		for (const p of values.param || []) {
@@ -100,23 +100,24 @@ export async function runBridgeCommand(
 			console.log(result.data);
 		}
 
-			if (result.status >= 400) {
-				process.exitCode = 1;
-			}
-			bus?.emit("bridge.executed", {
-				command: "bridge",
-				status: result.status >= 400 ? "error" : "ok",
-				metadata: { operationId: values.op, status: result.status },
-			});
-		} catch (error: any) {
-			console.error("Bridge Error:", error.message);
-			bus?.emit("cli.error", {
-				command: "bridge",
-				status: "error",
-				error: { code: "EXCEPTION", message: error.message },
-			});
+		if (result.status >= 400) {
 			process.exitCode = 1;
 		}
+		bus?.emit("bridge.executed", {
+			command: "bridge",
+			status: result.status >= 400 ? "error" : "ok",
+			metadata: { operationId: values.op, status: result.status },
+		});
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		console.error("Bridge Error:", message);
+		bus?.emit("cli.error", {
+			command: "bridge",
+			status: "error",
+			error: { code: "EXCEPTION", message },
+		});
+		process.exitCode = 1;
+	}
 }
 
 export function printBridgeHelp() {

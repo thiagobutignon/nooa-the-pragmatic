@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
-import type { EventBus } from "../core/event-bus";
 import { convertPdfToMarkdown } from "../converter.js";
+import type { EventBus } from "../core/event-bus";
 import {
 	convertJsonResumeToMarkdown,
 	convertMarkdownToJsonResume,
@@ -155,7 +155,7 @@ export async function runResumeCommand(
 					github: values.github,
 					whatsapp: values.whatsapp,
 				});
-			} catch (pdfError: any) {
+			} catch (pdfError: unknown) {
 				if (values.validate && inputPath.endsWith(".md")) {
 					markdown = await file.text();
 				} else {
@@ -265,12 +265,13 @@ export async function runResumeCommand(
 				}
 			}
 		}
-	} catch (error: any) {
-		console.error("Error:", error.message);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		console.error("Error:", message);
 		bus?.emit("cli.error", {
 			command: "resume",
 			status: "error",
-			error: { code: "EXCEPTION", message: error.message },
+			error: { code: "EXCEPTION", message },
 		});
 		process.exitCode = 1;
 	}
