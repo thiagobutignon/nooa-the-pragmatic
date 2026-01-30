@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { execa } from "execa";
 import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
+import { execa } from "execa";
 
 const run = (args: string[]) =>
 	execa("bun", ["index.ts", ...args], { reject: false });
@@ -42,14 +42,7 @@ describe("nooa code write", () => {
 	test("supports --overwrite", async () => {
 		await writeFile(SRC, "new");
 		await writeFile(OUT, "existing");
-		const res = await run([
-			"code",
-			"write",
-			OUT,
-			"--from",
-			SRC,
-			"--overwrite",
-		]);
+		const res = await run(["code", "write", OUT, "--from", SRC, "--overwrite"]);
 		expect(res.exitCode).toBe(0);
 		const text = await readFile(OUT, "utf-8");
 		expect(text).toBe("new");
