@@ -53,6 +53,7 @@ export async function main(
 	const isJobs = subcommand === "jobs";
 	const isResume = subcommand === "resume";
 	const isCode = subcommand === "code";
+	const isRead = subcommand === "read";
 	const codeAction = positionals[1];
 
 	const codeWriteHelp = `
@@ -74,6 +75,17 @@ Notes:
   Mutually exclusive: --patch/--patch-from cannot be combined with --from or non-patch stdin.
 `;
 
+	const readHelp = `
+Usage: nooa read <path> [flags]
+
+Arguments:
+  <path>      Path to the file to read.
+
+Flags:
+  --json      Output JSON with path, bytes, content.
+  -h, --help  Show help.
+`;
+
 	if (values.help && isResume) {
 		const { runResumeCommand } = await import("./src/cli/resume.js");
 		await runResumeCommand(values, positionals.slice(1), bus);
@@ -87,6 +99,10 @@ Notes:
 	if (values.help && isBridge) {
 		const { runBridgeCommand } = await import("./src/cli/bridge.js");
 		await runBridgeCommand(values, positionals.slice(1), bus);
+		return;
+	}
+	if (values.help && isRead) {
+		console.log(readHelp);
 		return;
 	}
 	if (values.help && isCode && codeAction === "write") {
