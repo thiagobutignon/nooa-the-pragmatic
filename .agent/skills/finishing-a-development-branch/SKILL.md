@@ -37,22 +37,27 @@ Stop. Don't proceed to Step 2.
 
 **If tests pass:** Continue to Step 2.
 
-### Step 1.5: Dogfood NOOA CLI (Required)
+### Step 1.5: Dogfooding (REQUIRED)
 
-If the change adds or modifies NOOA CLI behavior, you MUST dogfood it before offering options.
+**Before proceeding, you MUST perform dogfooding to verify real-world behavior and CLI contract satisfaction.**
 
-**Minimum dogfood run (safe):**
-```bash
-# Use --help and a safe invocation (prefer --dry-run when available)
-bun run index.ts --help
-bun run index.ts <subcommand> --help
+This is not just "running the command". Use the **superpowers:dogfooding** skill for a comprehensive verification:
 
-# If the feature changes code writing or file changes:
-bun run index.ts code write /tmp/nooa-dogfood.txt --from /tmp/nooa-input.txt --dry-run --json
-```
+1.  **Execute Primary Commands**: Run the happy path and verify output/content.
+    *   `bun run index.ts <command> <args>`
+    *   Verify exit code: `echo $?` (Must be 0 for success).
+2.  **Execute Edge Cases**:
+    *   Missing arguments, invalid flags.
+    *   Verify semantic exit codes (non-zero for errors).
+3.  **Help Check**:
+    *   Verify `index.ts --help` and `<command> --help`.
+    *   Check for typos, missing flags, or removed commands still listed.
+4.  **Contract Check**:
+    *   Verify `--json` output structure and stability.
+5.  **Clean Room Execution**:
+    *   Prefer running via `bun run index.ts` to ensure current source is tested.
 
-**Bugfinder trigger:**
-If the dogfood run fails or exits non-zero, stop and run a focused bugfind (search relevant files, reproduce, fix) before Step 2.
+**If any issue is found (bug, typo, wrong exit code):** Fix it and restart Step 1.5 before moving to Step 2.
 
 ### Step 2: Determine Base Branch
 
@@ -181,9 +186,9 @@ git worktree remove <worktree-path>
 - **Problem:** Merge broken code, create failing PR
 - **Fix:** Always verify tests before offering options
 
-**Skipping NOOA CLI dogfood**
-- **Problem:** Ship CLI behavior that was never executed end-to-end
-- **Fix:** Always run NOOA CLI for modified subcommands (use --help and safe --dry-run)
+**Skipping Dogfooding**
+- **Problem:** Ship CLI behavior that fails in real shells or has inconsistent help text.
+- **Fix:** Always follow the **superpowers:dogfooding** pattern. Check exit codes with `echo $?`.
 
 **Open-ended questions**
 - **Problem:** "What should I do next?" → ambiguous
@@ -201,14 +206,14 @@ git worktree remove <worktree-path>
 
 **Never:**
 - Proceed with failing tests
-- Skip NOOA CLI dogfood for modified CLI behavior
+- Skip **Dogfooding** (manual execution, help check, exit code verification)
 - Merge without verifying tests on result
 - Delete work without confirmation
 - Force-push without explicit request
 
 **Always:**
 - Verify tests before offering options
-- Present exactly 4 options
+- **Perform full Dogfooding** (execute, help check, contract check)
 - Get typed confirmation for Option 4
 - Clean up worktree for Options 1 & 4 only
 
@@ -220,3 +225,4 @@ git worktree remove <worktree-path>
 
 **Pairs with:**
 - **using-git-worktrees** - Cleans up worktree created by that skill
+- **dogfooding** - REQUIRED verification strategy before completion

@@ -24,7 +24,7 @@ describe("read command", () => {
             output = msg;
         });
 
-        await readCommand.execute({ args: ["read"], values: { help: true } as any, bus });
+        await readCommand.execute({ args: ["read"], rawArgs: ["read", "--help"], values: { help: true } as any, bus });
         expect(output).toContain("Usage: nooa read");
     });
 
@@ -38,7 +38,7 @@ describe("read command", () => {
         const originalTTY = process.stdin.isTTY;
         (process.stdin as any).isTTY = true;
 
-        await readCommand.execute({ args: ["read"], values: {} as any, bus });
+        await readCommand.execute({ args: ["read"], rawArgs: ["read"], values: {} as any, bus });
 
         (process.stdin as any).isTTY = originalTTY;
         expect(errorLogged).toBe(true);
@@ -66,7 +66,7 @@ describe("read command", () => {
             return true;
         });
 
-        await readCommand.execute({ args: ["read"], values: {} as any, bus });
+        await readCommand.execute({ args: ["read"], rawArgs: ["read"], values: {} as any, bus });
 
         Object.defineProperty(process, 'stdin', { value: originalStdin, configurable: true });
         expect(output).toBe("stdin content");
@@ -81,7 +81,7 @@ describe("read command", () => {
             output = msg;
         });
 
-        await readCommand.execute({ args: ["read", filePath], values: { json: true } as any, bus });
+        await readCommand.execute({ args: ["read", filePath], rawArgs: ["read", filePath, "--json"], values: { json: true } as any, bus });
 
         const parsed = JSON.parse(output);
         expect(parsed.path).toBe(filePath);
@@ -95,7 +95,7 @@ describe("read command", () => {
             if (msg.includes("File not found")) errorLogged = true;
         });
 
-        await readCommand.execute({ args: ["read", "nonexistent.txt"], values: {} as any, bus });
+        await readCommand.execute({ args: ["read", "nonexistent.txt"], rawArgs: ["read", "nonexistent.txt"], values: {} as any, bus });
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(1);
         process.exitCode = 0;
@@ -108,7 +108,7 @@ describe("read command", () => {
         });
 
         // Try to read a directory as a file which should throw an error on some systems or different error message
-        await readCommand.execute({ args: ["read", TEST_DIR], values: {} as any, bus });
+        await readCommand.execute({ args: ["read", TEST_DIR], rawArgs: ["read", TEST_DIR], values: {} as any, bus });
         expect(errorLogged).toBe(true);
         expect(process.exitCode).toBe(1);
         process.exitCode = 0;

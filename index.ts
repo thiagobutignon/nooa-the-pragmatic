@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 export async function main(
 	args: string[] = typeof Bun !== "undefined" ? Bun.argv.slice(2) : [],
 ) {
+	// Step 1: Parse global flags and subcommand
 	const { values, positionals } = parseArgs({
 		args,
 		options: {
@@ -35,7 +36,7 @@ export async function main(
 			count: { type: "boolean", short: "c" },
 			hidden: { type: "boolean" },
 		},
-		strict: true,
+		strict: false, // Allow other flags to pass through to subcommands
 		allowPositionals: true,
 	});
 
@@ -56,7 +57,7 @@ export async function main(
 	const registeredCmd = subcommand ? registry.get(subcommand) : undefined;
 
 	if (registeredCmd) {
-		await registeredCmd.execute({ args: positionals, values, bus });
+		await registeredCmd.execute({ args: positionals, values, rawArgs: args, bus });
 		return;
 	}
 
@@ -74,12 +75,6 @@ Flags:
   --json                 Output structure as JSON.
   -v, --version          Show version.
   -h, --help             Show help.
-
-Code flags:
-  --from <file>      Input file for write operation.
-  --overwrite        Overwrite existing file.
-  --dry-run          Show what would happen without writing.
-  --patch            Apply a unified diff patch.
 `);
 		return;
 	}

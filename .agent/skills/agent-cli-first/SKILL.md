@@ -153,6 +153,7 @@ A task is not “done” until these pass:
 * `lint`
 * `typecheck`
 * `test` (including CLI tests)
+* **Dogfooding** (manual execution, help check)
 * optional: `security audit`, `coverage`, `format`
 
 If gates fail: attach outputs and go back to GREEN.
@@ -197,6 +198,7 @@ Your CLI is agent-ready when:
 * [ ] exit codes are correct and consistent
 * [ ] `--dry-run` exists for side-effect commands
 * [ ] CLI tests exist and run in CI
+* [ ] **Dogfooding** checklist complete
 * [ ] gates pass reliably
 
 ---
@@ -210,13 +212,15 @@ Your CLI is agent-ready when:
 1. CLI contract (`--help`)
 2. CLI execution tests (RED)
 3. minimal behavior (GREEN)
-4. gates
-5. then adapters (API/MCP/UI)
+4. **Dogfooding** (Verify)
+5. gates
+6. then adapters (API/MCP/UI)
 
 ---
 
 ## Related Skills: **MUST READ**
 
-* **REQUIRED:** `test-driven-development`
-* **RECOMMENDED:** `create-cli`
-* **REFERENCES** `cli-guidelines`
+*   **REQUIRED:** `test-driven-development`
+*   **REQUIRED:** `dogfooding`
+*   **RECOMMENDED:** `create-cli`
+*   **REFERENCES** `cli-guidelines`
