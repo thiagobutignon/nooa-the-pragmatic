@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import type { EventBus } from "../../core/event-bus";
+import type { Command, CommandContext } from "../../core/command";
 import { convertPdfToMarkdown } from "./converter.js";
 import {
 	convertJsonResumeToMarkdown,
@@ -41,140 +42,103 @@ type ResumeValues = {
 	validate?: boolean;
 };
 
-export async function runResumeCommand(
-	values: ResumeValues,
-	positionals: string[],
-	bus?: EventBus,
-) {
-	if (values.help) {
-		console.log(resumeHelp);
-		return;
-	}
+const resumeCommand: Command = {
+	name: "resume",
+	description: "Convert resumes (PDF/Markdown/JSON Resume)",
+	execute: async ({ args, values, bus }: CommandContext) => {
+		const resumeValues = values as ResumeValues;
+		if (resumeValues.help) {
+			console.log(resumeHelp);
+			return;
+		}
 
-	const inputPath = positionals[0];
-	if (!inputPath) {
-		console.error("Error: Input file is required.");
-		console.error("Run with --help for usage.");
-		bus?.emit("cli.error", {
-			command: "resume",
-			status: "error",
-			error: { code: "MISSING_INPUT", message: "Input file is required" },
-		});
-		process.exitCode = 1;
-		return;
-	}
+		// args[0] is 'resume', args[1] is <input>
+		const inputPath = args[1];
+		if (!inputPath) {
+			console.error("Error: Input file is required.");
+			console.error("Run with --help for usage.");
+			bus?.emit("cli.error", {
+				command: "resume",
+				status: "error",
+				error: { code: "MISSING_INPUT", message: "Input file is required" },
+			});
+			process.exitCode = 1;
+			return;
+		}
 
-	const file = Bun.file(inputPath);
-	if (!(await file.exists())) {
-		console.error(`Error: File not found: ${inputPath}`);
-		bus?.emit("cli.error", {
-			command: "resume",
-			status: "error",
-			error: { code: "NOT_FOUND", message: `File not found: ${inputPath}` },
-		});
-		process.exitCode = 1;
-		return;
-	}
+		const file = Bun.file(inputPath);
+		if (!(await file.exists())) {
+			console.error(`Error: File not found: ${inputPath}`);
+			bus?.emit("cli.error", {
+				command: "resume",
+				status: "error",
+				error: { code: "NOT_FOUND", message: `File not found: ${inputPath}` },
+			});
+			process.exitCode = 1;
+			return;
+		}
 
-	try {
-		if (values["from-json-resume"]) {
-			const jsonText = await file.text();
-			const jsonResume = JSON.parse(jsonText);
-			const markdown = convertJsonResumeToMarkdown(jsonResume);
+		try {
+			if (resumeValues["from-json-resume"]) {
+				const jsonText = await file.text();
+				const jsonResume = JSON.parse(jsonText);
+				const markdown = convertJsonResumeToMarkdown(jsonResume);
 
-			if (values["to-pdf"]) {
-				const outputPath = values.output || "resume.pdf";
-				await generatePdfFromMarkdown(markdown, outputPath);
-				console.error(
-					`Successfully generated PDF from JSON Resume at ${outputPath}`,
-				);
-				bus?.emit("resume.converted", {
-					command: "resume",
-					status: "ok",
-					metadata: { mode: "from-json-resume", toPdf: true },
-				});
-			} else {
-				const outputContent = markdown;
-				if (values.output) {
-					await writeFile(values.output, outputContent);
+				if (resumeValues["to-pdf"]) {
+					const outputPath = resumeValues.output || "resume.pdf";
+					await generatePdfFromMarkdown(markdown, outputPath);
 					console.error(
-						`Successfully converted JSON Resume to Markdown at ${values.output}`,
+						`Successfully generated PDF from JSON Resume at ${outputPath}`,
 					);
 					bus?.emit("resume.converted", {
 						command: "resume",
 						status: "ok",
-						metadata: { mode: "from-json-resume", output: values.output },
+						metadata: { mode: "from-json-resume", toPdf: true },
 					});
 				} else {
-					console.log(outputContent);
-					bus?.emit("resume.converted", {
-						command: "resume",
-						status: "ok",
-						metadata: { mode: "from-json-resume" },
-					});
+					const outputContent = markdown;
+					if (resumeValues.output) {
+						await writeFile(resumeValues.output, outputContent);
+						console.error(
+							`Successfully converted JSON Resume to Markdown at ${resumeValues.output}`,
+						);
+						bus?.emit("resume.converted", {
+							command: "resume",
+							status: "ok",
+							metadata: { mode: "from-json-resume", output: resumeValues.output },
+						});
+					} else {
+						console.log(outputContent);
+						bus?.emit("resume.converted", {
+							command: "resume",
+							status: "ok",
+							metadata: { mode: "from-json-resume" },
+						});
+					}
 				}
-			}
-		} else if (values["to-pdf"]) {
-			const markdown = await file.text();
-			const outputPath = values.output || "resume.pdf";
-			await generatePdfFromMarkdown(markdown, outputPath);
-			console.error(`Successfully generated PDF at ${outputPath}`);
-			bus?.emit("resume.converted", {
-				command: "resume",
-				status: "ok",
-				metadata: { mode: "to-pdf", output: outputPath },
-			});
-		} else if (values["to-json-resume"]) {
-			const markdown = await file.text();
-			const jsonResume = convertMarkdownToJsonResume(markdown);
-			const outputContent = JSON.stringify(jsonResume, null, 2);
-			if (values.output) {
-				await writeFile(values.output, outputContent);
-				console.error(
-					`Successfully converted Markdown to JSON Resume at ${values.output}`,
-				);
+			} else if (resumeValues["to-pdf"]) {
+				const markdown = await file.text();
+				const outputPath = resumeValues.output || "resume.pdf";
+				await generatePdfFromMarkdown(markdown, outputPath);
+				console.error(`Successfully generated PDF at ${outputPath}`);
 				bus?.emit("resume.converted", {
 					command: "resume",
 					status: "ok",
-					metadata: { mode: "to-json-resume", output: values.output },
+					metadata: { mode: "to-pdf", output: outputPath },
 				});
-			} else {
-				console.log(outputContent);
-				bus?.emit("resume.converted", {
-					command: "resume",
-					status: "ok",
-					metadata: { mode: "to-json-resume" },
-				});
-			}
-		} else {
-			const buffer = Buffer.from(await file.arrayBuffer());
-			let markdown: string;
-			try {
-				markdown = await convertPdfToMarkdown(buffer, {
-					linkedin: values.linkedin,
-					github: values.github,
-					whatsapp: values.whatsapp,
-				});
-			} catch (pdfError: unknown) {
-				if (values.validate && inputPath.endsWith(".md")) {
-					markdown = await file.text();
-				} else {
-					throw pdfError;
-				}
-			}
-
-			if (values["to-json-resume"]) {
+			} else if (resumeValues["to-json-resume"]) {
+				const markdown = await file.text();
 				const jsonResume = convertMarkdownToJsonResume(markdown);
 				const outputContent = JSON.stringify(jsonResume, null, 2);
-				if (values.output) {
-					await writeFile(values.output, outputContent);
+				if (resumeValues.output) {
+					await writeFile(resumeValues.output, outputContent);
 					console.error(
-						`Successfully converted to JSON Resume at ${values.output}`,
+						`Successfully converted Markdown to JSON Resume at ${resumeValues.output}`,
 					);
 					bus?.emit("resume.converted", {
 						command: "resume",
 						status: "ok",
-						metadata: { mode: "to-json-resume", output: values.output },
+						metadata: { mode: "to-json-resume", output: resumeValues.output },
 					});
 				} else {
 					console.log(outputContent);
@@ -185,96 +149,145 @@ export async function runResumeCommand(
 					});
 				}
 			} else {
-				const outputContent = values.json
-					? JSON.stringify({ content: markdown }, null, 2)
-					: markdown;
-
-				if (values.output) {
-					await writeFile(values.output, outputContent);
-					console.error(
-						`Successfully converted ${inputPath} to ${values.output}`,
-					);
-					bus?.emit("resume.converted", {
-						command: "resume",
-						status: "ok",
-						metadata: { mode: "pdf-to-md", output: values.output },
+				const buffer = Buffer.from(await file.arrayBuffer());
+				let markdown: string;
+				try {
+					markdown = await convertPdfToMarkdown(buffer, {
+						linkedin: resumeValues.linkedin,
+						github: resumeValues.github,
+						whatsapp: resumeValues.whatsapp,
 					});
-				} else {
-					console.log(outputContent);
-					bus?.emit("resume.converted", {
-						command: "resume",
-						status: "ok",
-						metadata: { mode: "pdf-to-md" },
-					});
-				}
-			}
-
-			if (values.validate) {
-				const { extractLinks, validateAllLinks } = await import(
-					"./validator.js"
-				);
-				const markdownToValidate =
-					typeof markdown !== "undefined" ? markdown : await file.text();
-
-				console.error("\n🔍 Validating links...");
-				const links = extractLinks(markdownToValidate);
-
-				if (links.length === 0) {
-					console.error("No links found to validate.");
-					bus?.emit("resume.validated", {
-						command: "resume",
-						status: "ok",
-						metadata: { links: 0 },
-					});
-				} else {
-					console.error(
-						`Found ${links.length} links. Checking reachability...`,
-					);
-					const results = await validateAllLinks(links);
-
-					let brokenCount = 0;
-					for (const res of results) {
-						if (res.ok) {
-							console.error(`  ✅ [${res.status}] ${res.url}`);
-						} else {
-							console.error(
-								`  ❌ [${res.status || "ERR"}] ${res.url}${res.error ? ` (${res.error})` : ""}`,
-							);
-							brokenCount++;
-						}
-					}
-
-					if (brokenCount > 0) {
-						console.error(
-							`\n⚠️ Validation failed: ${brokenCount} link(s) are unreachable.`,
-						);
-						bus?.emit("resume.validated", {
-							command: "resume",
-							status: "error",
-							metadata: { links: links.length, broken: brokenCount },
-						});
-						process.exitCode = 1;
+				} catch (pdfError: unknown) {
+					if (resumeValues.validate && inputPath.endsWith(".md")) {
+						markdown = await file.text();
 					} else {
-						console.error("\n✨ All links are valid!");
+						throw pdfError;
+					}
+				}
+
+				if (resumeValues["to-json-resume"]) {
+					const jsonResume = convertMarkdownToJsonResume(markdown);
+					const outputContent = JSON.stringify(jsonResume, null, 2);
+					if (resumeValues.output) {
+						await writeFile(resumeValues.output, outputContent);
+						console.error(
+							`Successfully converted to JSON Resume at ${resumeValues.output}`,
+						);
+						bus?.emit("resume.converted", {
+							command: "resume",
+							status: "ok",
+							metadata: { mode: "to-json-resume", output: resumeValues.output },
+						});
+					} else {
+						console.log(outputContent);
+						bus?.emit("resume.converted", {
+							command: "resume",
+							status: "ok",
+							metadata: { mode: "to-json-resume" },
+						});
+					}
+				} else {
+					const outputContent = resumeValues.json
+						? JSON.stringify({ content: markdown }, null, 2)
+						: markdown;
+
+					if (resumeValues.output) {
+						await writeFile(resumeValues.output, outputContent);
+						console.error(
+							`Successfully converted ${inputPath} to ${resumeValues.output}`,
+						);
+						bus?.emit("resume.converted", {
+							command: "resume",
+							status: "ok",
+							metadata: { mode: "pdf-to-md", output: resumeValues.output },
+						});
+					} else {
+						console.log(outputContent);
+						bus?.emit("resume.converted", {
+							command: "resume",
+							status: "ok",
+							metadata: { mode: "pdf-to-md" },
+						});
+					}
+				}
+
+				if (resumeValues.validate) {
+					const { extractLinks, validateAllLinks } = await import(
+						"./validator.js"
+					);
+					const markdownToValidate =
+						typeof markdown !== "undefined" ? markdown : await file.text();
+
+					console.error("\n🔍 Validating links...");
+					const links = extractLinks(markdownToValidate);
+
+					if (links.length === 0) {
+						console.error("No links found to validate.");
 						bus?.emit("resume.validated", {
 							command: "resume",
 							status: "ok",
-							metadata: { links: links.length, broken: 0 },
+							metadata: { links: 0 },
 						});
+					} else {
+						console.error(
+							`Found ${links.length} links. Checking reachability...`,
+						);
+						const results = await validateAllLinks(links);
+
+						let brokenCount = 0;
+						for (const res of results) {
+							if (res.ok) {
+								console.error(`  ✅ [${res.status}] ${res.url}`);
+							} else {
+								console.error(
+									`  ❌ [${res.status || "ERR"}] ${res.url}${res.error ? ` (${res.error})` : ""}`,
+								);
+								brokenCount++;
+							}
+						}
+
+						if (brokenCount > 0) {
+							console.error(
+								`\n⚠️ Validation failed: ${brokenCount} link(s) are unreachable.`,
+							);
+							bus?.emit("resume.validated", {
+								command: "resume",
+								status: "error",
+								metadata: { links: links.length, broken: brokenCount },
+							});
+							process.exitCode = 1;
+						} else {
+							console.error("\n✨ All links are valid!");
+							bus?.emit("resume.validated", {
+								command: "resume",
+								status: "ok",
+								metadata: { links: links.length, broken: 0 },
+							});
+						}
 					}
 				}
 			}
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error("Error:", message);
+			bus?.emit("cli.error", {
+				command: "resume",
+				status: "error",
+				error: { code: "EXCEPTION", message },
+			});
+			process.exitCode = 1;
 		}
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		console.error("Error:", message);
-		bus?.emit("cli.error", {
-			command: "resume",
-			status: "error",
-			error: { code: "EXCEPTION", message },
-		});
-		process.exitCode = 1;
-	}
+	},
+};
+
+export default resumeCommand;
+
+export async function runResumeCommand(
+	values: ResumeValues,
+	positionals: string[],
+	bus?: EventBus,
+) {
+	await resumeCommand.execute({ args: ["resume", ...positionals], values, bus } as any);
 }
 
 export function printResumeHelp() {

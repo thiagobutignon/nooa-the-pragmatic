@@ -1,4 +1,5 @@
 import type { EventBus } from "../../core/event-bus";
+import type { Command, CommandContext } from "../../core/command";
 import type { OpenApiSpec } from "./bridge.js";
 
 const bridgeHelp = `
@@ -25,99 +26,112 @@ type BridgeValues = {
 	help?: boolean;
 };
 
-export async function runBridgeCommand(
-	values: BridgeValues,
-	positionals: string[],
-	bus?: EventBus,
-) {
-	if (values.help) {
-		console.log(bridgeHelp);
-		return;
-	}
-
-	const specSource = positionals[0];
-	if (!specSource) {
-		console.error("Error: OpenAPI spec URL or path is required for bridge.");
-		bus?.emit("cli.error", {
-			command: "bridge",
-			status: "error",
-			error: { code: "MISSING_INPUT", message: "Spec URL or path is required" },
-		});
-		process.exitCode = 1;
-		return;
-	}
-
-	try {
-		const { loadSpec, executeBridgeRequest } = await import("./bridge.js");
-		const spec = (await loadSpec(specSource)) as OpenApiSpec;
-
-		if (values.list) {
-			console.log(`\nAvailable operations in ${spec.info?.title || "API"}:`);
-			for (const [path, methods] of Object.entries(spec.paths || {})) {
-				for (const [method, op] of Object.entries(methods)) {
-					console.log(
-						`  - [${method.toUpperCase()}] ${op.operationId || "no-id"} (${path}): ${op.summary || ""}`,
-					);
-				}
-			}
+const bridgeCommand: Command = {
+	name: "bridge",
+	description: "Transform a REST API into CLI commands",
+	execute: async ({ args, values, bus }: CommandContext) => {
+		const bridgeValues = values as BridgeValues;
+		if (bridgeValues.help) {
+			console.log(bridgeHelp);
 			return;
 		}
 
-		if (!values.op) {
-			console.error("Error: --op <operationId> is required.");
+		// The subcommand 'bridge' is args[0], the spec source is args[1]
+		const specSource = args[1];
+		if (!specSource) {
+			console.error("Error: OpenAPI spec URL or path is required for bridge.");
 			bus?.emit("cli.error", {
 				command: "bridge",
 				status: "error",
-				error: { code: "MISSING_INPUT", message: "--op is required" },
+				error: { code: "MISSING_INPUT", message: "Spec URL or path is required" },
 			});
 			process.exitCode = 1;
 			return;
 		}
 
-		const paramsMap: Record<string, string> = {};
-		for (const p of values.param || []) {
-			const [k, v] = p.split("=");
-			if (k && v) paramsMap[k] = v;
-		}
+		try {
+			const { loadSpec, executeBridgeRequest } = await import("./bridge.js");
+			const spec = (await loadSpec(specSource)) as OpenApiSpec;
 
-		const headersMap: Record<string, string> = {};
-		for (const h of values.header || []) {
-			const [k, v] = h.split(":");
-			if (k && v) headersMap[k.trim()] = v.trim();
-		}
+			if (bridgeValues.list) {
+				console.log(`\nAvailable operations in ${spec.info?.title || "API"}:`);
+				for (const [path, methods] of Object.entries(spec.paths || {})) {
+					for (const [method, op] of Object.entries(methods)) {
+						console.log(
+							`  - [${method.toUpperCase()}] ${op.operationId || "no-id"} (${path}): ${op.summary || ""}`,
+						);
+					}
+				}
+				return;
+			}
 
-		console.error(`🚀 Executing ${values.op}...`);
-		const result = await executeBridgeRequest(spec, {
-			operationId: values.op,
-			params: paramsMap,
-			headers: headersMap,
-		});
+			if (!bridgeValues.op) {
+				console.error("Error: --op <operationId> is required.");
+				bus?.emit("cli.error", {
+					command: "bridge",
+					status: "error",
+					error: { code: "MISSING_INPUT", message: "--op is required" },
+				});
+				process.exitCode = 1;
+				return;
+			}
 
-		console.error(`Response [${result.status}] ${result.statusText}`);
-		if (typeof result.data === "object") {
-			console.log(JSON.stringify(result.data, null, 2));
-		} else {
-			console.log(result.data);
-		}
+			const paramsMap: Record<string, string> = {};
+			for (const p of bridgeValues.param || []) {
+				const [k, v] = p.split("=");
+				if (k && v) paramsMap[k] = v;
+			}
 
-		if (result.status >= 400) {
+			const headersMap: Record<string, string> = {};
+			for (const h of bridgeValues.header || []) {
+				const [k, v] = h.split(":");
+				if (k && v) headersMap[k.trim()] = v.trim();
+			}
+
+			console.error(`🚀 Executing ${bridgeValues.op}...`);
+			const result = await executeBridgeRequest(spec, {
+				operationId: bridgeValues.op,
+				params: paramsMap,
+				headers: headersMap,
+			});
+
+			console.error(`Response [${result.status}] ${result.statusText}`);
+			if (typeof result.data === "object") {
+				console.log(JSON.stringify(result.data, null, 2));
+			} else {
+				console.log(result.data);
+			}
+
+			if (result.status >= 400) {
+				process.exitCode = 1;
+			}
+			bus?.emit("bridge.executed", {
+				command: "bridge",
+				status: result.status >= 400 ? "error" : "ok",
+				metadata: { operationId: bridgeValues.op, status: result.status },
+			});
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error("Bridge Error:", message);
+			bus?.emit("cli.error", {
+				command: "bridge",
+				status: "error",
+				error: { code: "EXCEPTION", message },
+			});
 			process.exitCode = 1;
 		}
-		bus?.emit("bridge.executed", {
-			command: "bridge",
-			status: result.status >= 400 ? "error" : "ok",
-			metadata: { operationId: values.op, status: result.status },
-		});
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		console.error("Bridge Error:", message);
-		bus?.emit("cli.error", {
-			command: "bridge",
-			status: "error",
-			error: { code: "EXCEPTION", message },
-		});
-		process.exitCode = 1;
-	}
+	},
+};
+
+export default bridgeCommand;
+
+export async function runBridgeCommand(
+	values: BridgeValues,
+	positionals: string[],
+	bus?: EventBus,
+) {
+	// Legacy entry point for index.ts if needed, but we should use bridgeCommand.execute
+	await bridgeCommand.execute({ args: ["bridge", ...positionals], values, bus } as any);
 }
 
 export function printBridgeHelp() {
