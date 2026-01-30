@@ -1,3 +1,5 @@
+import type { EventBus } from "../core/event-bus";
+
 const jobsHelp = `
 Usage: nooa jobs <resume-path> [flags]
 
@@ -22,7 +24,11 @@ type JobsValues = {
 	help?: boolean;
 };
 
-export async function runJobsCommand(values: JobsValues, positionals: string[]) {
+export async function runJobsCommand(
+	values: JobsValues,
+	positionals: string[],
+	bus?: EventBus,
+) {
 	if (values.help) {
 		console.log(jobsHelp);
 		return;
@@ -35,6 +41,11 @@ export async function runJobsCommand(values: JobsValues, positionals: string[]) 
 
 		if (values.apply) {
 			applyToJob(Number.parseInt(values.apply));
+			bus?.emit("jobs.applied", {
+				command: "jobs",
+				status: "ok",
+				metadata: { id: values.apply },
+			});
 			return;
 		}
 
@@ -53,6 +64,14 @@ export async function runJobsCommand(values: JobsValues, positionals: string[]) 
 		const resumePath = positionals[0];
 		if (!resumePath || !values.search) {
 			console.error("Error: 'jobs <resume-path> --search <query>' is required.");
+			bus?.emit("cli.error", {
+				command: "jobs",
+				status: "error",
+				error: {
+					code: "MISSING_INPUT",
+					message: "jobs <resume-path> --search <query> is required",
+				},
+			});
 			process.exitCode = 1;
 			return;
 		}
@@ -68,6 +87,11 @@ export async function runJobsCommand(values: JobsValues, positionals: string[]) 
 				providers,
 			);
 			console.error("🚀 Keep-alive for scheduled tasks. Press Ctrl+C to stop.");
+			bus?.emit("jobs.saved", {
+				command: "jobs",
+				status: "ok",
+				metadata: { cron: values.cron },
+			});
 			return;
 		}
 
@@ -77,8 +101,18 @@ export async function runJobsCommand(values: JobsValues, positionals: string[]) 
 
 		console.log(`\n✅ Done! Found matches across ${providers.length} providers.`);
 		console.log("Run 'nooa jobs --list' to see all saved jobs.");
+		bus?.emit("jobs.matched", {
+			command: "jobs",
+			status: "ok",
+			metadata: { providers, query: values.search },
+		});
 	} catch (error: any) {
 		console.error("Jobs error:", error.message);
+		bus?.emit("cli.error", {
+			command: "jobs",
+			status: "error",
+			error: { code: "EXCEPTION", message: error.message },
+		});
 		process.exitCode = 1;
 	}
 }

@@ -36,6 +36,12 @@ export async function main(
 		allowPositionals: true,
 	});
 
+	const { EventBus } = await import("./src/core/event-bus.js");
+	const bus = new EventBus();
+	bus.on("cli.error", (payload) => {
+		if (values.json) console.log(JSON.stringify(payload, null, 2));
+	});
+
 	const subcommand = positionals[0];
 	const isBridge = subcommand === "bridge";
 	const isJobs = subcommand === "jobs";
@@ -43,17 +49,17 @@ export async function main(
 
 	if (values.help && isResume) {
 		const { runResumeCommand } = await import("./src/cli/resume.js");
-		await runResumeCommand(values, positionals.slice(1));
+		await runResumeCommand(values, positionals.slice(1), bus);
 		return;
 	}
 	if (values.help && isJobs) {
 		const { runJobsCommand } = await import("./src/cli/jobs.js");
-		await runJobsCommand(values, positionals.slice(1));
+		await runJobsCommand(values, positionals.slice(1), bus);
 		return;
 	}
 	if (values.help && isBridge) {
 		const { runBridgeCommand } = await import("./src/cli/bridge.js");
-		await runBridgeCommand(values, positionals.slice(1));
+		await runBridgeCommand(values, positionals.slice(1), bus);
 		return;
 	}
 
@@ -103,18 +109,18 @@ Jobs flags:
 
 	if (isBridge) {
 		const { runBridgeCommand } = await import("./src/cli/bridge.js");
-		await runBridgeCommand(values, positionals.slice(1));
+		await runBridgeCommand(values, positionals.slice(1), bus);
 		return;
 	}
 
 	if (isJobs) {
 		const { runJobsCommand } = await import("./src/cli/jobs.js");
-		await runJobsCommand(values, positionals.slice(1));
+		await runJobsCommand(values, positionals.slice(1), bus);
 		return;
 	}
 	const { runResumeCommand } = await import("./src/cli/resume.js");
 	const resumeArgs = isResume ? positionals.slice(1) : positionals;
-	await runResumeCommand(values, resumeArgs);
+	await runResumeCommand(values, resumeArgs, bus);
 }
 
 // Run if this is the main entry point

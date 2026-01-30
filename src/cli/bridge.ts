@@ -1,3 +1,5 @@
+import type { EventBus } from "../core/event-bus";
+
 const bridgeHelp = `
 Usage: nooa bridge <spec-url-or-path> [flags]
 
@@ -25,6 +27,7 @@ type BridgeValues = {
 export async function runBridgeCommand(
 	values: BridgeValues,
 	positionals: string[],
+	bus?: EventBus,
 ) {
 	if (values.help) {
 		console.log(bridgeHelp);
@@ -34,6 +37,11 @@ export async function runBridgeCommand(
 	const specSource = positionals[0];
 	if (!specSource) {
 		console.error("Error: OpenAPI spec URL or path is required for bridge.");
+		bus?.emit("cli.error", {
+			command: "bridge",
+			status: "error",
+			error: { code: "MISSING_INPUT", message: "Spec URL or path is required" },
+		});
 		process.exitCode = 1;
 		return;
 	}
@@ -55,11 +63,16 @@ export async function runBridgeCommand(
 			return;
 		}
 
-		if (!values.op) {
-			console.error("Error: --op <operationId> is required.");
-			process.exitCode = 1;
-			return;
-		}
+			if (!values.op) {
+				console.error("Error: --op <operationId> is required.");
+				bus?.emit("cli.error", {
+					command: "bridge",
+					status: "error",
+					error: { code: "MISSING_INPUT", message: "--op is required" },
+				});
+				process.exitCode = 1;
+				return;
+			}
 
 		const paramsMap: Record<string, string> = {};
 		for (const p of values.param || []) {
@@ -87,13 +100,23 @@ export async function runBridgeCommand(
 			console.log(result.data);
 		}
 
-		if (result.status >= 400) {
+			if (result.status >= 400) {
+				process.exitCode = 1;
+			}
+			bus?.emit("bridge.executed", {
+				command: "bridge",
+				status: result.status >= 400 ? "error" : "ok",
+				metadata: { operationId: values.op, status: result.status },
+			});
+		} catch (error: any) {
+			console.error("Bridge Error:", error.message);
+			bus?.emit("cli.error", {
+				command: "bridge",
+				status: "error",
+				error: { code: "EXCEPTION", message: error.message },
+			});
 			process.exitCode = 1;
 		}
-	} catch (error: any) {
-		console.error("Bridge Error:", error.message);
-		process.exitCode = 1;
-	}
 }
 
 export function printBridgeHelp() {
