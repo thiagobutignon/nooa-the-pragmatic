@@ -1,5 +1,5 @@
 import { execa } from "execa";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 
 const run = (args: string[]) =>
 	execa("bun", ["index.ts", ...args], { reject: false });
