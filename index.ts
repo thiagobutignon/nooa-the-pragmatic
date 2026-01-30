@@ -63,27 +63,6 @@ export async function main(
 		return;
 	}
 
-	// Legacy / Unmigrated Commands fallback
-	const isBridge = subcommand === "bridge";
-	const isJobs = subcommand === "jobs";
-	const isResume = subcommand === "resume";
-
-	if (values.help && isResume) {
-		const { runResumeCommand } = await import("./src/features/resume/cli.js");
-		await runResumeCommand(values, positionals.slice(1), bus);
-		return;
-	}
-	if (values.help && isJobs) {
-		const { runJobsCommand } = await import("./src/features/jobs/cli.js");
-		await runJobsCommand(values, positionals.slice(1), bus);
-		return;
-	}
-	if (values.help && isBridge) {
-		const { runBridgeCommand } = await import("./src/features/bridge/cli.js");
-		await runBridgeCommand(values, positionals.slice(1), bus);
-		return;
-	}
-
 	if (values.help) {
 		console.log(`
 Usage: nooa [flags] <subcommand> [args]
@@ -124,26 +103,14 @@ Jobs flags:
 		return;
 	}
 
-	// ... version check ...
 	if (values.version) {
 		console.log("nooa v0.0.1");
 		return;
 	}
 
-	if (isBridge) {
-		const { runBridgeCommand } = await import("./src/features/bridge/cli.js");
-		await runBridgeCommand(values, positionals.slice(1), bus);
-		return;
-	}
-
-	if (isJobs) {
-		const { runJobsCommand } = await import("./src/features/jobs/cli.js");
-		await runJobsCommand(values, positionals.slice(1), bus);
-		return;
-	}
-
+	// Default fallback: treat as resume if no subcommand matched or first arg is a file
 	const { runResumeCommand } = await import("./src/features/resume/cli.js");
-	const resumeArgs = isResume ? positionals.slice(1) : positionals;
+	const resumeArgs = subcommand === "resume" ? positionals.slice(1) : positionals;
 	await runResumeCommand(values, resumeArgs, bus);
 }
 

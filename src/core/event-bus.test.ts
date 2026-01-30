@@ -9,4 +9,27 @@ describe("EventBus", () => {
 		bus.emit("test.event", { id: "1" });
 		expect(events).toEqual(["1"]);
 	});
+
+	test("unsubscribes from events", () => {
+		const bus = new EventBus();
+		const events: string[] = [];
+		const handler = (payload: any) => events.push(payload.id);
+
+		bus.on("test", handler);
+		bus.emit("test", { id: "1" });
+		bus.off("test", handler);
+		bus.emit("test", { id: "2" });
+
+		expect(events).toEqual(["1"]);
+	});
+
+	test("handles off with non-existent event", () => {
+		const bus = new EventBus();
+		bus.off("missing", () => { }); // Should not throw
+	});
+
+	test("handles emit with no subscribers", () => {
+		const bus = new EventBus();
+		bus.emit("missing", {}); // Should not throw
+	});
 });

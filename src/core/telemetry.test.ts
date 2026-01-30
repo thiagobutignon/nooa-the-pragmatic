@@ -26,7 +26,29 @@ describe("TelemetryStore", () => {
 
 		const rows = telemetry.list({ event: "read.success" });
 		expect(rows.length).toBe(1);
-		expect(rows[0].event).toBe("read.success");
+		if (rows.length > 0) {
+			expect(rows[0].event).toBe("read.success");
+		}
+		telemetry.close();
+	});
+
+	it("filters by level and trace_id", () => {
+		const telemetry = new TelemetryStore(TEST_DB);
+		telemetry.track({ event: "a", level: "info", trace_id: "t1" });
+		telemetry.track({ event: "b", level: "error", trace_id: "t2" });
+
+		expect(telemetry.list({ level: "info" }).length).toBe(1);
+		expect(telemetry.list({ trace_id: "t2" }).length).toBe(1);
+		expect(telemetry.list({ level: "warn" }).length).toBe(0);
+		telemetry.close();
+	});
+
+	it("reopens database if closed", () => {
+		const telemetry = new TelemetryStore(TEST_DB);
+		telemetry.close();
+		// track should automatically reopen via ensureOpen
+		telemetry.track({ event: "reopen", level: "info" });
+		expect(telemetry.list({ event: "reopen" }).length).toBe(1);
 		telemetry.close();
 	});
 });
