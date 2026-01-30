@@ -27,8 +27,6 @@
 		"format:fix": "biome format src --write"
 	},
 	"dependencies": {
-		"marked": "^17.0.1",
-		"pdf-parse": "^2.4.5",
-		"puppeteer": "^24.36.1"
+		"marked": "^17.0.1"
 	}
 }
