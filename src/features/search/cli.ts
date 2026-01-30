@@ -116,17 +116,11 @@ const searchCommand: Command = {
 			const formatStart = Date.now();
 			if (values["files-only"]) {
 				const files = Array.from(new Set(results.map((r) => r.path)));
-				process.stdout.write(
-					`${files.join("\n")}${files.length ? "\n" : ""}`,
-				);
+				process.stdout.write(`${files.join("\n")}${files.length ? "\n" : ""}`);
 				console.error(`Found ${files.length} files`);
 			} else if (values.count) {
-				const lines = results.map(
-					(r) => `${r.path}:${r.matchCount ?? 0}`,
-				);
-				process.stdout.write(
-					`${lines.join("\n")}${lines.length ? "\n" : ""}`,
-				);
+				const lines = results.map((r) => `${r.path}:${r.matchCount ?? 0}`);
+				process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
 				console.error(`Found ${lines.length} files with matches`);
 			} else if (values.json) {
 				process.stdout.write(`${JSON.stringify(results, null, 2)}\n`);
@@ -135,9 +129,7 @@ const searchCommand: Command = {
 				const lines = results.map(
 					(r) => `${r.path}:${r.line}:${r.column}:${r.snippet}`,
 				);
-				process.stdout.write(
-					`${lines.join("\n")}${lines.length ? "\n" : ""}`,
-				);
+				process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
 				console.error(`Found ${results.length} matches`);
 			}
 			const formatMs = Date.now() - formatStart;

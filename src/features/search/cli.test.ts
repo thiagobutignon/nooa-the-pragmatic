@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { execa } from "execa";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execa } from "execa";
 import { TelemetryStore } from "../../core/telemetry";
 
 const binPath = "./index.ts";
@@ -42,7 +42,7 @@ describe("nooa search", () => {
 		);
 		await rm(root, { recursive: true, force: true });
 		expect(res.exitCode).toBe(0);
-		expect(res.stdout).toMatch(/^[\w\/.-]+:\d+:\d+:/m);
+		expect(res.stdout).toMatch(/^[\w/.-]+:\d+:\d+:/m);
 	});
 
 	it("lists files only", async () => {
