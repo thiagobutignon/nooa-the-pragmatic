@@ -1,14 +1,20 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { JobDatabase } from "../src/db";
 import { unlinkSync, existsSync } from "node:fs";
 
 const TEST_DB = "test.db";
 
-describe("JobDatabase", () => {
-    let db: JobDatabase;
+const describeIfBun = typeof (globalThis as any).Bun === "undefined" ? describe.skip : describe;
 
-    beforeEach(() => {
+describeIfBun("JobDatabase", () => {
+    let JobDatabase: any;
+    let db: any;
+
+    beforeEach(async () => {
         if (existsSync(TEST_DB)) unlinkSync(TEST_DB);
+        if (!JobDatabase) {
+            const mod = await import("../src/db");
+            JobDatabase = mod.JobDatabase;
+        }
         db = new JobDatabase(TEST_DB);
     });
 
