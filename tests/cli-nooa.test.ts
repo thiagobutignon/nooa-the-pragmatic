@@ -19,4 +19,9 @@ describe("nooa root", () => {
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout.trim()).toBe("nooa v0.0.1");
 	});
+
+	test("package.json exposes nooa bin", async () => {
+		const pkg = await Bun.file("package.json").json();
+		expect(pkg.bin.nooa).toBe("index.ts");
+	});
 });

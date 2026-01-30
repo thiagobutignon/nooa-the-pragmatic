@@ -16,7 +16,7 @@
 		"typescript": "^5.9.3"
 	},
 	"bin": {
-		"resume2md": "index.ts"
+		"nooa": "index.ts"
 	},
 	"scripts": {
 		"start": "bun run index.ts",
