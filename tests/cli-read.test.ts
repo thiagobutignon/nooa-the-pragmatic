@@ -31,4 +31,11 @@ describe("nooa read", () => {
 		expect(res.exitCode).toBe(1);
 		expect(res.stderr).toContain("not found");
 	});
+
+	test("reads file path from stdin", async () => {
+		await writeFile(OUT, "stdin-read");
+		const res = await run(["read"], `${OUT}\n`);
+		expect(res.exitCode).toBe(0);
+		expect(res.stdout).toBe("stdin-read");
+	});
 });
