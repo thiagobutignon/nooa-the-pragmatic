@@ -33,6 +33,7 @@ describe("nooa code write --patch", () => {
     expect(res.exitCode).toBe(0);
     expect(res.stdout).toContain("--patch");
     expect(res.stdout).toContain("--patch-from");
+    expect(res.stdout).toContain("Mutually exclusive");
   });
 });
 ```
@@ -48,6 +49,7 @@ Expected: FAIL (help missing flags).
 **Step 3: Write minimal implementation**
 
 Update `index.ts` help text to include `--patch` and `--patch-from <file>` and brief semantics.
+Add a note that `--patch` is mutually exclusive with `--from` and stdin content (non-patch).
 
 **Step 4: Run test to verify it passes**
 
@@ -161,8 +163,10 @@ Expected: FAIL (patch mode not implemented).
 
 In `index.ts`:
 - If `--patch` is set, read patch from stdin (or `--patch-from`) instead of normal content
+- Reject combinations: `--patch` with `--from` or non-patch stdin content
 - Read file content, apply patch via `applyPatch`
 - Write back if success; on conflict, exit code 1 with error message
+- If `--json`, include `{ path, bytes, overwritten, dryRun, mode: "patch", patched: true }`
 
 **Step 4: Run test to verify it passes**
 
@@ -190,6 +194,8 @@ bun test
 ```
 Expected: PASS.
 
+Note: If the environment hits the known `DOMMatrix`/pdfjs issue, record the failure and proceed per the project owner’s instruction.
+
 **Step 2: Run checks**
 
 ```
@@ -210,4 +216,3 @@ Expected: PASS.
 git add -A
 git commit -m "chore: finalize code write patch"
 ```
-
