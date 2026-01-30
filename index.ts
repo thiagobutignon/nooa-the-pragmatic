@@ -31,6 +31,10 @@ export async function main(
 			provider: { type: "string", multiple: true },
 			apply: { type: "string" },
 			cron: { type: "string" },
+			// Code write options
+			from: { type: "string" },
+			overwrite: { type: "boolean" },
+			"dry-run": { type: "boolean" },
 		},
 		strict: true,
 		allowPositionals: true,
@@ -46,6 +50,22 @@ export async function main(
 	const isBridge = subcommand === "bridge";
 	const isJobs = subcommand === "jobs";
 	const isResume = subcommand === "resume";
+	const isCode = subcommand === "code";
+	const codeAction = positionals[1];
+
+	const codeWriteHelp = `
+Usage: nooa code write <path> [flags]
+
+Arguments:
+  <path>              Destination file path.
+
+Flags:
+  --from <path>       Read content from a file (otherwise stdin is used).
+  --overwrite         Overwrite destination if it exists.
+  --json              Output result as JSON.
+  --dry-run           Do not write the file.
+  -h, --help          Show help.
+`;
 
 	if (values.help && isResume) {
 		const { runResumeCommand } = await import("./src/cli/resume.js");
@@ -60,6 +80,10 @@ export async function main(
 	if (values.help && isBridge) {
 		const { runBridgeCommand } = await import("./src/cli/bridge.js");
 		await runBridgeCommand(values, positionals.slice(1), bus);
+		return;
+	}
+	if (values.help && isCode && codeAction === "write") {
+		console.log(codeWriteHelp);
 		return;
 	}
 
@@ -118,6 +142,66 @@ Jobs flags:
 		await runJobsCommand(values, positionals.slice(1), bus);
 		return;
 	}
+
+	if (isCode && codeAction === "write") {
+		const targetPath = positionals[2];
+		if (!targetPath) {
+			console.error("Error: Destination path is required.");
+			process.exitCode = 2;
+			return;
+		}
+
+		try {
+			const { readFile } = await import("node:fs/promises");
+			let content = "";
+
+			if (!values.from && !process.stdin.isTTY) {
+				const stdinText = await new Response(process.stdin).text();
+				if (stdinText.length > 0) {
+					content = stdinText;
+				}
+			}
+
+			if (!content && values.from) {
+				content = await readFile(values.from, "utf-8");
+			}
+
+			if (!content) {
+				console.error("Error: Missing input. Use --from or stdin.");
+				process.exitCode = 2;
+				return;
+			}
+
+			const { writeCodeFile } = await import("./src/code/write.js");
+			const result = await writeCodeFile({
+				path: targetPath,
+				content,
+				overwrite: Boolean(values.overwrite),
+				dryRun: Boolean(values["dry-run"]),
+			});
+
+			if (values.json) {
+				console.log(
+					JSON.stringify(
+						{
+							path: result.path,
+							bytes: result.bytes,
+							overwritten: result.overwritten,
+							dryRun: Boolean(values["dry-run"]),
+						},
+						null,
+						2,
+					),
+				);
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(`Error: ${message}`);
+			process.exitCode = 1;
+		}
+		return;
+	}
+
 	const { runResumeCommand } = await import("./src/cli/resume.js");
 	const resumeArgs = isResume ? positionals.slice(1) : positionals;
 	await runResumeCommand(values, resumeArgs, bus);
