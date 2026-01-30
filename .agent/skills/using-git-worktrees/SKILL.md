@@ -103,8 +103,10 @@ cd "$path"
 Auto-detect and run appropriate setup:
 
 ```bash
-# Node.js
-if [ -f package.json ]; then npm install; fi
+# Node.js (prefer Bun when Bun lockfile exists)
+if [ -f package.json ]; then
+  if [ -f bun.lockb ] || [ -f bun.lock ]; then bun install; else npm install; fi
+fi
 
 # Rust
 if [ -f Cargo.toml ]; then cargo build; fi
