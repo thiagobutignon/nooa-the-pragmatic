@@ -1,4 +1,6 @@
 import type { Command, CommandContext } from "../../core/command";
+import { createTraceId, logger } from "../../core/logger";
+import { telemetry } from "../../core/telemetry";
 
 const readHelp = `
 Usage: nooa read <path> [flags]
@@ -14,9 +16,14 @@ Flags:
 const readCommand: Command = {
 	name: "read",
 	description: "Read file contents",
-	execute: async ({ args, values }: CommandContext) => {
+	execute: async ({ args, values, bus }: CommandContext) => {
+		const traceId = createTraceId();
+		const startTime = Date.now();
+		logger.setContext({ trace_id: traceId, command: "read" });
+
 		if (values.help) {
 			console.log(readHelp);
+			logger.clearContext();
 			return;
 		}
 
@@ -30,6 +37,19 @@ const readCommand: Command = {
 
 		if (!path) {
 			console.error("Error: Path is required.");
+			telemetry.track(
+				{
+					event: "read.failure",
+					level: "error",
+					success: false,
+					duration_ms: Date.now() - startTime,
+					trace_id: traceId,
+					metadata: { reason: "missing_path" },
+				},
+				bus,
+			);
+			logger.warn("read.missing_path", { duration_ms: Date.now() - startTime });
+			logger.clearContext();
 			process.exitCode = 2;
 			return;
 		}
@@ -37,6 +57,7 @@ const readCommand: Command = {
 		try {
 			const { readFile } = await import("node:fs/promises");
 			const content = await readFile(path, "utf-8");
+			const duration = Date.now() - startTime;
 
 			if (values.json) {
 				console.log(
@@ -53,15 +74,67 @@ const readCommand: Command = {
 			} else {
 				process.stdout.write(content);
 			}
+
+			telemetry.track(
+				{
+					event: "read.success",
+					level: "info",
+					success: true,
+					duration_ms: duration,
+					trace_id: traceId,
+					metadata: { path, bytes: Buffer.byteLength(content) },
+				},
+				bus,
+			);
+			logger.info("read.success", {
+				path,
+				bytes: Buffer.byteLength(content),
+				duration_ms: duration,
+			});
+			bus?.emit("read.completed", {
+				path,
+				bytes: Buffer.byteLength(content),
+				duration_ms: duration,
+				trace_id: traceId,
+				success: true,
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
+			const duration = Date.now() - startTime;
 			if (message.toLowerCase().includes("no such file")) {
 				console.error(`Error: File not found: ${path}`);
 			} else {
 				console.error(`Error: ${message}`);
 			}
+
+			telemetry.track(
+				{
+					event: "read.failure",
+					level: "error",
+					success: false,
+					duration_ms: duration,
+					trace_id: traceId,
+					metadata: { path, error: message },
+				},
+				bus,
+			);
+			logger.error("read.failure", error as Error, {
+				path,
+				duration_ms: duration,
+			});
+			bus?.emit("read.completed", {
+				path,
+				duration_ms: duration,
+				trace_id: traceId,
+				success: false,
+				error: message,
+			});
+			logger.clearContext();
 			process.exitCode = 1;
+			return;
 		}
+
+		logger.clearContext();
 	},
 };
 

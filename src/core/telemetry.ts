@@ -27,15 +27,27 @@ export interface TelemetryRow {
 const DEFAULT_DB_PATH = process.env.NOOA_DB_PATH || "nooa.db";
 
 export class TelemetryStore {
-	private db: Database;
+	private db: Database | null = null;
+	private dbPath: string;
 
 	constructor(path: string = DEFAULT_DB_PATH) {
-		this.db = new Database(path);
+		this.dbPath = path;
+		this.open();
+	}
+
+	private open() {
+		this.db = new Database(this.dbPath);
 		this.init();
 	}
 
+	private ensureOpen() {
+		if (!this.db) this.open();
+		return this.db;
+	}
+
 	private init() {
-		this.db.run(`
+		const db = this.ensureOpen();
+		db.run(`
             CREATE TABLE IF NOT EXISTS telemetry (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp INTEGER NOT NULL,
@@ -48,16 +60,17 @@ export class TelemetryStore {
             )
         `);
 
-		this.db.run("CREATE INDEX IF NOT EXISTS idx_event ON telemetry(event)");
-		this.db.run(
+		db.run("CREATE INDEX IF NOT EXISTS idx_event ON telemetry(event)");
+		db.run(
 			"CREATE INDEX IF NOT EXISTS idx_timestamp ON telemetry(timestamp)",
 		);
-		this.db.run("CREATE INDEX IF NOT EXISTS idx_trace ON telemetry(trace_id)");
+		db.run("CREATE INDEX IF NOT EXISTS idx_trace ON telemetry(trace_id)");
 	}
 
 	track(event: TelemetryEvent, bus?: EventBus): number | bigint {
 		const timestamp = event.timestamp ?? Date.now();
-		const query = this.db.prepare(`
+		const db = this.ensureOpen();
+		const query = db.prepare(`
             INSERT INTO telemetry (
                 timestamp, event, level, duration_ms, metadata, trace_id, success
             ) VALUES (
@@ -85,6 +98,7 @@ export class TelemetryStore {
 	}
 
 	list(filters: { event?: string; trace_id?: string; level?: string } = {}) {
+		const db = this.ensureOpen();
 		let sql = "SELECT * FROM telemetry";
 		const params: Record<string, string> = {};
 		const clauses: string[] = [];
@@ -107,11 +121,12 @@ export class TelemetryStore {
 		}
 
 		sql += " ORDER BY timestamp DESC";
-		return this.db.query(sql).all(params) as TelemetryRow[];
+		return db.query(sql).all(params) as TelemetryRow[];
 	}
 
 	close() {
-		this.db.close();
+		if (this.db) this.db.close();
+		this.db = null;
 	}
 }
 

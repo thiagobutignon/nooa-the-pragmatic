@@ -1,4 +1,6 @@
 import type { Command, CommandContext } from "../../core/command";
+import { createTraceId, logger } from "../../core/logger";
+import { telemetry } from "../../core/telemetry";
 
 const codeWriteHelp = `
 Usage: nooa code write <path> [flags]
@@ -20,132 +22,286 @@ Notes:
 `;
 
 const codeCommand: Command = {
-    name: "code",
-    description: "Code operations (write, patch)",
-    execute: async ({ args, values }: CommandContext) => {
-        const action = args[1];
+	name: "code",
+	description: "Code operations (write, patch)",
+	execute: async ({ args, values, bus }: CommandContext) => {
+		const action = args[1];
+		const traceId = createTraceId();
+		const startTime = Date.now();
+		logger.setContext({ trace_id: traceId, command: "code", action });
 
-        if (values.help) {
-            console.log(codeWriteHelp);
-            return;
-        }
+		if (values.help) {
+			console.log(codeWriteHelp);
+			logger.clearContext();
+			return;
+		}
 
-        if (action === "write") {
-            const targetPath = args[2];
-            if (!targetPath) {
-                console.error("Error: Destination path is required.");
-                process.exitCode = 2;
-                return;
-            }
+		if (action === "write") {
+			const targetPath = args[2];
+			if (!targetPath) {
+				console.error("Error: Destination path is required.");
+				telemetry.track(
+					{
+						event: "code.write.failure",
+						level: "error",
+						success: false,
+						duration_ms: Date.now() - startTime,
+						trace_id: traceId,
+						metadata: { reason: "missing_path" },
+					},
+					bus,
+				);
+				logger.warn("code.write.missing_path", {
+					duration_ms: Date.now() - startTime,
+				});
+				logger.clearContext();
+				process.exitCode = 2;
+				return;
+			}
 
-            try {
-                const { readFile, writeFile } = await import("node:fs/promises");
-                const isPatchMode = Boolean(values.patch || values["patch-from"]);
-                let content = "";
-                let patched = false;
+			try {
+				const { readFile, writeFile } = await import("node:fs/promises");
+				const isPatchMode = Boolean(values.patch || values["patch-from"]);
+				let content = "";
+				let patched = false;
 
-                if (isPatchMode && values.from) {
-                    console.error("Error: --patch is mutually exclusive with --from.");
-                    process.exitCode = 2;
-                    return;
-                }
+				if (isPatchMode && values.from) {
+					console.error("Error: --patch is mutually exclusive with --from.");
+					telemetry.track(
+						{
+							event: "code.patch.failure",
+							level: "error",
+							success: false,
+							duration_ms: Date.now() - startTime,
+							trace_id: traceId,
+							metadata: { reason: "patch_with_from" },
+						},
+						bus,
+					);
+					logger.warn("code.patch.invalid_flags", {
+						duration_ms: Date.now() - startTime,
+					});
+					logger.clearContext();
+					process.exitCode = 2;
+					return;
+				}
 
-                if (isPatchMode) {
-                    let patchText = "";
-                    if (values["patch-from"]) {
-                        patchText = await readFile(String(values["patch-from"]), "utf-8");
-                    } else if (!process.stdin.isTTY) {
-                        patchText = await new Response(process.stdin).text();
-                    }
+				if (isPatchMode) {
+					let patchText = "";
+					if (values["patch-from"]) {
+						patchText = await readFile(String(values["patch-from"]), "utf-8");
+					} else if (!process.stdin.isTTY) {
+						patchText = await new Response(process.stdin).text();
+					}
 
-                    if (!patchText) {
-                        console.error(
-                            "Error: Missing patch input. Use --patch-from or stdin.",
-                        );
-                        process.exitCode = 2;
-                        return;
-                    }
+					if (!patchText) {
+						console.error(
+							"Error: Missing patch input. Use --patch-from or stdin.",
+						);
+						telemetry.track(
+							{
+								event: "code.patch.failure",
+								level: "error",
+								success: false,
+								duration_ms: Date.now() - startTime,
+								trace_id: traceId,
+								metadata: { reason: "missing_patch_input" },
+							},
+							bus,
+						);
+						logger.warn("code.patch.missing_input", {
+							duration_ms: Date.now() - startTime,
+						});
+						logger.clearContext();
+						process.exitCode = 2;
+						return;
+					}
 
-                    const { applyPatch } = await import("./patch.js");
-                    const originalText = await readFile(targetPath, "utf-8");
-                    content = applyPatch(originalText, patchText);
-                    patched = true;
-                    if (!values["dry-run"]) {
-                        await writeFile(targetPath, content, "utf-8");
-                    }
-                } else {
-                    if (!values.from && !process.stdin.isTTY) {
-                        const stdinText = await new Response(process.stdin).text();
-                        if (stdinText.length > 0) {
-                            content = stdinText;
-                        }
-                    }
+					const { applyPatch } = await import("./patch.js");
+					const originalText = await readFile(targetPath, "utf-8");
+					content = applyPatch(originalText, patchText);
+					patched = true;
+					if (!values["dry-run"]) {
+						await writeFile(targetPath, content, "utf-8");
+					}
+				} else {
+					if (!values.from && !process.stdin.isTTY) {
+						const stdinText = await new Response(process.stdin).text();
+						if (stdinText.length > 0) {
+							content = stdinText;
+						}
+					}
 
-                    if (!content && values.from) {
-                        content = await readFile(String(values.from), "utf-8");
-                    }
+					if (!content && values.from) {
+						content = await readFile(String(values.from), "utf-8");
+					}
 
-                    if (!content) {
-                        console.error("Error: Missing input. Use --from or stdin.");
-                        process.exitCode = 2;
-                        return;
-                    }
+					if (!content) {
+						console.error("Error: Missing input. Use --from or stdin.");
+						telemetry.track(
+							{
+								event: "code.write.failure",
+								level: "error",
+								success: false,
+								duration_ms: Date.now() - startTime,
+								trace_id: traceId,
+								metadata: { reason: "missing_input" },
+							},
+							bus,
+						);
+						logger.warn("code.write.missing_input", {
+							duration_ms: Date.now() - startTime,
+						});
+						logger.clearContext();
+						process.exitCode = 2;
+						return;
+					}
 
-                    const { writeCodeFile } = await import("./write.js");
-                    const result = await writeCodeFile({
-                        path: targetPath,
-                        content,
-                        overwrite: Boolean(values.overwrite),
-                        dryRun: Boolean(values["dry-run"]),
-                    });
+					const { writeCodeFile } = await import("./write.js");
+					const result = await writeCodeFile({
+						path: targetPath,
+						content,
+						overwrite: Boolean(values.overwrite),
+						dryRun: Boolean(values["dry-run"]),
+					});
 
-                    if (values.json) {
-                        console.log(
-                            JSON.stringify(
-                                {
-                                    path: result.path,
-                                    bytes: result.bytes,
-                                    overwritten: result.overwritten,
-                                    dryRun: Boolean(values["dry-run"]),
-                                    mode: "write",
-                                    patched: false,
-                                },
-                                null,
-                                2,
-                            ),
-                        );
-                    }
+					if (values.json) {
+						console.log(
+							JSON.stringify(
+								{
+									path: result.path,
+									bytes: result.bytes,
+									overwritten: result.overwritten,
+									dryRun: Boolean(values["dry-run"]),
+									mode: "write",
+									patched: false,
+								},
+								null,
+								2,
+							),
+						);
+					}
 
-                    return;
-                }
+					const duration = Date.now() - startTime;
+					telemetry.track(
+						{
+							event: "code.write.success",
+							level: "info",
+							success: true,
+							duration_ms: duration,
+							trace_id: traceId,
+							metadata: {
+								path: result.path,
+								bytes: result.bytes,
+								overwritten: result.overwritten,
+								dry_run: Boolean(values["dry-run"]),
+							},
+						},
+						bus,
+					);
+					logger.info("code.write.success", {
+						path: result.path,
+						bytes: result.bytes,
+						overwritten: result.overwritten,
+						dry_run: Boolean(values["dry-run"]),
+						duration_ms: duration,
+					});
+					bus?.emit("code.completed", {
+						action: "write",
+						path: result.path,
+						bytes: result.bytes,
+						duration_ms: duration,
+						trace_id: traceId,
+						success: true,
+					});
+					logger.clearContext();
+					return;
+				}
 
-                if (values.json) {
-                    console.log(
-                        JSON.stringify(
-                            {
-                                path: targetPath,
-                                bytes: Buffer.byteLength(content),
-                                overwritten: true,
-                                dryRun: Boolean(values["dry-run"]),
-                                mode: "patch",
-                                patched,
-                            },
-                            null,
-                            2,
-                        ),
-                    );
-                }
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                console.error(`Error: ${message}`);
-                process.exitCode = 1;
-            }
-            return;
-        }
+				if (values.json) {
+					console.log(
+						JSON.stringify(
+							{
+								path: targetPath,
+								bytes: Buffer.byteLength(content),
+								overwritten: true,
+								dryRun: Boolean(values["dry-run"]),
+								mode: "patch",
+								patched,
+							},
+							null,
+							2,
+						),
+					);
+				}
 
-        // Fallback for unknown action
-        console.log(codeWriteHelp);
-    }
+				const duration = Date.now() - startTime;
+				telemetry.track(
+					{
+						event: "code.patch.success",
+						level: "info",
+						success: true,
+						duration_ms: duration,
+						trace_id: traceId,
+						metadata: {
+							path: targetPath,
+							bytes: Buffer.byteLength(content),
+							dry_run: Boolean(values["dry-run"]),
+						},
+					},
+					bus,
+				);
+				logger.info("code.patch.success", {
+					path: targetPath,
+					bytes: Buffer.byteLength(content),
+					dry_run: Boolean(values["dry-run"]),
+					duration_ms: duration,
+				});
+				bus?.emit("code.completed", {
+					action: "patch",
+					path: targetPath,
+					bytes: Buffer.byteLength(content),
+					duration_ms: duration,
+					trace_id: traceId,
+					success: true,
+				});
+				logger.clearContext();
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				const duration = Date.now() - startTime;
+				console.error(`Error: ${message}`);
+				telemetry.track(
+					{
+						event: "code.write.failure",
+						level: "error",
+						success: false,
+						duration_ms: duration,
+						trace_id: traceId,
+						metadata: { error: message },
+					},
+					bus,
+				);
+				logger.error("code.write.failure", error as Error, {
+					duration_ms: duration,
+				});
+				bus?.emit("code.completed", {
+					action,
+					duration_ms: duration,
+					trace_id: traceId,
+					success: false,
+					error: message,
+				});
+				logger.clearContext();
+				process.exitCode = 1;
+			}
+			logger.clearContext();
+			return;
+		}
+
+		// Fallback for unknown action
+		console.log(codeWriteHelp);
+		logger.clearContext();
+	},
 };
 
 export default codeCommand;
