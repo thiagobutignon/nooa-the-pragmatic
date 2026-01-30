@@ -55,4 +55,98 @@ describe("nooa worktree", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it("respects --no-install and --no-test", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-worktree-"));
+		try {
+			await execa("git", ["init"], { cwd: root });
+			await execa("git", ["branch", "-m", "main"], { cwd: root });
+			await writeFile(join(root, ".gitignore"), ".worktrees\n");
+			await writeFile(
+				join(root, "package.json"),
+				JSON.stringify({ name: "tmp", version: "0.0.0" }),
+			);
+			await writeFile(join(root, "README.md"), "hello\n");
+			await execa("git", ["add", "."], { cwd: root });
+			await execa(
+				"git",
+				[
+					"-c",
+					"user.email=test@example.com",
+					"-c",
+					"user.name=test",
+					"commit",
+					"-m",
+					"init",
+				],
+				{ cwd: root },
+			);
+
+			const res = await execa(
+				"bun",
+				[binPath, "worktree", "feat/skip", "--no-install", "--no-test"],
+				{ cwd: root, reject: false },
+			);
+
+			expect(res.exitCode).toBe(0);
+			expect(
+				existsSync(join(root, ".worktrees", "feat/skip", "node_modules")),
+			).toBe(false);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("installs deps and runs tests by default", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-worktree-"));
+		try {
+			await execa("git", ["init"], { cwd: root });
+			await execa("git", ["branch", "-m", "main"], { cwd: root });
+			await writeFile(join(root, ".gitignore"), ".worktrees\n");
+			await writeFile(
+				join(root, "package.json"),
+				JSON.stringify({ name: "tmp", version: "0.0.0" }),
+			);
+			await writeFile(
+				join(root, "example.test.ts"),
+				`import { writeFileSync } from "node:fs";
+import { test, expect } from "bun:test";
+
+test("marker", () => {
+\twriteFileSync("test-ran.txt", "ok");
+\texpect(true).toBe(true);
+});
+`,
+			);
+			await execa("git", ["add", "."], { cwd: root });
+			await execa(
+				"git",
+				[
+					"-c",
+					"user.email=test@example.com",
+					"-c",
+					"user.name=test",
+					"commit",
+					"-m",
+					"init",
+				],
+				{ cwd: root },
+			);
+
+			const res = await execa("bun", [binPath, "worktree", "feat/defaults"], {
+				cwd: root,
+				reject: false,
+			});
+
+			expect(res.exitCode).toBe(0);
+			expect(
+				existsSync(join(root, ".worktrees", "feat/defaults", "node_modules")),
+			).toBe(true);
+			expect(
+				existsSync(join(root, ".worktrees", "feat/defaults", "test-ran.txt")),
+			).toBe(true);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });

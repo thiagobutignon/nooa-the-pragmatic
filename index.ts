@@ -17,6 +17,10 @@ export async function main(
 			"dry-run": { type: "boolean" },
 			patch: { type: "boolean" },
 			"patch-from": { type: "string" },
+			// Worktree options
+			base: { type: "string" },
+			"no-install": { type: "boolean" },
+			"no-test": { type: "boolean" },
 			// Search options
 			regex: { type: "boolean" },
 			"case-sensitive": { type: "boolean" },

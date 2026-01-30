@@ -2,6 +2,7 @@ import type { Command, CommandContext } from "../../core/command";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { execa } from "execa";
 import { git } from "./git";
 
 const worktreeHelp = `
@@ -97,6 +98,44 @@ const worktreeCommand: Command = {
 			console.error(`Error: Git worktree failed: ${addResult.stderr}`);
 			process.exitCode = 1;
 			return;
+		}
+
+		const skipInstall = Boolean(values["no-install"]) ||
+			process.env.NOOA_SKIP_INSTALL === "1";
+		const skipTest = Boolean(values["no-test"]) ||
+			process.env.NOOA_SKIP_TEST === "1";
+		const childEnv = { ...process.env };
+		delete childEnv.BUN_TEST;
+		delete childEnv.BUN_TEST_FILE;
+		delete childEnv.BUN_TEST_NAME;
+
+		if (!skipInstall && existsSync(join(worktreePath, "package.json"))) {
+			const installResult = await execa("bun", ["install"], {
+				cwd: worktreePath,
+				reject: false,
+				env: childEnv,
+			});
+			if (installResult.exitCode !== 0) {
+				console.error("Error: Dependency install failed.");
+				process.exitCode = 1;
+				return;
+			}
+		}
+
+		if (!skipTest) {
+			const testResult = await execa("bun", ["test"], {
+				cwd: worktreePath,
+				reject: false,
+				env: childEnv,
+			});
+			if (testResult.exitCode !== 0) {
+				console.error("Error: Tests failed.");
+				if (testResult.stderr) {
+					console.error(testResult.stderr);
+				}
+				process.exitCode = 1;
+				return;
+			}
 		}
 	},
 };
