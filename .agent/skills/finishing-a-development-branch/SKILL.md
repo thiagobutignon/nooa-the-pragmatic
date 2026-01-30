@@ -37,6 +37,23 @@ Stop. Don't proceed to Step 2.
 
 **If tests pass:** Continue to Step 2.
 
+### Step 1.5: Dogfood NOOA CLI (Required)
+
+If the change adds or modifies NOOA CLI behavior, you MUST dogfood it before offering options.
+
+**Minimum dogfood run (safe):**
+```bash
+# Use --help and a safe invocation (prefer --dry-run when available)
+bun run index.ts --help
+bun run index.ts <subcommand> --help
+
+# If the feature changes code writing or file changes:
+bun run index.ts code write /tmp/nooa-dogfood.txt --from /tmp/nooa-input.txt --dry-run --json
+```
+
+**Bugfinder trigger:**
+If the dogfood run fails or exits non-zero, stop and run a focused bugfind (search relevant files, reproduce, fix) before Step 2.
+
 ### Step 2: Determine Base Branch
 
 ```bash
@@ -164,6 +181,10 @@ git worktree remove <worktree-path>
 - **Problem:** Merge broken code, create failing PR
 - **Fix:** Always verify tests before offering options
 
+**Skipping NOOA CLI dogfood**
+- **Problem:** Ship CLI behavior that was never executed end-to-end
+- **Fix:** Always run NOOA CLI for modified subcommands (use --help and safe --dry-run)
+
 **Open-ended questions**
 - **Problem:** "What should I do next?" → ambiguous
 - **Fix:** Present exactly 4 structured options
@@ -180,6 +201,7 @@ git worktree remove <worktree-path>
 
 **Never:**
 - Proceed with failing tests
+- Skip NOOA CLI dogfood for modified CLI behavior
 - Merge without verifying tests on result
 - Delete work without confirmation
 - Force-push without explicit request
