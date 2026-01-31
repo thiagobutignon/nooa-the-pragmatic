@@ -1,4 +1,5 @@
 import type { Command, CommandContext } from "../../core/command";
+import type { MessageOptions, MessageRole } from "./types";
 
 const messageHelp = `
 Usage: nooa message <text>
@@ -19,6 +20,8 @@ Examples:
   nooa message "Summarize this" --json
 `;
 
+const VALID_ROLES: MessageRole[] = ["user", "system", "assistant"];
+
 const messageCommand: Command = {
     name: "message",
     description: "Send a message to the AI agent",
@@ -28,7 +31,7 @@ const messageCommand: Command = {
     },
     execute: async ({ rawArgs }: CommandContext) => {
         const { parseArgs } = await import("node:util");
-        const { values } = parseArgs({
+        const { values, positionals } = parseArgs({
             args: rawArgs,
             options: {
                 ...messageCommand.options,
@@ -43,7 +46,26 @@ const messageCommand: Command = {
             return;
         }
 
-        // TBD: Other logic will be implemented in Task 2 and 3
+        const content = positionals[1];
+        if (!content) {
+            console.error("Error: Message text is required");
+            process.exitCode = 1;
+            return;
+        }
+
+        const role = (values.role || "user") as string;
+        if (!VALID_ROLES.includes(role as MessageRole)) {
+            console.error(`Invalid role: ${role}. Must be one of: ${VALID_ROLES.join(", ")}`);
+            process.exitCode = 1;
+            return;
+        }
+
+        const options: MessageOptions = {
+            role: role as MessageRole,
+            json: !!values.json,
+        };
+
+        // TBD: Task 3 - Execution and Telemetry
     },
 };
 
