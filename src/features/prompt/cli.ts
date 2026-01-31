@@ -37,6 +37,7 @@ const promptCommand: Command = {
 			options: {
 				var: { type: "string", multiple: true },
 				json: { type: "boolean" },
+				all: { type: "boolean" },
 				help: { type: "boolean", short: "h" },
 			},
 			strict: true,
