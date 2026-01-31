@@ -53,4 +53,62 @@ describe("nooa commit", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it("runs tests by default", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-commit-"));
+		try {
+			await execa("git", ["init"], { cwd: root });
+			await execa("git", ["branch", "-m", "main"], { cwd: root });
+			await writeFile(
+				join(root, "package.json"),
+				JSON.stringify({ name: "tmp", version: "0.0.0" }),
+			);
+			await writeFile(
+				join(root, "example.test.ts"),
+				`import { writeFileSync } from "node:fs";
+import { test, expect } from "bun:test";
+
+test("marker", () => {
+\twriteFileSync("test-ran.txt", "ok");
+\texpect(true).toBe(true);
+});
+`,
+			);
+			await writeFile(join(root, "file.txt"), "hello\n");
+			await execa("git", ["add", "."], { cwd: root });
+			await execa(
+				"git",
+				[
+					"-c",
+					"user.email=test@example.com",
+					"-c",
+					"user.name=test",
+					"commit",
+					"-m",
+					"init",
+					"--allow-empty",
+				],
+				{ cwd: root },
+			);
+
+			await writeFile(join(root, "file.txt"), "hello again\n");
+			await execa("git", ["add", "."], { cwd: root });
+
+			const res = await execa(
+				"bun",
+				[binPath, "commit", "-m", "commit with tests"],
+				{ cwd: root, reject: false },
+			);
+
+			expect(res.exitCode).toBe(0);
+			const ran = await execa("git", ["rev-parse", "HEAD"], { cwd: root });
+			expect(ran.exitCode).toBe(0);
+			const marker = await execa("test", ["-f", join(root, "test-ran.txt")], {
+				reject: false,
+			});
+			expect(marker.exitCode).toBe(0);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });

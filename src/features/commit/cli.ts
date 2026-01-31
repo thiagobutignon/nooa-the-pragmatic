@@ -8,6 +8,7 @@ import {
 	hasPendingChanges,
 	hasStagedChanges,
 } from "./guards";
+import { execa } from "execa";
 
 const commitHelp = `
 Usage: nooa commit -m <message> [flags]
@@ -90,9 +91,12 @@ const commitCommand: Command = {
 		);
 
 		if (!values["no-test"]) {
-			const testResult = await git(["--version"], cwd);
+			const testResult = await execa("bun", ["test"], {
+				cwd,
+				reject: false,
+			});
 			if (testResult.exitCode !== 0) {
-				console.error("Error: Pre-test check failed.");
+				console.error("Error: Tests failed.");
 				process.exitCode = 1;
 				return;
 			}
