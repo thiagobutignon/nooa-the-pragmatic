@@ -10,7 +10,8 @@ describe("nooa root", () => {
 		const res = await run(["--help"]);
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa");
-		expect(res.stdout).toContain("search <query>");
+		expect(res.stdout).toContain("search");
+		expect(res.stdout).toContain("Search files and file contents");
 	});
 
 	test("nooa --version prints 0.0.1", async () => {
