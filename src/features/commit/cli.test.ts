@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { execa } from "execa";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
@@ -12,5 +15,42 @@ describe("nooa commit", () => {
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa commit -m");
 		expect(res.stdout).toContain("--no-test");
+	});
+
+	it("blocks TODO markers by default", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-commit-"));
+		try {
+			await execa("git", ["init"], { cwd: root });
+			await execa("git", ["branch", "-m", "main"], { cwd: root });
+			await writeFile(join(root, "todo.txt"), "TODO: fix me\n");
+			await execa("git", ["add", "."], { cwd: root });
+			await execa(
+				"git",
+				[
+					"-c",
+					"user.email=test@example.com",
+					"-c",
+					"user.name=test",
+					"commit",
+					"-m",
+					"init",
+					"--allow-empty",
+				],
+				{ cwd: root },
+			);
+			await writeFile(join(root, "todo.txt"), "TODO: fix me again\n");
+			await execa("git", ["add", "."], { cwd: root });
+
+			const res = await execa(
+				"bun",
+				[binPath, "commit", "-m", "test commit"],
+				{ cwd: root, reject: false },
+			);
+
+			expect(res.exitCode).toBe(2);
+			expect(res.stderr).toContain("TODO");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
 	});
 });
