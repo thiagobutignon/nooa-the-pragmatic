@@ -7,11 +7,20 @@ import { tmpdir } from "node:os";
 describe("executeReview", () => {
     let root = "";
 
+    let originalProvider: string | undefined;
+
     beforeEach(async () => {
         root = await mkdtemp(join(tmpdir(), "nooa-review-exec-"));
+        originalProvider = process.env.NOOA_AI_PROVIDER;
+        process.env.NOOA_AI_PROVIDER = "mock";
     });
 
     afterEach(async () => {
+        if (originalProvider) {
+            process.env.NOOA_AI_PROVIDER = originalProvider;
+        } else {
+            delete process.env.NOOA_AI_PROVIDER;
+        }
         await rm(root, { recursive: true, force: true });
     });
 
