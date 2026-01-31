@@ -45,22 +45,24 @@ function parseStringMode(args: string[]): PipelineStep[] {
 }
 
 function createStep(argv: string[], original?: string): PipelineStep {
+    // Unescape literal delimiters \-- -> --
+    const unescapedArgv = argv.map(arg => arg === "\\--" ? "--" : arg);
     const rawOriginal = original ?? argv.join(" ");
 
     // Policy: explicit 'exec' prefix forces external
-    if (argv[0] === "exec") {
+    if (unescapedArgv[0] === "exec") {
         return {
             kind: "external",
-            argv: argv.slice(1),
+            argv: unescapedArgv.slice(1),
             original: rawOriginal,
         };
     }
 
     // Policy: 'nooa' prefix is optional for internal commands
-    if (argv[0] === "nooa") {
+    if (unescapedArgv[0] === "nooa") {
         return {
             kind: "internal",
-            argv: argv.slice(1),
+            argv: unescapedArgv.slice(1),
             original: rawOriginal,
         };
     }
@@ -68,7 +70,7 @@ function createStep(argv: string[], original?: string): PipelineStep {
     // Default to internal for safety (executor will validate if command exists)
     return {
         kind: "internal",
-        argv,
+        argv: unescapedArgv,
         original: rawOriginal,
     };
 }

@@ -24,9 +24,17 @@ nooa run [flags] "<cmd1>" "<cmd2>"
 ## Flags
 - `--continue-on-error`: Keep executing subsequent steps even if one fails. Default: stops on first error.
 - `--json`: Output final execution results as structured JSON (includes `schemaVersion` and `runId`).
+- `--capture-output`: Capture `stdout` and `stderr` for each step (external commands only). Requires `--json`.
 - `--allow-external`: Allow executing any shell command without the `exec` prefix.
 - `--dry-run`: Parse the pipeline and display the execution plan without running it.
 - `-h, --help`: Show help message.
+
+## Delimiter Escaping
+If you need to pass a literal `--` as an argument to a command within the pipeline, escape it as `\--`. 
+
+> [!TIP]
+> Depending on your shell (zsh/bash), you may need to double-escape it: `\\--`.
+> Example: `nooa run -- exec echo "abc \\-- def"` outputs `abc -- def`.
 
 ## Execution Policy (Safety)
 To prevent accidental execution of harmful shell commands, `nooa run` follows a strict policy:

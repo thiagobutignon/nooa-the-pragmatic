@@ -8,6 +8,7 @@ export interface PipelineStep {
 
 export interface RunOptions {
     json: boolean;
+    captureOutput: boolean;
     continueOnError: boolean;
     allowExternal: boolean;
     cwd?: string;

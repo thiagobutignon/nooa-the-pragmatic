@@ -19,29 +19,10 @@ Modes:
 Flags:
   --continue-on-error   Continue to next step even if a step fails.
   --json                Output results as JSON (includes schemaVersion and runId).
+  --capture-output      Capture stdout/stderr for each step (external commands only).
   --allow-external      Allow executing non-nooa commands (without 'exec' prefix).
   --dry-run             Parse and show plan without executing.
   -h, --help            Show help message.
-
-Examples:
-  # Standard development loop (delimiter mode)
-  nooa run -- code write src/app.ts -- exec bun run linter -- commit -m "feat: app" -- push
-
-  # Explicit external execution (safe)
-  nooa run -- exec bun test -- commit -m "test: pass"
-
-  # Worktree workflow (Agentic)
-  nooa run -- \\
-    worktree create --name ai/feat-x -- \\
-    code write src/x.test.ts --from specs/x.md -- \\
-    commit -m "test: add x tests" -- \\
-    push -- \\
-    worktree remove --name ai/feat-x
-
-Exit Codes:
-  0: Success (all steps passed)
-  1: Runtime Error (execution failed)
-  2: Validation Error (invalid syntax or policy violation)
 `;
 
 const runCommand: Command = {
@@ -54,13 +35,6 @@ const runCommand: Command = {
         const { parseArgs } = await import("node:util");
         const { randomUUID } = await import("node:crypto");
 
-        // We can't use standard parseArgs easily because of the "--" delimiter usage which parseArgs swallows or handles specifically.
-        // However, for the "flags" part *before* the first "--", we might want to parse options.
-        // But in Delimiter Mode, the first "--" is the start of the first command usually?
-        // Actually, the user proposal was `nooa run -- ...`.
-        // Let's implement a manual pre-parse to extract flags before any "--" or command args.
-
-
         const { flags, rest } = extractFlags(args);
 
         if (flags.help) {
@@ -70,6 +44,7 @@ const runCommand: Command = {
 
         const options: RunOptions = {
             json: flags.json || false,
+            captureOutput: flags.captureOutput || false,
             continueOnError: flags.continueOnError || false,
             allowExternal: flags.allowExternal || false,
             cwd: process.cwd(),
@@ -117,7 +92,7 @@ const runCommand: Command = {
 };
 
 function extractFlags(args: string[]): {
-    flags: { help?: boolean; json?: boolean; continueOnError?: boolean; allowExternal?: boolean; dryRun?: boolean };
+    flags: { help?: boolean; json?: boolean; captureOutput?: boolean; continueOnError?: boolean; allowExternal?: boolean; dryRun?: boolean };
     rest: string[];
 } {
     const flags: any = {};
@@ -141,6 +116,7 @@ function extractFlags(args: string[]): {
         if (parsingFlags && arg.startsWith("-")) {
             if (arg === "-h" || arg === "--help") flags.help = true;
             else if (arg === "--json") flags.json = true;
+            else if (arg === "--capture-output") flags.captureOutput = true;
             else if (arg === "--continue-on-error") flags.continueOnError = true;
             else if (arg === "--allow-external") flags.allowExternal = true;
             else if (arg === "--dry-run") flags.dryRun = true;

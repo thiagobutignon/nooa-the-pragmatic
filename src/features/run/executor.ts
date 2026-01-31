@@ -25,11 +25,13 @@ export async function executePipeline(
         try {
             if (step.kind === "external") {
                 // Explicit 'exec' prefix used in parser
-                await executeExternal(step, options);
+                const output = await executeExternal(step, options);
                 results.push({
                     step,
                     exitCode: 0,
                     durationMs: Date.now() - startTime,
+                    stdout: output?.stdout,
+                    stderr: output?.stderr,
                 });
             } else {
                 // Internal or Implicit External
@@ -46,11 +48,13 @@ export async function executePipeline(
                 } else {
                     // Not found in registry AND not marked external explicitly
                     if (options.allowExternal) {
-                        await executeExternal(step, options);
+                        const output = await executeExternal(step, options);
                         results.push({
                             step,
                             exitCode: 0,
                             durationMs: Date.now() - startTime,
+                            stdout: output?.stdout,
+                            stderr: output?.stderr,
                         });
                     } else {
                         const cmdNamePlaceholder = cmdName || "unknown";
@@ -100,9 +104,19 @@ async function executeExternal(step: PipelineStep, options: RunOptions) {
     if (!file) {
         throw new Error(`Empty external command in step: ${step.original}`);
     }
-    await execa(file, args, {
+
+    const execOptions: any = {
         cwd: options.cwd || process.cwd(),
-        stdio: "inherit",
         reject: true, // throw on error
-    });
+    };
+
+    if (options.captureOutput) {
+        // Capture output for JSON/Machine results
+        const result = await execa(file, args, execOptions);
+        return { stdout: result.stdout, stderr: result.stderr };
+    } else {
+        // Inherit stdio for human interactive use
+        await execa(file, args, { ...execOptions, stdio: "inherit" });
+        return undefined;
+    }
 }
