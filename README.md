@@ -107,6 +107,11 @@ src/
     logger.ts
     event-bus.ts
   features/
+    ai/
+      engine.ts
+      cli.ts
+      types.ts
+      providers/
     chat/
       cli.ts
       execute.ts
