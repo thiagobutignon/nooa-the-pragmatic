@@ -1,4 +1,5 @@
 import type { Command, CommandContext } from "../../core/command";
+import { ensureGitRepo, isWorkingTreeClean } from "./guards";
 
 const pushHelp = `
 Usage: nooa push [remote] [branch]
@@ -24,6 +25,19 @@ const pushCommand: Command = {
 
 		if (values.help) {
 			console.log(pushHelp);
+			return;
+		}
+
+		const cwd = process.cwd();
+		if (!(await ensureGitRepo(cwd))) {
+			console.error("Error: Not a git repository.");
+			process.exitCode = 2;
+			return;
+		}
+
+		if (!(await isWorkingTreeClean(cwd))) {
+			console.error("Error: Uncommitted changes detected.");
+			process.exitCode = 2;
 			return;
 		}
 
