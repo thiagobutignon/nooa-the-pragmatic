@@ -21,6 +21,7 @@ Flags:
 
 const commitCommand: Command = {
 	name: "commit",
+	description: "Commit staged changes with validation",
 	execute: async ({ rawArgs, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
 		const { values } = parseArgs({

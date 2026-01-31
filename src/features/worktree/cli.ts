@@ -21,6 +21,7 @@ const branchPattern = /^[A-Za-z0-9/_-]+$/;
 
 const worktreeCommand: Command = {
 	name: "worktree",
+	description: "Manage git worktrees for isolated development",
 	execute: async ({ args, values, bus }: CommandContext) => {
 		if (values.help) {
 			console.log(worktreeHelp);

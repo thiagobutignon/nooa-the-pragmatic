@@ -62,15 +62,16 @@ export async function main(
 	}
 
 	if (values.help || !subcommand) {
+		const commands = registry.list();
+		const subcommandHelp = commands
+			.map(cmd => `  ${cmd.name.padEnd(25)} ${cmd.description || ""}`)
+			.join("\n");
+
 		console.log(`
 Usage: nooa [flags] <subcommand> [args]
 
 Subcommands:
-  read <path>                   Read file contents.
-  code <write|patch>            Code operations.
-  search <query> [path]         Search files and file contents.
-  message <text>                Send a message to the AI agent.
-  worktree <branch>             Create a git worktree.
+${subcommandHelp}
 
 Flags:
   --json                 Output structure as JSON.
