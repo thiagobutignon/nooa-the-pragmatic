@@ -44,6 +44,7 @@ describe("Read Command Definition", () => {
 
 		await cmd.execute({
 			args: ["read", TEST_FILE],
+			rawArgs: ["read", TEST_FILE],
 			values: {},
 			bus: new EventBus(),
 		});
