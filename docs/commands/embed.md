@@ -22,6 +22,12 @@ nooa embed <text|file> <input> [flags]
 - `--json`: Output JSON (default).
 - `-h, --help`: Show help.
 
+## Environment Variables
+
+- `NOOA_EMBED_PROVIDER`: Provider name (default: `ollama`).
+- `NOOA_EMBED_MODEL`: Model name (default: `nomic-embed-text`).
+- `NOOA_EMBED_ENDPOINT`: Provider base URL (default: `http://localhost:11434`).
+
 ## Output
 
 By default, output includes metadata only (no vector). Use `--include-embedding` to include the embedding array.
