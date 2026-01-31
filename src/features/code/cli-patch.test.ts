@@ -17,7 +17,7 @@ describe("nooa code write --patch", () => {
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("--patch");
 		expect(res.stdout).toContain("--patch-from");
-		expect(res.stdout).toContain("Mutually exclusive");
+		expect(res.stdout).toContain("--patch/--patch-from cannot be combined with --from");
 	});
 
 	test("applies patch from stdin", async () => {

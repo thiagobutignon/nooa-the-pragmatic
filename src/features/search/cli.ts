@@ -6,25 +6,37 @@ import { hasRipgrep, runSearch } from "./engine";
 const searchHelp = `
 Usage: nooa search <query> [path] [flags]
 
+Search for patterns in file contents or filenames.
+
 Arguments:
-  <query>            Search term or regex.
-  [path]             Root directory (default: .)
+  <query>            Search term or regex pattern.
+  [path]             Directory to search in (default: .).
 
 Flags:
-  --regex            Treat query as regex.
-  --case-sensitive   Disable case-insensitive search.
-  --files-only       List matching files only.
-  --max-results <n>  Limit results (default: 100).
-  --include <glob>   Include glob (repeatable).
-  --exclude <glob>   Exclude glob (repeatable).
-  --json             Output structured JSON.
-  --plain            Output stable line format.
-  --no-color         Disable color output.
+  --regex            Treat query as a regular expression.
+  --case-sensitive   Enable case-sensitive matching.
+  --files-only       Only list matching file paths.
+  --max-results <n>  Limit total matches (default: 100).
+  --include <glob>   Include files matching glob (repeatable).
+  --exclude <glob>   Include files matching glob (repeatable).
+  --json             Output detailed results as JSON.
+  --plain            Output results in a stable, parseable format.
+  --no-color         Disable terminal colors in output.
   --context <n>      Show n lines of context (default: 0).
-  --ignore-case, -i  Enable case-insensitive search.
-  --count, -c        Show only count of matches per file.
-  --hidden           Include hidden files.
-  -h, --help         Show help.
+  --ignore-case, -i  Enable case-insensitive matching.
+  --count, -c        Show only the count of matches per file.
+  --hidden           Include hidden files and directories.
+  -h, --help         Show help message.
+
+Examples:
+  nooa search "TODO" . --include "*.ts"
+  nooa search "class User" src --json
+  nooa search "error" logs --context 2 --regex
+
+Exit Codes:
+  0: Success (matches found)
+  1: Runtime Error (failed execution)
+  2: Validation Error (missing query)
 `;
 
 function normalizeList(value: unknown): string[] | undefined {

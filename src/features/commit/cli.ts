@@ -13,10 +13,22 @@ import { execa } from "execa";
 const commitHelp = `
 Usage: nooa commit -m <message> [flags]
 
+Commit staged changes with validation (TDD, no forbidden markers).
+
 Flags:
-  --no-test      Skip tests
-  --allow-todo   Allow TODO/MOCK markers
-  -h, --help     Show help
+  -m <message>   Commit message (required).
+  --no-test      Skip automatic test verification.
+  --allow-todo   Allow TODO/MOCK markers in the code.
+  -h, --help     Show help message.
+
+Examples:
+  nooa commit -m "feat: user authentication"
+  nooa commit -m "docs: api reference" --allow-todo
+
+Exit Codes:
+  0: Success
+  1: Runtime Error (git failure or tests failed)
+  2: Validation Error (missing message or local guards failed)
 `;
 
 const commitCommand: Command = {

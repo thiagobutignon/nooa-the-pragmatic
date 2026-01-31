@@ -2,22 +2,27 @@ import type { Command, CommandContext } from "../../core/command";
 import type { MessageOptions, MessageRole } from "./types";
 
 const messageHelp = `
-Usage: nooa message <text>
+Usage: nooa message <text> [flags]
 
 Send a message to the AI agent.
 
 Arguments:
-  <text>         The message content (required)
+  <text>         The message content (required).
 
 Flags:
-  --role <type>  Message role: user, system, assistant (default: user)
-  --json         Output in JSON format
-  -h, --help     Show this help message
+  --role <type>  Message role: user, system, assistant (default: user).
+  --json         Output result in JSON format.
+  -h, --help     Show help message.
 
 Examples:
   nooa message "Hello, how are you?"
   nooa message "Initialize system" --role system
   nooa message "Summarize this" --json
+
+Exit Codes:
+  0: Success
+  1: Runtime Error (failed execution)
+  2: Validation Error (missing text or invalid role)
 `;
 
 const VALID_ROLES: MessageRole[] = ["user", "system", "assistant"];
@@ -49,14 +54,14 @@ const messageCommand: Command = {
         const content = positionals[1];
         if (!content) {
             console.error("Error: Message text is required");
-            process.exitCode = 1;
+            process.exitCode = 2;
             return;
         }
 
         const role = (values.role || "user") as string;
         if (!VALID_ROLES.includes(role as MessageRole)) {
             console.error(`Invalid role: ${role}. Must be one of: ${VALID_ROLES.join(", ")}`);
-            process.exitCode = 1;
+            process.exitCode = 2;
             return;
         }
 

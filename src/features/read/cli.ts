@@ -5,12 +5,23 @@ import { telemetry } from "../../core/telemetry";
 const readHelp = `
 Usage: nooa read <path> [flags]
 
+Read file contents from the local filesystem.
+
 Arguments:
   <path>      Path to the file to read.
 
 Flags:
   --json      Output JSON with path, bytes, content.
-  -h, --help  Show help.
+  -h, --help  Show help message.
+
+Examples:
+  nooa read README.md
+  nooa read src/index.ts --json
+
+Exit Codes:
+  0: Success
+  1: Runtime Error (failed execution)
+  2: Validation Error (invalid path)
 `;
 
 const readCommand: Command = {

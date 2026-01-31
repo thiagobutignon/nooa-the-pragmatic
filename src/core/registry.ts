@@ -14,7 +14,9 @@ export class CommandRegistry {
 	}
 
 	list(): Command[] {
-		return Array.from(this.commands.values());
+		return Array.from(this.commands.values()).sort((a, b) =>
+			a.name.localeCompare(b.name),
+		);
 	}
 }
 

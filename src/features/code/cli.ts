@@ -2,24 +2,36 @@ import type { Command, CommandContext } from "../../core/command";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 
-const codeWriteHelp = `
+const codeHelp = `
 Usage: nooa code <write|patch> <path> [flags]
+
+Code operations to create, overwrite, or patch files.
 
 Arguments:
   <path>              Destination file path.
 
 Flags:
   --from <path>       Read content from a file (otherwise stdin is used).
-  --patch             Read a unified diff from stdin and apply to <path>.
-  --patch-from <path> Read a unified diff from a file and apply to <path>.
+  --patch             Apply a unified diff from stdin.
+  --patch-from <path> Apply a unified diff from a file.
   --overwrite         Overwrite destination if it exists.
   --json              Output result as JSON.
   --dry-run           Do not write the file.
-  -h, --help          Show help.
+  -h, --help          Show help message.
+
+Examples:
+  nooa code write app.ts --from template.ts
+  nooa code patch styles.css < fix.patch
+  nooa code write config.json --overwrite --json
+
+Exit Codes:
+  0: Success
+  1: Runtime Error (failed execution)
+  2: Validation Error (invalid path or flags)
 
 Notes:
-  Mutually exclusive: --patch/--patch-from cannot be combined with --from or non-patch stdin.
-  Subcommand 'patch' implies --patch.
+  - --patch/--patch-from cannot be combined with --from.
+  - Subcommand 'patch' implies --patch.
 `;
 
 const codeCommand: Command = {
@@ -51,7 +63,7 @@ const codeCommand: Command = {
 		logger.setContext({ trace_id: traceId, command: "code", action });
 
 		if (values.help) {
-			console.log(codeWriteHelp);
+			console.log(codeHelp);
 			logger.clearContext();
 			return;
 		}
@@ -329,7 +341,7 @@ const codeCommand: Command = {
 		}
 
 		// Fallback for unknown action
-		console.log(codeWriteHelp);
+		console.log(codeHelp);
 		logger.clearContext();
 	},
 };

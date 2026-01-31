@@ -5,15 +5,32 @@ import { execa } from "execa";
 import { ensureGitRepo, git, isWorkingTreeClean } from "./guards";
 
 const pushHelp = `
-Usage: nooa push [remote] [branch]
+Usage: nooa push [remote] [branch] [flags]
+
+Push committed changes to the remote repository.
+
+Arguments:
+  [remote]       Git remote name (default: origin).
+  [branch]       Git branch name (default: current branch).
 
 Flags:
-  --no-test      Skip running tests before push
-  -h, --help     Show help
+  --no-test      Skip automatic test verification before pushing.
+  -h, --help     Show help message.
+
+Examples:
+  nooa push
+  nooa push origin feat/auth --no-test
+
+Exit Codes:
+  0: Success
+  1: Runtime Error (git push failed)
+  2: Validation Error (not a git repo or dirty tree)
+  3: Test Failure (pre-push tests failed)
 `;
 
 const pushCommand: Command = {
 	name: "push",
+	description: "Push changes to remote repository",
 	execute: async ({ rawArgs, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
 		const { values, positionals } = parseArgs({

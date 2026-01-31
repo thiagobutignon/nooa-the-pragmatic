@@ -10,11 +10,25 @@ import { git } from "./git";
 const worktreeHelp = `
 Usage: nooa worktree <branch> [flags]
 
+Manage git worktrees for isolated development.
+
+Arguments:
+  <branch>          Name of the new branch and directory.
+
 Flags:
-  --base <branch>   Base branch (default: main)
-  --no-install      Skip dependency install
-  --no-test         Skip tests
-  -h, --help        Show help
+  --base <branch>   Base branch to branch from (default: main).
+  --no-install      Skip automatic dependency installation.
+  --no-test         Skip automatic test verification.
+  -h, --help        Show help message.
+
+Examples:
+  nooa worktree feat/new-api
+  nooa worktree fix/bug-123 --base develop --no-test
+
+Exit Codes:
+  0: Success
+  1: Runtime Error (git or install failure)
+  2: Validation Error (invalid branch or not a git repo)
 `;
 
 const branchPattern = /^[A-Za-z0-9/_-]+$/;
