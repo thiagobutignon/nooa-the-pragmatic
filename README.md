@@ -19,6 +19,7 @@ Repository: [thiagobutignon/nooa-the-pragmatic](https://github.com/thiagobutigno
 - **`read <path>`**: Read file contents from the local filesystem. See [read.md](docs/commands/read.md).
 - **`code <write|patch>`**: Create, overwrite, or patch files. See [code.md](docs/commands/code.md).
 - **`search <query> [path]`**: Fast codebase search using `ripgrep`. See [search.md](docs/commands/search.md).
+- **`embed <text|file> <input>`**: Generate embeddings for text or files. See [embed.md](docs/commands/embed.md).
 - **`worktree <branch>`**: Create a fresh git worktree for isolated development. See [worktree.md](docs/commands/worktree.md).
 - **`commit -m <msg>`**: Commit staged changes with validation. See [commit.md](docs/commands/commit.md).
 - **`push [remote] [branch]`**: Push committed changes to remote. See [push.md](docs/commands/push.md).
