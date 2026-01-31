@@ -1,8 +1,8 @@
 ---
 name: review
-version: 1.1.1
-description: "Instant file review for NOOA. Conservative, evidence-based, strict categories."
-output: "json"
+version: 1.1.2
+description: Instant file review for NOOA. Conservative, evidence-based, strict categories.
+output: json
 temperature: 0.1
 strict_json: true
 max_findings: 7
