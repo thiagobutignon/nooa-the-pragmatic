@@ -29,7 +29,7 @@ const messageCommand: Command = {
         role: { type: "string" },
         json: { type: "boolean" },
     },
-    execute: async ({ rawArgs }: CommandContext) => {
+    execute: async ({ rawArgs, bus }: CommandContext) => {
         const { parseArgs } = await import("node:util");
         const { values, positionals } = parseArgs({
             args: rawArgs,
@@ -65,7 +65,11 @@ const messageCommand: Command = {
             json: !!values.json,
         };
 
-        // TBD: Task 3 - Execution and Telemetry
+        const { executeMessage, formatOutput } = await import("./execute");
+        const message = await executeMessage(content, options, bus);
+        const output = formatOutput(message, options.json);
+
+        console.log(output);
     },
 };
 

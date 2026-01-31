@@ -36,3 +36,27 @@ describe("nooa message validation", () => {
         }
     });
 });
+
+describe("nooa message integration", () => {
+    it("outputs plain text by default", async () => {
+        const res = await execa("bun", [binPath, "message", "Hello world"], { reject: false });
+        expect(res.exitCode).toBe(0);
+        expect(res.stdout).toContain("[user] Hello world");
+    });
+
+    it("outputs JSON when --json flag is used", async () => {
+        const res = await execa("bun", [binPath, "message", "Test", "--json"], { reject: false });
+        expect(res.exitCode).toBe(0);
+
+        const output = JSON.parse(res.stdout);
+        expect(output).toHaveProperty("role", "user");
+        expect(output).toHaveProperty("content", "Test");
+        expect(output).toHaveProperty("timestamp");
+    });
+
+    it("respects role flag", async () => {
+        const res = await execa("bun", [binPath, "message", "Init", "--role", "system"], { reject: false });
+        expect(res.exitCode).toBe(0);
+        expect(res.stdout).toContain("[system] Init");
+    });
+});
