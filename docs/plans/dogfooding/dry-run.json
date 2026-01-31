@@ -1,0 +1,20 @@
+[
+  {
+    "kind": "internal",
+    "argv": [
+      "code",
+      "write",
+      "test.ts"
+    ],
+    "original": "code write test.ts"
+  },
+  {
+    "kind": "internal",
+    "argv": [
+      "commit",
+      "-m",
+      "test"
+    ],
+    "original": "commit -m test"
+  }
+]

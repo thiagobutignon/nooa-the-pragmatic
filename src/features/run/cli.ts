@@ -18,14 +18,30 @@ Modes:
 
 Flags:
   --continue-on-error   Continue to next step even if a step fails.
-  --json                Output results as JSON.
+  --json                Output results as JSON (includes schemaVersion and runId).
   --allow-external      Allow executing non-nooa commands (without 'exec' prefix).
   --dry-run             Parse and show plan without executing.
   -h, --help            Show help message.
 
 Examples:
-  nooa run -- code write src/app.ts -- bun run lint -- commit -m "feat: app"
-  nooa run --continue-on-error "rm -rf tmp" "mkdir tmp"
+  # Standard development loop (delimiter mode)
+  nooa run -- code write src/app.ts -- exec bun run linter -- commit -m "feat: app" -- push
+
+  # Explicit external execution (safe)
+  nooa run -- exec bun test -- commit -m "test: pass"
+
+  # Worktree workflow (Agentic)
+  nooa run -- \\
+    worktree create --name ai/feat-x -- \\
+    code write src/x.test.ts --from specs/x.md -- \\
+    commit -m "test: add x tests" -- \\
+    push -- \\
+    worktree remove --name ai/feat-x
+
+Exit Codes:
+  0: Success (all steps passed)
+  1: Runtime Error (execution failed)
+  2: Validation Error (invalid syntax or policy violation)
 `;
 
 const runCommand: Command = {
@@ -36,6 +52,7 @@ const runCommand: Command = {
         // We need to strip it to process flags and args.
         const args = rawArgs.slice(1);
         const { parseArgs } = await import("node:util");
+        const { randomUUID } = await import("node:crypto");
 
         // We can't use standard parseArgs easily because of the "--" delimiter usage which parseArgs swallows or handles specifically.
         // However, for the "flags" part *before* the first "--", we might want to parse options.
@@ -61,7 +78,6 @@ const runCommand: Command = {
         const steps = parsePipelineArgs(rest);
 
         if (flags.dryRun) {
-            console.log("Pipeline Plan:");
             console.log(JSON.stringify(steps, null, 2));
             return;
         }
@@ -73,18 +89,29 @@ const runCommand: Command = {
             return;
         }
 
-        console.log(`Running payload with ${steps.length} steps...`);
+        if (!options.json) {
+            console.log(`Running payload with ${steps.length} steps...`);
+        }
         const result = await executePipeline(steps, options, bus);
 
         if (options.json) {
-            console.log(JSON.stringify(result, null, 2));
+            console.log(JSON.stringify({
+                schemaVersion: "1.0",
+                runId: randomUUID(),
+                ok: result.ok,
+                failedStepIndex: result.failedStepIndex,
+                steps: result.steps,
+            }, null, 2));
         }
 
-        if (!result.ok) {
-            const failedStep = result.steps[result.failedStepIndex!];
-            console.error(`Pipeline failed at step ${result.failedStepIndex! + 1}: ${failedStep.step.original}`);
-            if (failedStep.error) console.error(failedStep.error);
-            process.exitCode = failedStep.exitCode || 1;
+        if (!result.ok && result.failedStepIndex !== undefined) {
+            const failedStepIndex = result.failedStepIndex;
+            const failedStep = result.steps[failedStepIndex];
+            if (failedStep && !options.json) {
+                console.error(`Pipeline failed at step ${failedStepIndex + 1}: ${failedStep.step.original}`);
+                if (failedStep.error) console.error(failedStep.error);
+            }
+            process.exitCode = failedStep?.exitCode || 1;
         }
     },
 };
@@ -99,6 +126,7 @@ function extractFlags(args: string[]): {
 
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
+        if (arg === undefined) continue;
 
         // If we hit "--", stop parsing global flags, the rest is the pipeline
         if (arg === "--") {

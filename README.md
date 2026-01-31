@@ -22,6 +22,8 @@ Repository: [thiagobutignon/nooa-the-pragmatic](https://github.com/thiagobutigno
 - **`worktree <branch>`**: Create a fresh git worktree for isolated development. See [worktree.md](docs/commands/worktree.md).
 - **`commit -m <msg>`**: Commit staged changes with validation. See [commit.md](docs/commands/commit.md).
 - **`push [remote] [branch]`**: Push committed changes to remote. See [push.md](docs/commands/push.md).
+- **`run [-- flags] -- <cmd1> -- <cmd2>`**: Execute multiple commands in a pipeline. See [run.md](docs/commands/run.md).
+- **`combine [flags] -- <cmd1> -- <cmd2>`**: Alias for `run`. See [combine.md](docs/commands/combine.md).
 
 ## Focus Rules (Non-negotiable)
 
@@ -111,9 +113,16 @@ src/
       cli.ts
       write.ts
       patch.ts
+    combine/
+      cli.ts
     commit/
       cli.ts
       guards.ts
+    run/
+      cli.ts
+      executor.ts
+      parser.ts
+      types.ts
     push/
       cli.ts
       guards.ts

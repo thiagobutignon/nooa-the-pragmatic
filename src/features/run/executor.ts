@@ -19,6 +19,7 @@ export async function executePipeline(
 
     for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
+        if (!step) continue;
         const startTime = Date.now();
 
         try {
@@ -32,7 +33,7 @@ export async function executePipeline(
                 });
             } else {
                 // Internal or Implicit External
-                const cmdName = step.argv[0];
+                const cmdName = step.argv[0] || "";
                 const command = registry.get(cmdName);
 
                 if (command) {
@@ -52,8 +53,9 @@ export async function executePipeline(
                             durationMs: Date.now() - startTime,
                         });
                     } else {
+                        const cmdNamePlaceholder = cmdName || "unknown";
                         throw new Error(
-                            `Unknown internal command: '${cmdName}'. To run external commands, use the 'exec' prefix or --allow-external flag.`,
+                            `Unknown internal command: '${cmdNamePlaceholder}'. To run external commands, use the 'exec' prefix or --allow-external flag.`,
                         );
                     }
                 }
@@ -88,13 +90,16 @@ async function executeInternal(
     bus: any,
 ) {
     await command.execute({
-        rawArgs: step.argv.slice(1), // remove command name
+        rawArgs: step.argv, // Include command name to match main() behavior
         bus,
     });
 }
 
 async function executeExternal(step: PipelineStep, options: RunOptions) {
     const [file, ...args] = step.argv;
+    if (!file) {
+        throw new Error(`Empty external command in step: ${step.original}`);
+    }
     await execa(file, args, {
         cwd: options.cwd || process.cwd(),
         stdio: "inherit",
