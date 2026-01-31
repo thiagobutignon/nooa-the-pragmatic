@@ -15,7 +15,7 @@ nooa message <text> [flags]
 ## Flags
 
 - `--role <type>` - Message role: `user`, `system`, or `assistant` (default: `user`)
-- `--json` - Output in JSON format
+- `--json` - Output result in JSON format
 - `-h, --help` - Show help message
 
 ## Examples
@@ -46,7 +46,8 @@ nooa message "Summarize this" --json
 ## Exit Codes
 
 - `0` - Success
-- `1` - Missing message text or invalid role
+- `1` - Runtime Error (failed execution)
+- `2` - Validation Error (missing text or invalid role)
 
 ## Message Roles
 

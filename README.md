@@ -15,13 +15,13 @@ Repository: [thiagobutignon/nooa-the-pragmatic](https://github.com/thiagobutigno
 
 ## Commands
 
-- **`message <text>`**: Send a message to the AI agent. Use `--role` to specify the context (user, system, assistant). See [message.md](docs/commands/message.md).
-- **`read <path>`**: Read file contents from the local filesystem.
-- **`code <write|patch>`**: 
-  - `write`: Create or overwrite files.
-  - `patch`: Apply partial changes to files (diff/patch mode).
-- **`search <query> [path]`**: Fast codebase search using `ripgrep`. Supports regex, include/exclude patterns, and JSON output.
-- **`worktree <branch>`**: Create a fresh git worktree for isolated development, including automatic dependency installation and test verification.
+- **`message <text>`**: Send a message to the AI agent. See [message.md](docs/commands/message.md).
+- **`read <path>`**: Read file contents from the local filesystem. See [read.md](docs/commands/read.md).
+- **`code <write|patch>`**: Create, overwrite, or patch files. See [code.md](docs/commands/code.md).
+- **`search <query> [path]`**: Fast codebase search using `ripgrep`. See [search.md](docs/commands/search.md).
+- **`worktree <branch>`**: Create a fresh git worktree for isolated development. See [worktree.md](docs/commands/worktree.md).
+- **`commit -m <msg>`**: Commit staged changes with validation. See [commit.md](docs/commands/commit.md).
+- **`push [remote] [branch]`**: Push committed changes to remote. See [push.md](docs/commands/push.md).
 
 ## Focus Rules (Non-negotiable)
 

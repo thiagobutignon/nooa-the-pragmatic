@@ -19,30 +19,20 @@ nooa worktree <branch> [flags]
 
 ## Arguments
 
-- `<branch>`: new or existing branch name for the worktree
+- `<branch>` - Name of the new branch and directory for the worktree (required)
 
 ## Flags
 
-- `--base <branch>` base branch (default: `main`)
-- `--no-install` skip dependency install
-- `--no-test` skip tests
-- `-h, --help` show help
-
-## Environment
-
-- `NOOA_SKIP_INSTALL=1` skip dependency install
-- `NOOA_SKIP_TEST=1` skip tests
-
-## Output
-
-- **stdout**: empty on success (stderr used for summary)
-- **stderr**: summary + errors
+- `--base <branch>` - Base branch to branch from (default: `main`)
+- `--no-install` - Skip automatic dependency installation
+- `--no-test` - Skip automatic test verification
+- `-h, --help` - Show help message
 
 ## Exit Codes
 
-- `0` success
-- `1` worktree created but install/tests failed
-- `2` invalid usage or preflight failure
+- `0` - Success
+- `1` - Runtime Error (git failure or install/tests failed)
+- `2` - Validation Error (invalid branch or not a git repo)
 
 ## Examples
 

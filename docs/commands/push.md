@@ -5,32 +5,37 @@ Push a clean working tree to a remote, with optional test enforcement.
 ## Usage
 
 ```bash
-nooa push [remote] [branch] [--no-test]
+nooa push [remote] [branch] [flags]
 ```
 
-## Description
+## Arguments
 
-Runs preflight checks (clean working tree) and optionally runs tests, then executes `git push`.
+- `[remote]` - Git remote name (default: `origin`)
+- `[branch]` - Git branch name (default: current branch)
 
 ## Flags
 
-- `--no-test` skip running tests before push
-- `-h, --help` show help
-
-## Exit Codes
-
-- `0` success
-- `1` git push failed
-- `2` invalid usage or dirty working tree
-- `3` tests failed
+- `--no-test` - Skip automatic test verification before pushing
+- `-h, --help` - Show help message
 
 ## Examples
 
+### Basic push
 ```bash
-nooa push                    # push to default remote/branch
-nooa push origin main         # push to specific remote/branch
-nooa push --no-test           # skip tests
+nooa push
 ```
+
+### Push to specific remote/branch without tests
+```bash
+nooa push origin feat/auth --no-test
+```
+
+## Exit Codes
+
+- `0` - Success
+- `1` - Runtime Error (git push failed)
+- `2` - Validation Error (not a git repo or dirty tree)
+- `3` - Test Failure (pre-push tests failed)
 
 ## Troubleshooting
 

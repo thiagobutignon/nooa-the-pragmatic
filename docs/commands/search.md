@@ -10,36 +10,31 @@ nooa search <query> [path] [flags]
 
 ## Arguments
 
-- `<query>`: search term or regex (use `--regex` to treat as regex)
-- `[path]`: root directory (default: `.`)
+- `<query>` - Search term or regex pattern (use `--regex` to enable regex mode)
+- `[path]` - Directory to search in (default: `.`)
 
 ## Flags
 
-- `--regex` treat query as regex
-- `--case-sensitive` disable case-insensitive search
-- `--ignore-case`, `-i` enable case-insensitive search
-- `--files-only` list matching files only (no content matches)
-- `--count`, `-c` show only count of matches per file
-- `--max-results <n>` limit results (default: 100)
-- `--include <glob>` include glob (repeatable)
-- `--exclude <glob>` exclude glob (repeatable)
-- `--context <n>` show n lines of context around matches (default: 0)
-- `--hidden` include hidden files
-- `--json` output structured JSON
-- `--plain` output stable line format (`path:line:column:snippet`)
-- `--no-color` disable color output
-- `-h, --help` show help
-
-## Output
-
-- **stdout**: results only (plain or JSON)
-- **stderr**: diagnostics and summary
+- `--regex` - Treat query as a regular expression
+- `--case-sensitive` - Enable case-sensitive matching
+- `--ignore-case, -i` - Enable case-insensitive matching
+- `--files-only` - Only list matching file paths
+- `--count, -c` - Show only the count of matches per file
+- `--max-results <n>` - Limit total matches (default: `100`)
+- `--include <glob>` - Include files matching glob (repeatable)
+- `--exclude <glob>` - Exclude files matching glob (repeatable)
+- `--context <n>` - Show `n` lines of context (default: `0`)
+- `--hidden` - Include hidden files and directories
+- `--json` - Output detailed results as JSON
+- `--plain` - Output results in a stable, parseable format
+- `--no-color` - Disable terminal colors in output
+- `-h, --help` - Show help message
 
 ## Exit Codes
 
-- `0` success (matches or no matches)
-- `1` runtime error
-- `2` invalid usage
+- `0` - Success (matches found)
+- `1` - Runtime Error (failed execution)
+- `2` - Validation Error (missing query)
 
 ## Environment
 
