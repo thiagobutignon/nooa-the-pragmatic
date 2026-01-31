@@ -87,6 +87,15 @@ Fill these sections, drop anything irrelevant:
 9. **Examples**:
    - …
 
+## Discovery & Verification (Critical)
+
+In dynamic CLI environments (like NOOA's `loadCommands`), subcommands may fail to register silently due to runtime errors (missing dependencies, syntax errors). Always:
+
+1. **Verify Visibility**: Run `nooa --help` (or equivalent) to ensure the new command is listed.
+2. **Handle Errors**: If a command is missing, check the entry point for syntax errors or missing logic.
+3. **Environment Parity**: Ensure new dependencies are installed (`bun install`) in any active worktrees.
+4. **Internal Dispatch**: Verify the command works when called from internal runners (like `nooa run`).
+
 ## Notes
 
 - Prefer recommending a parsing library (language-specific) only when asked; otherwise keep this skill language-agnostic.

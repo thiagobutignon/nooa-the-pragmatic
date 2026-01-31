@@ -13,6 +13,8 @@ Git worktrees create isolated workspaces sharing the same repository, allowing w
 
 **Announce at start:** "I'm using the using-git-worktrees skill to set up an isolated workspace."
 
+**Environment Readiness:** After creating a worktree, always ensure dependencies are fully installed (e.g., `bun install`) before expecting subcommands to load or help messages to work correctly. Dynamic command registration relies on a fully initialized environment.
+
 ## Directory Selection Process
 
 Follow this priority order:
