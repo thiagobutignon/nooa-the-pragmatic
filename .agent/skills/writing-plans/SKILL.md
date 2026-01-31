@@ -93,6 +93,7 @@ git commit -m "feat: add specific feature"
 - Exact commands with expected output
 - Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD, frequent commits
+- If a missing primitive blocks the feature, **REQUIRED SUB-SKILL:** Use dependency-driven-development
 
 ## Execution Handoff
 
