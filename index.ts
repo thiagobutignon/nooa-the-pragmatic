@@ -69,6 +69,7 @@ Subcommands:
   read <path>                   Read file contents.
   code <write|patch>            Code operations.
   search <query> [path]         Search files and file contents.
+  message <text>                Send a message to the AI agent.
   worktree <branch>             Create a git worktree.
 
 Flags:

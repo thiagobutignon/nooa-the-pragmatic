@@ -11,7 +11,17 @@ Be superior to Claude Code and Codex by delivering a personalized development ex
 - **Auto-evolves** as the codebase evolves, including adjusting OKRs when justified.
 - When a bug is found, it **creates a worktree, writes tests, implements, validates, and merges**.
 
-Repository: https://github.com/thiagobutignon/nooa-the-pragmatic
+Repository: [thiagobutignon/nooa-the-pragmatic](https://github.com/thiagobutignon/nooa-the-pragmatic)
+
+## Commands
+
+- **`message <text>`**: Send a message to the AI agent. Use `--role` to specify the context (user, system, assistant). See [message.md](docs/commands/message.md).
+- **`read <path>`**: Read file contents from the local filesystem.
+- **`code <write|patch>`**: 
+  - `write`: Create or overwrite files.
+  - `patch`: Apply partial changes to files (diff/patch mode).
+- **`search <query> [path]`**: Fast codebase search using `ripgrep`. Supports regex, include/exclude patterns, and JSON output.
+- **`worktree <branch>`**: Create a fresh git worktree for isolated development, including automatic dependency installation and test verification.
 
 ## Focus Rules (Non-negotiable)
 
