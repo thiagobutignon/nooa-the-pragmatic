@@ -26,6 +26,7 @@ export interface ReviewResult {
 		files: number;
 		findings: number;
 	};
+    truncated?: boolean;
 }
 
 export interface ReviewOptions {
@@ -47,6 +48,8 @@ export async function executeReview(
 	// 1. Get Input
 	let input = "";
 	let fileCount = 0;
+    let truncated = false;
+    const MAX_REVIEW_BYTES = 50 * 1024; // 50KB limit for "instant" review
 
 	if (options.path) {
 		input = await readFile(options.path, "utf-8");
@@ -60,18 +63,36 @@ export async function executeReview(
         throw new Error("No input source provided (path or staged).");
     }
 
+    if (input.length > MAX_REVIEW_BYTES) {
+        input = input.substring(0, MAX_REVIEW_BYTES) + "\n... (content truncated for review) ...";
+        truncated = true;
+    }
+
     if (!input.trim()) {
         return { content: "No changes found to review.", traceId };
     }
 
-	// 2. Load Prompt
+	// 2. Load Prompt & Test Grounding
 	const templatesDir = join(process.cwd(), "src/features/prompt/templates");
 	const promptEngine = new PromptEngine(templatesDir);
 	const promptName = options.prompt || "review";
 	const promptTemplate = await promptEngine.loadPrompt(promptName);
 	
+    let testGrounding = "No candidate tests discovered by naming heuristic.";
+    if (options.path) {
+        const { discoverTests } = await import("./discovery");
+        const candidates = await discoverTests(options.path, process.cwd());
+        if (candidates.length > 0) {
+            testGrounding = `Discovered candidate test files: ${candidates.join(", ")}. Note: Coverage not verified.`;
+        }
+    }
+
 	const systemPrompt = promptEngine.renderPrompt(promptTemplate, {
 		repo_root: process.cwd(),
+        input_path: options.path || "staged_changes",
+        input_type: options.path ? "file" : "diff",
+        input_scope: options.path ? "single_file" : "diff",
+        test_grounding: testGrounding,
 		input: input,
 	});
 
@@ -88,7 +109,7 @@ export async function executeReview(
 				{ 
                     role: "user", 
                     content: options.json 
-                        ? "Please provide the review in the JSON format specified in your instructions." 
+                        ? "Please provide the review in the JSON format specified in your instructions. ENSURE all 'file' paths are relative to the repository root." 
                         : "Please provide a code review for the provided input." 
                 },
 			],
@@ -105,10 +126,21 @@ export async function executeReview(
         try {
             // Find JSON block in response if AI wrapped it in markdown
             const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-            result = JSON.parse(jsonMatch ? jsonMatch[0] : response.content);
+            const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : response.content);
+            
+            // Strict Validation
+            if (typeof parsed.ok === 'boolean' && Array.isArray(parsed.findings)) {
+                result = parsed as ReviewResult;
+                // Ensure relative paths
+                result.findings = result.findings.map(f => ({
+                    ...f,
+                    file: (f.file && !f.file.startsWith("/")) ? f.file : (options.path || "staged_changes")
+                }));
+            } else {
+                logger.error("AI returned JSON missing required fields (ok, findings)");
+            }
         } catch (e) {
             logger.error("Failed to parse AI review JSON", e as Error);
-            // We'll return the raw content but also a failure flag
         }
     }
 
@@ -123,6 +155,7 @@ export async function executeReview(
 
     if (result) {
         result.maxSeverity = maxSeverity;
+        result.truncated = truncated;
     }
 
     const duration = Date.now() - startTime;
@@ -137,6 +170,7 @@ export async function executeReview(
             findings_count: result?.findings.length || 0,
             file_count: fileCount,
             max_severity: maxSeverity,
+            truncated,
         }
     }, bus);
 

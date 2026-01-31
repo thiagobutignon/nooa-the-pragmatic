@@ -27,6 +27,15 @@ describe("Command Cohesion Contract", () => {
 						expect(json).toHaveProperty("schemaVersion");
 						expect(json).toHaveProperty("ok");
 						expect(json).toHaveProperty("traceId");
+
+                        if (cmd === "review" && json.ok) {
+                            expect(json).toHaveProperty("findings");
+                            expect(json).toHaveProperty("stats");
+                            expect(json).toHaveProperty("maxSeverity");
+                            if (json.findings && json.findings.length > 0) {
+                                expect(json.findings[0].file).not.toMatch(/^(\/|[a-zA-Z]:)/);
+                            }
+                        }
 					} catch (e) {
 						throw new Error(`Invalid or non-contract JSON output for ${cmd} --json:\n${res.stdout}`);
 					}
@@ -34,11 +43,13 @@ describe("Command Cohesion Contract", () => {
 			});
 
 			test(`${cmd} should record telemetry success or failure`, async () => {
-				// We check the db or assume telemetry.track was called.
-				// For now, we just ensure it doesn't crash.
 				await run([cmd]);
-				// Future: verify nooa.db for events like `${cmd}.started`
 			});
 		});
 	}
+
+    test("search should validate max-results and return exit 2", async () => {
+        const res = await run(["search", "TODO", "--max-results", "invalid"]);
+        expect(res.exitCode).toBe(2);
+    });
 });
