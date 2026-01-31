@@ -95,6 +95,12 @@ src/
       cli.ts
       bridge.test.ts
       cli.test.ts
+    chat/
+      cli.ts
+      execute.ts
+      types.ts
+      cli.test.ts
+      execute.test.ts
     code/
       write.ts
       patch.ts
