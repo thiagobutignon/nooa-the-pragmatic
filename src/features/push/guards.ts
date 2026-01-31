@@ -11,5 +11,15 @@ export async function ensureGitRepo(cwd: string): Promise<boolean> {
 
 export async function isWorkingTreeClean(cwd: string): Promise<boolean> {
 	const res = await git(["status", "--porcelain"], cwd);
-	return res.exitCode === 0 && res.stdout.trim().length === 0;
+	if (res.exitCode !== 0) return false;
+	const lines = res.stdout.split("\n").filter(Boolean);
+	const filtered = lines.filter((line) => {
+		const path = line.slice(3).trim();
+		return (
+			path !== "nooa.db" &&
+			path !== "nooa.db-wal" &&
+			path !== "nooa.db-shm"
+		);
+	});
+	return filtered.length === 0;
 }

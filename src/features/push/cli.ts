@@ -1,5 +1,8 @@
 import type { Command, CommandContext } from "../../core/command";
-import { ensureGitRepo, isWorkingTreeClean } from "./guards";
+import { createTraceId, logger } from "../../core/logger";
+import { telemetry } from "../../core/telemetry";
+import { execa } from "execa";
+import { ensureGitRepo, git, isWorkingTreeClean } from "./guards";
 
 const pushHelp = `
 Usage: nooa push [remote] [branch]
@@ -11,9 +14,9 @@ Flags:
 
 const pushCommand: Command = {
 	name: "push",
-	execute: async ({ rawArgs }: CommandContext) => {
+	execute: async ({ rawArgs, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values } = parseArgs({
+		const { values, positionals } = parseArgs({
 			args: rawArgs,
 			options: {
 				help: { type: "boolean", short: "h" },
@@ -28,7 +31,11 @@ const pushCommand: Command = {
 			return;
 		}
 
-		const cwd = process.cwd();
+		const traceId = createTraceId();
+		const startTime = Date.now();
+		logger.setContext({ trace_id: traceId, command: "push" });
+
+		const cwd = process.env.NOOA_CWD ?? process.env.PWD ?? process.cwd();
 		if (!(await ensureGitRepo(cwd))) {
 			console.error("Error: Not a git repository.");
 			process.exitCode = 2;
@@ -41,8 +48,56 @@ const pushCommand: Command = {
 			return;
 		}
 
-		console.log(pushHelp);
-		process.exitCode = 2;
+		telemetry.track(
+			{
+				event: "push.started",
+				level: "info",
+				success: true,
+				trace_id: traceId,
+			},
+			bus,
+		);
+
+		if (!values["no-test"]) {
+			const testResult = await execa("bun", ["test"], { cwd, reject: false });
+			if (testResult.exitCode !== 0) {
+				console.error("Error: Tests failed.");
+				process.exitCode = 3;
+				return;
+			}
+		}
+
+		const remote = positionals[1];
+		const branch = positionals[2];
+		const args = ["push", ...(remote ? [remote] : []), ...(branch ? [branch] : [])];
+		const pushResult = await git(args, cwd);
+		if (pushResult.exitCode !== 0) {
+			console.error(pushResult.stderr || "Error: Git push failed.");
+			telemetry.track(
+				{
+					event: "push.failure",
+					level: "error",
+					success: false,
+					duration_ms: Date.now() - startTime,
+					trace_id: traceId,
+					metadata: { error_message: pushResult.stderr?.trim() ?? "push failed" },
+				},
+				bus,
+			);
+			process.exitCode = 1;
+			return;
+		}
+
+		telemetry.track(
+			{
+				event: "push.success",
+				level: "info",
+				success: true,
+				duration_ms: Date.now() - startTime,
+				trace_id: traceId,
+			},
+			bus,
+		);
 	},
 };
 

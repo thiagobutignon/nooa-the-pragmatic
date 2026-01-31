@@ -28,11 +28,59 @@ describe("nooa push", () => {
 			const res = await execa("bun", [binPath, "push"], {
 				cwd: root,
 				reject: false,
+				env: { ...process.env, PWD: root, NOOA_CWD: root },
 			});
 			expect(res.exitCode).toBe(2);
 			expect(res.stderr).toContain("Uncommitted changes");
 		} finally {
 			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("pushes to remote", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-push-"));
+		const bare = await mkdtemp(join(tmpdir(), "nooa-push-remote-"));
+		try {
+			await execa("git", ["init"], { cwd: root });
+			await execa("git", ["branch", "-m", "main"], { cwd: root });
+			await execa("git", ["init", "--bare"], { cwd: bare });
+			await execa("git", ["remote", "add", "origin", bare], { cwd: root });
+			await writeFile(join(root, "file.txt"), "hello\n");
+			await execa("git", ["add", "."], { cwd: root });
+			await execa(
+				"git",
+				[
+					"-c",
+					"user.email=test@example.com",
+					"-c",
+					"user.name=test",
+					"commit",
+					"-m",
+					"init",
+				],
+				{ cwd: root },
+			);
+
+			const res = await execa(
+				"bun",
+				[binPath, "push", "origin", "main", "--no-test"],
+				{
+					cwd: root,
+					reject: false,
+					env: { ...process.env, PWD: root, NOOA_CWD: root },
+				},
+			);
+
+			expect(res.exitCode).toBe(0);
+			const ref = await execa(
+				"git",
+				["--git-dir", bare, "rev-parse", "refs/heads/main"],
+				{ reject: false },
+			);
+			expect(ref.exitCode).toBe(0);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+			await rm(bare, { recursive: true, force: true });
 		}
 	});
 });
