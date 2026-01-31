@@ -2,29 +2,18 @@
 
 Eliminate AI hallucinations in `review` and improve CLI robustness through "evidence-based" grounding and strict contract enforcement.
 
-## 1. Prompt v1.1.0 (`src/features/prompt/templates/review.md`)
-- **Golden Rules**:
-  - Do NOT claim "no tests exist" without evidence.
-  - Do NOT assume external API contracts.
-- **Schema**: Include `observability` in categories.
-- **Constraints**: Relative paths for `file`, hard limit `max_findings=7`.
-- **New Fields**: `truncated`, `input_path`, `input_type`, `input_scope`, `test_grounding`.
+## 1. Prompt v1.1.1 (`src/features/prompt/templates/review.md`)
+- **Strict Categories**: Explicitly map `maintainability` to `arch` or `style`.
+- **Severity Evidence**: For medium/high severity, REQUIRE evidence (identifier name + concrete failure mode). Prohibit generic "may cause runtime errors" phrases.
+- **Project Conventions**: Respect `{{project_conventions}}` injected context.
 
-## 2. CLI Context Injection (`review` command)
-- Pass relative `input_path`, `input_type` (file|diff), and `input_scope` (single_file|diff).
-- Pass `repo_root` (absolute).
+## 2. CLI Context & Validation
+- **Convention Injection**: Pass `project_conventions` (e.g., dynamic imports preferred for performance).
+- **Category Normalization**: Convert `maintainability` to `arch` in the validator.
+- **File Fallback**: If `file` is null, default to `input_path`.
 
-## 3. Evidence-Based Test Discovery
-Heuristic: For `foo.ts`, check for `foo.test.ts`, `foo.spec.ts`, or `tests/foo.test.ts`.
-- **Pass to Prompt**: `tests.candidates: string[]` (paths found) + disclaimer.
-- **Rule**: AI can mention candidates but cannot confirm coverage.
-
-## 4. Strict AI Output Validation
-If `--json` is enabled:
-- Validate `JSON.parse`.
-- Check required: `schemaVersion`, `ok`, `findings`, `stats`, `maxSeverity`.
-- Ensure `file` paths are **relative**.
-- On failure: Exit 1, telemetry `review.failure`, and log clear error.
+## 3. Verification
+- `tests/core/cohesion.test.ts`: Verify `maintainability` is normalized to `arch`.
 
 ## 5. Search CLI Precision
 - Parse and validate `maxResults` as Integer inside the `search` command.

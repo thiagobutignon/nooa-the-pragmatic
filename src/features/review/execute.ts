@@ -10,7 +10,7 @@ import { telemetry } from "../../core/telemetry";
 export interface ReviewFinding {
 	severity: "low" | "medium" | "high";
 	file: string;
-	line: number;
+	line: number | null;
 	category: string;
 	message: string;
 	suggestion: string;
@@ -93,6 +93,7 @@ export async function executeReview(
         input_type: options.path ? "file" : "diff",
         input_scope: options.path ? "single_file" : "diff",
         test_grounding: testGrounding,
+        project_conventions: "- Preferred: Dynamic imports for filesystem/process heavy modules to keep startup fast.\n- Preferred: Telemetry for all user-facing command results.",
 		input: input,
 	});
 
@@ -128,19 +129,31 @@ export async function executeReview(
             const jsonMatch = response.content.match(/\{[\s\S]*\}/);
             const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : response.content);
             
-            // Strict Validation
+            // Strict Validation & Normalization
             if (typeof parsed.ok === 'boolean' && Array.isArray(parsed.findings)) {
                 result = parsed as ReviewResult;
-                // Ensure relative paths
-                result.findings = result.findings.map(f => ({
-                    ...f,
-                    file: (f.file && !f.file.startsWith("/")) ? f.file : (options.path || "staged_changes")
-                }));
+                const validCategories = ["bug", "style", "test", "arch", "security", "observability"];
+                
+                result.findings = result.findings.map(f => {
+                    // Normalize category
+                    let category = f.category?.toLowerCase() || "style";
+                    if (category === "maintainability") category = "arch";
+                    if (!validCategories.includes(category)) category = "arch";
+
+                    // Ensure relative paths and fallback
+                    const isInvalidFile = !f.file || f.file === "unknown" || f.file === "string";
+                    return {
+                        ...f,
+                        category,
+                        file: (!isInvalidFile && !f.file.startsWith("/")) ? f.file : (options.path || "staged_changes"),
+                        line: typeof f.line === 'number' ? f.line : null
+                    };
+                });
             } else {
-                logger.error("AI returned JSON missing required fields (ok, findings)");
+                logger.error("review.json_invalid", new Error("AI returned JSON missing required fields (ok, findings)"));
             }
         } catch (e) {
-            logger.error("Failed to parse AI review JSON", e as Error);
+            logger.error("review.json_parse_failed", e as Error);
         }
     }
 

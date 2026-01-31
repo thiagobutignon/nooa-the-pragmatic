@@ -1,4 +1,5 @@
 import { readdir, readFile, stat } from "node:fs/promises";
+import { Dirent } from "node:fs";
 import { join, relative } from "node:path";
 
 export type SearchResult = {
@@ -55,7 +56,7 @@ export async function hasRipgrep(): Promise<boolean> {
 
 function globToRegExp(glob: string): RegExp {
 	const escaped = glob
-		.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&")
+		.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&")
 		.replace(/\\\*\\\*/g, ".*")
 		.replace(/\\\*/g, "[^/]*")
 		.replace(/\\\?/g, ".");
@@ -99,9 +100,9 @@ async function listFiles(root: string, includeHidden: boolean) {
 	while (stack.length > 0) {
 		const current = stack.pop();
 		if (!current) continue;
-		let entries: Awaited<ReturnType<typeof readdir>>;
+		let entries: Dirent[];
 		try {
-			entries = await readdir(current, { withFileTypes: true });
+			entries = await readdir(current, { withFileTypes: true }) as Dirent[];
 		} catch {
 			continue;
 		}

@@ -4,6 +4,14 @@ export class MockProvider implements AiProvider {
     readonly name = "mock";
 
     async complete(request: AiRequest): Promise<AiResponse> {
+        if (process.env.NOOA_AI_MOCK_CONTENT) {
+            return {
+                content: process.env.NOOA_AI_MOCK_CONTENT,
+                model: "mock-model",
+                provider: this.name,
+                usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+            };
+        }
         const lastMessage = request.messages[request.messages.length - 1];
         const input = lastMessage?.content || "";
         
