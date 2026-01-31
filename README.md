@@ -97,54 +97,35 @@ We use a vertical-slice layout. Each feature owns its runtime code and its tests
 ```
 src/
   core/
+    command.ts
+    registry.ts
+    telemetry.ts
+    logger.ts
     event-bus.ts
-    event-bus.test.ts
   features/
-    bridge/
-      bridge.ts
-      cli.ts
-      bridge.test.ts
-      cli.test.ts
     chat/
       cli.ts
       execute.ts
       types.ts
-      cli.test.ts
-      execute.test.ts
     code/
+      cli.ts
       write.ts
       patch.ts
-      cli-write.test.ts
-      cli-patch.test.ts
-      write.test.ts
-      patch.test.ts
-    jobs/
-      jobs.ts
-      db.ts
-      matcher.ts
-      github.ts
-      automation.ts
+    commit/
       cli.ts
-      db.test.ts
-      matcher.test.ts
-      cli.test.ts
-    resume/
-      converter.ts
-      json-resume.ts
-      pdf-generator.ts
-      validator.ts
+      guards.ts
+    push/
       cli.ts
-      converter.test.ts
-      json-resume.test.ts
-      pdf-generator.test.ts
-      validator.test.ts
-      cli.test.ts
-      cli-validate.test.ts
+      guards.ts
+    read/
+      cli.ts
+    search/
+      cli.ts
+      engine.ts
+    worktree/
+      cli.ts
+      git.ts
 index.ts
-index.main.test.ts
-index.cli.test.ts
-index.nooa.test.ts
-index.read.test.ts
 ```
 
 ## Install & Run
