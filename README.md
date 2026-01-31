@@ -24,12 +24,27 @@ Repository: [thiagobutignon/nooa-the-pragmatic](https://github.com/thiagobutigno
 - **`commit -m <msg>`**: Commit staged changes with validation. See [commit.md](docs/commands/commit.md).
 - **`push [remote] [branch]`**: Push committed changes to remote. See [push.md](docs/commands/push.md).
 - **`ai <prompt>`**: Query the resilient AI engine with fallback and retries. See [ai.md](docs/commands/ai.md).
-- **`run [-- flags] -- <cmd1> -- <cmd2>`**: Execute multiple commands in a pipeline (supports escaping `\--` and output capture). See [run.md](docs/commands/run.md).
+- **`run [-- flags] -- <cmd1> -- <cmd2>`**: Execute multiple commands in a pipeline. See [run.md](docs/commands/run.md).
 - **`combine [flags] -- <cmd1> -- <cmd2>`**: Alias for `run`. See [combine.md](docs/commands/combine.md).
+- **`review [path]`**: Perform an AI-powered code review. See [review.md](docs/commands/review.md).
+- **`prompt <action>`**: Manage and render AI prompts. See [prompt.md](docs/commands/prompt.md).
 
-## Focus Rules (Non-negotiable)
+Every project has **Objective, Cost, and Deadline**. The agent must keep the developer focused and engaged.
 
-Every project has **Objective, Cost, and Deadline**. The agent must keep the developer focused and engaged, provide support, and explain difficult topics. If needed, it should build small interactive HTML/CSS/JS examples to clarify concepts.
+## Development Flywheel (The Golden Path)
+
+NOOA is designed to accelerate your development cycle through a robust command pipeline. Use the delimiter mode (`--`) to chain commands in a single stroke:
+
+```bash
+nooa run -- \
+  worktree create feat/new-feature \
+  -- code write src/feature.ts --from spec.md \
+  -- exec git add src/feature.ts \
+  -- review src/feature.ts --fail-on high \
+  -- commit -m "feat: implement new feature"
+```
+
+This ensures every change is isolated, documented, reviewed, and committed with zero friction.
 
 ## Never Break These Capabilities
 
@@ -129,6 +144,13 @@ src/
       cli.ts
       engine.ts
       types.ts
+    prompt/
+      cli.ts
+      engine.ts
+      templates/
+    review/
+      cli.ts
+      execute.ts
     run/
       cli.ts
       executor.ts
