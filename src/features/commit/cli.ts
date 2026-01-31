@@ -104,9 +104,11 @@ const commitCommand: Command = {
 		);
 
 		if (!values["no-test"]) {
+			console.log("Running tests...");
 			const testResult = await execa("bun", ["test"], {
 				cwd,
 				reject: false,
+				stdio: "inherit",
 			});
 			if (testResult.exitCode !== 0) {
 				console.error("Error: Tests failed.");
