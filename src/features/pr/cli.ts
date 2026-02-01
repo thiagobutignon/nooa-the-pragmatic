@@ -80,7 +80,7 @@ const prCommand: Command = {
                 const title = values.title as string;
                 const body = values.body as string;
                 const head = await getCurrentBranch();
-                const base = "main"; // TODO: Make configurable
+                const base = process.env.NOOA_PR_BASE || "main";
 
                 if (!title || !body) {
                     throw new Error("Missing --title or --body for PR creation.");

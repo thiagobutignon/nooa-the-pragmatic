@@ -18,12 +18,12 @@ Commit staged changes with validation (TDD, no forbidden markers).
 Flags:
   -m <message>   Commit message (required).
   --no-test      Skip automatic test verification.
-  --allow-todo   Allow TODO/MOCK markers in the code. // nooa-ignore
+  --allow-lazy   Allow TODO/MOCK markers in the code. // nooa-ignore
   -h, --help     Show help message.
 
 Examples:
   nooa commit -m "feat: user authentication"
-  nooa commit -m "docs: api reference" --allow-todo // nooa-ignore
+  nooa commit -m "docs: api reference" --allow-lazy // nooa-ignore
 
 Exit Codes:
   0: Success
@@ -42,7 +42,7 @@ const commitCommand: Command = {
 				help: { type: "boolean", short: "h" },
 				m: { type: "string", short: "m" },
 				"no-test": { type: "boolean" },
-				"allow-todo": { type: "boolean" },
+				"allow-lazy": { type: "boolean" },
 				json: { type: "boolean" },
 			},
 			strict: true,
@@ -85,7 +85,7 @@ const commitCommand: Command = {
 			return;
 		}
 
-		if (!values["allow-todo"]) {
+		if (!values["allow-lazy"]) {
 			const engine = new PolicyEngine();
 			// The following lines are likely intended for a test file (e.g., commit/cli.test.ts)
 			// to set up a git repository for testing purposes.
@@ -121,7 +121,7 @@ const commitCommand: Command = {
 			// and the instruction explicitly mentions `commit/cli.test.ts` for the git config part,
 			// I will *not* insert the `execa` lines related to git config here.
 			//
-			// I will proceed with the existing code structure for the `allow-todo` block.
+			// I will proceed with the existing code structure for the `allow-lazy` block.
 			const { stdout } = await execa("git", [
 				"diff",
 				"--cached",
@@ -146,7 +146,7 @@ const commitCommand: Command = {
 						console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
 					}
 					console.error(
-						"\nFix these violations or use --allow-todo to override.",
+						"\nFix these violations or use --allow-lazy to override.",
 					);
 				}
 				process.exitCode = 2;
@@ -160,7 +160,7 @@ const commitCommand: Command = {
 				level: "info",
 				success: true,
 				trace_id: traceId,
-				metadata: { allow_todo: Boolean(values["allow-todo"]) }, // nooa-ignore
+				metadata: { allow_todo: Boolean(values["allow-lazy"]) }, // nooa-ignore
 			},
 			bus,
 		);

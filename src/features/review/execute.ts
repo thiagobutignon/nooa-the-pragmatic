@@ -97,7 +97,7 @@ export async function executeReview(
 		}
 	}
 
-	const systemPrompt = promptEngine.renderPrompt(promptTemplate, {
+	const systemPrompt = await promptEngine.renderPrompt(promptTemplate, {
 		repo_root: process.cwd(),
 		input_path: options.path || "staged_changes",
 		input_type: options.path ? "file" : "diff",

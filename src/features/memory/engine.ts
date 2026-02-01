@@ -3,7 +3,7 @@ import { readFile, mkdir, appendFile, writeFile, unlink } from "node:fs/promises
 import { existsSync } from "node:fs";
 import { type MemoryEntry, formatMemoryAsMarkdown, parseMemoryFromMarkdown } from "../../core/memory/schema";
 import { runSearch } from "../search/engine";
-import { createTraceId } from "../../core/logger";
+import { createTraceId, logger } from "../../core/logger";
 import { summarizeMemory } from "./summarize";
 
 export interface MemorySearchOptions {
@@ -65,6 +65,16 @@ export class MemoryEngine {
         await this.acquireLock();
         try {
             await appendFile(dailyPath, `\n${content}\n`);
+            
+            // Generate and store embedding
+            try {
+                const { embedText } = await import("../embed/engine");
+                const { store } = await import("../../core/db/index");
+                const { embedding } = await embedText(fullEntry.content, {});
+                await store.storeEmbedding(fullEntry.id, fullEntry.content, embedding);
+            } catch (e) {
+                logger.warn("memory.embedding_failed", { error: (e as Error).message });
+            }
         } finally {
             await this.releaseLock();
         }
@@ -75,7 +85,7 @@ export class MemoryEngine {
         const results = await runSearch({
             query: id,
             root: this.root,
-            include: ["memory/*.md", ".nooa/MEMORY.md"],
+            include: ["**/memory/*.md", "**/.nooa/MEMORY.md"],
             regex: false,
             context: 0
         });
@@ -116,10 +126,14 @@ export class MemoryEngine {
     }
 
     async search(query: string, options: MemorySearchOptions = {}): Promise<MemoryEntry[]> {
+        if (options.semantic) {
+            return this.searchSemantic(query);
+        }
+
         const lexicalResults = await runSearch({
             query,
             root: this.root,
-            include: ["memory/*.md", ".nooa/MEMORY.md"],
+            include: ["**/memory/*.md", "**/.nooa/MEMORY.md"],
             regex: true,
             ignoreCase: true,
             noIgnore: true
@@ -130,7 +144,7 @@ export class MemoryEngine {
 
         for (const result of lexicalResults) {
             const fileContent = await readFile(result.path, "utf-8");
-            const blockRegex = /---\r?\n[\s\S]*?\r?\n---\r?\n?[\s\S]*?(?=\r?\n---\r?\n|$)/g;
+            const blockRegex = /---\r?\n[\s\S]*?---\r?\n?[\s\S]*?(?=\r?\n---\r?\n|$)/g;
             const blocks = fileContent.match(blockRegex) || [];
             
             for (const block of blocks) {
@@ -156,6 +170,21 @@ export class MemoryEngine {
             }
         }
 
+        return entries;
+    }
+
+    async searchSemantic(query: string): Promise<MemoryEntry[]> {
+        const { embedText } = await import("../embed/engine");
+        const { store } = await import("../../core/db/index");
+        
+        const { embedding } = await embedText(query, {});
+        const results = await store.searchEmbeddings(embedding, 10);
+        
+        const entries: MemoryEntry[] = [];
+        for (const res of results) {
+            const entry = await this.getEntryById(res.path); // res.path stores the memory ID
+            if (entry) entries.push(entry);
+        }
         return entries;
     }
 }

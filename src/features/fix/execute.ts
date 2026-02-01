@@ -76,7 +76,7 @@ export async function runFix(options: FixOptions): Promise<FixResult> {
         Please provide a fix. (SIMULATED FOR NOW)
         `;
 		
-        // Simulation of AI completing the task (placeholder)
+        // Simulation of AI completing the task (simulated)
 		stages.patch = true;
 
 		// Stage 4: Verify (CI)

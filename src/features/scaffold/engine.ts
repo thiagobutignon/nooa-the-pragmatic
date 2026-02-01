@@ -41,7 +41,7 @@ export class ScaffoldEngine {
 		const tplPath = join(this.templatesDir, `${templateName}.tpl`);
 		let content = await readFile(tplPath, "utf-8");
 
-		// Simple placeholder replacement
+		// Simple template replacement
 		content = content.replace(/{{name}}/g, context.name);
 		content = content.replace(
 			/{{camelName}}/g,

@@ -32,6 +32,11 @@ export class PolicyEngine {
 			rule: "no-fixme",
 			message: "Zero-Preguiça: FIXMEs are not allowed in production code.",
 		},
+		{
+			pattern: /\/\/\s*implement|placeholder/i, // nooa-ignore
+			rule: "no-placeholder", // nooa-ignore
+			message: "Zero-Preguiça: Implementation placeholders are not allowed.", // nooa-ignore
+		},
 	];
 
 	private ignoredPatterns: string[] = [];

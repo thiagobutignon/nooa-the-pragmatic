@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AiEngine } from "../ai/engine";
 import {
-	MockProvider,
-	OllamaProvider,
-	OpenAiProvider,
+    MockProvider,
+    OllamaProvider,
+    OpenAiProvider,
 } from "../ai/providers/mod";
 import { PromptEngine } from "../prompt/engine";
 import type { AssertionResult } from "./scorers/deterministic";
@@ -69,7 +69,7 @@ export class EvalEngine {
 				inputText = await readFile(join(process.cwd(), c.input), "utf-8");
 			}
 
-			const systemPrompt = promptEngine.renderPrompt(promptTemplate, {
+			const systemPrompt = await promptEngine.renderPrompt(promptTemplate, {
 				...c.vars,
 				input: inputText,
 				repo_root: process.cwd(),
@@ -92,11 +92,15 @@ export class EvalEngine {
 			const assertions = [...deterministicResult.results];
 
 			if (judgeTemplate) {
-				const judgePrompt = promptEngine.renderPrompt(judgeTemplate, {
-					original_prompt: promptTemplate.body,
-					input_data: inputText,
-					ai_output: response.content,
-				});
+				const judgePrompt = await promptEngine.renderPrompt(
+					judgeTemplate,
+					{
+						original_prompt: promptTemplate.body,
+						input_data: inputText,
+						ai_output: response.content,
+					},
+					{ skipAgentContext: true },
+				);
 
 				const judgeResponse = await aiEngine.complete(
 					{

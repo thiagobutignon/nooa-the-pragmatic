@@ -13,6 +13,7 @@ export async function memoryCli(args: string[]) {
             confidence: { type: "string" },
             tags: { type: "string", multiple: true },
             "trace-id": { type: "string" },
+            semantic: { type: "boolean" },
             out: { type: "string" }
         },
         allowPositionals: true,
@@ -58,7 +59,7 @@ export async function memoryCli(args: string[]) {
             const query = positionals.slice(1).join(" ");
             if (!query) throw new Error("Search query is required.");
 
-            const entries = await engine.search(query);
+            const entries = await engine.search(query, { semantic: values.semantic as boolean });
 
             if (values.json) {
                 console.log(JSON.stringify({ ok: true, entries }, null, 2));
@@ -97,11 +98,12 @@ export async function memoryCli(args: string[]) {
             console.log("Usage: nooa memory <add|search|promote|get|summarize> [args] [flags]");
             console.log("\nActions:");
             console.log("  add <content>   Add a new memory entry to daily log");
-            console.log("  search <query>  Search memory entries (lexical)");
+            console.log("  search <query>  Search memory entries (lexical by default)");
             console.log("  promote <id>    Move a daily entry to durable memory");
             console.log("  get <id>        Show full details of a memory entry");
             console.log("  summarize       Curate daily logs into .nooa/MEMORY_SUMMARY.md");
             console.log("\nFlags:");
+            console.log("  --semantic           Use semantic search instead of lexical");
             console.log("  --type <type>        decision|fact|preference|rule|gotcha");
             console.log("  --scope <scope>      project|user|repo|command");
             console.log("  --confidence <lvl>   low|medium|high");

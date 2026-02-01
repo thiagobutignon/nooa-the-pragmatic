@@ -155,12 +155,7 @@ const promptCommand: Command = {
 						vars[key] = rest.join("=");
 					}
 				}
-				const { InjectionEngine } = await import("./injection");
-				const injectionEngine = new InjectionEngine();
-				const { content: injectedContext, meta: injectionMeta } =
-					await injectionEngine.getInjectedContext();
-
-				const rendered = engine.renderPrompt(prompt, vars, { injectedContext });
+				const rendered = await engine.renderPrompt(prompt, vars);
 
 				if (values.json) {
 					console.log(
@@ -171,20 +166,12 @@ const promptCommand: Command = {
 								traceId,
 								metadata: prompt.metadata,
 								rendered,
-								injection: values["debug-injection"]
-									? injectionMeta
-									: undefined,
 							},
 							null,
 							2,
 						),
 					);
 				} else {
-					if (values["debug-injection"]) {
-						console.log("--- Injection Meta ---");
-						console.log(JSON.stringify(injectionMeta, null, 2));
-						console.log("----------------------\n");
-					}
 					console.log(rendered);
 				}
 			} else {
