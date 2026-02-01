@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { execa } from "execa";
-import { dirname, basename, join } from "node:path";
+import { dirname, join } from "node:path";
 
 export interface ContextResult {
 	target: string;
@@ -8,14 +8,50 @@ export interface ContextResult {
 	related: string[];
 	tests: string[];
 	recentCommits: string[];
+	isSymbol?: boolean;
 }
 
-export async function buildContext(filePath: string): Promise<ContextResult> {
+async function findFileBySymbol(symbol: string): Promise<string | null> {
+	try {
+		// Use ripgrep to find definition of class or function
+		const { stdout } = await execa("rg", [
+			"-l",
+			`\\b(class|function|interface|const|type)\\s+${symbol}\\b`,
+			".",
+			"--glob",
+			"*.ts",
+			"--glob",
+			"!node_modules/**",
+		]);
+		const files = stdout.split("\n").filter(Boolean);
+		return files[0] || null;
+	} catch {
+		return null;
+	}
+}
+
+export async function buildContext(target: string): Promise<ContextResult> {
+	let filePath = target;
+	let isSymbol = false;
+
+	// Check if target is a file
+	try {
+		await readFile(target, "utf-8");
+	} catch {
+		// Not a file, try symbol lookup
+		const found = await findFileBySymbol(target);
+		if (found) {
+			filePath = found;
+			isSymbol = true;
+		} else {
+			throw new Error(`File or symbol '${target}' not found.`);
+		}
+	}
+
 	const content = await readFile(filePath, "utf-8");
 	const dir = dirname(filePath);
-	const _base = basename(filePath, ".ts");
 
-	// Find related files (imports) - very basic heuristic for now
+	// Find related files (imports) - basic heuristic
 	const importMatches = content.match(/from ["']\.\/([^"']+)["']/g) || [];
 	const related = importMatches.map((m) =>
 		join(dir, m.replace(/from ["']\.\//, "").replace(/["']/, "") + ".ts"),
@@ -31,5 +67,12 @@ export async function buildContext(filePath: string): Promise<ContextResult> {
 	});
 	const recentCommits = stdout.split("\n").filter(Boolean);
 
-	return { target: filePath, content, related, tests, recentCommits };
+	return { 
+        target: isSymbol ? `${target} (in ${filePath})` : filePath, 
+        content, 
+        related, 
+        tests, 
+        recentCommits,
+        isSymbol
+    };
 }
