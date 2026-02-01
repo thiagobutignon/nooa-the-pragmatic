@@ -9,10 +9,32 @@ export async function checkCli(args: string[]) {
         args,
         options: {
             staged: { type: "boolean" },
-            json: { type: "boolean" }
+            json: { type: "boolean" },
+            help: { type: "boolean", short: "h" }
         },
         allowPositionals: true
     });
+
+    const checkHelp = `
+Usage: nooa check [path] [flags]
+
+Audit code against project policies (Zero-Preguiça).
+
+Flags:
+  --staged       Audit only staged files in git.
+  --json         Output result as structured JSON.
+  -h, --help     Show help message.
+
+Examples:
+  nooa check
+  nooa check src --json
+  nooa check --staged
+`;
+
+    if (values.help) {
+        console.log(checkHelp);
+        return;
+    }
 
     const engine = new PolicyEngine();
     let filesToCheck: string[] = [];

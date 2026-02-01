@@ -11,18 +11,48 @@ export async function evalCli(args: string[], bus?: any) {
             baseline: { type: "string" },
             "fail-on-regression": { type: "boolean" },
             bump: { type: "string" },
-            judge: { type: "string", default: "deterministic" }
+            judge: { type: "string", default: "deterministic" },
+            help: { type: "boolean", short: "h" }
         },
         allowPositionals: true,
         strict: false
     });
+
+    const evalHelp = `
+Usage: nooa eval <command> <prompt_name> --suite <name> [flags]
+
+Systematic evaluation of AI prompts and outputs.
+
+Commands:
+  run          Execute evaluation suite on a prompt.
+  suggest      Analyze failures and suggest improvements.
+  apply        Bump prompt version if evaluation passes.
+
+Flags:
+  -s, --suite <name>     Name of the test suite (required).
+  --json                 Output results as JSON.
+  --judge <type>         Evaluation judge (deterministic, llm).
+  --bump <level>         Version level for 'apply' (patch, minor, major).
+  --fail-on-regression  Exit with code 1 if score < 1.0.
+  -h, --help             Show help message.
+
+Examples:
+  nooa eval run review --suite standard
+  nooa eval apply code --suite smoke --bump minor
+`;
+
+    if (values.help) {
+        console.log(evalHelp);
+        return;
+    }
 
     const command = positionals[0];
     const promptName = positionals[1];
     const suiteName = values.suite as string;
 
     if (!command || !promptName || !suiteName) {
-        console.log("Usage: nooa eval <run|suggest|apply> <prompt_name> --suite <name> [flags]");
+        console.error("Error: Missing required arguments.");
+        console.log(evalHelp);
         process.exitCode = 2;
         return;
     }

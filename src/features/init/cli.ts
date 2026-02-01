@@ -15,10 +15,36 @@ export async function initCli(args: string[], bus?: any) {
             "user-name": { type: "string" },
             root: { type: "string" },
             "non-interactive": { type: "boolean" },
-            out: { type: "string" }
+            out: { type: "string" },
+            help: { type: "boolean", short: "h" }
         },
         strict: false
     });
+
+    const initHelp = `
+Usage: nooa init [flags]
+
+Initialize NOOA's Agentic Soul and Identity.
+
+Flags:
+  --name <name>         Name of the agent (default: NOOA).
+  --vibe <vibe>         Vibe of the agent (snarky, protocol, resourceful).
+  --user-name <name>    What the agent should call you.
+  --root <path>         Project root directory.
+  --force               Overwrite existing configuration.
+  --non-interactive     Skip interactive prompts.
+  --json                Output results as JSON.
+  -h, --help            Show help message.
+
+Examples:
+  nooa init
+  nooa init --name "NOOA-Pragmatic" --vibe "snarky" --non-interactive
+`;
+
+    if (values.help) {
+        console.log(initHelp);
+        return;
+    }
 
     let name = values.name;
     let vibe = values.vibe;

@@ -10,23 +10,46 @@ export async function scaffoldCli(args: string[], bus?: any) {
             "dry-run": { type: "boolean" },
             force: { type: "boolean" },
             out: { type: "string" },
-            "with-docs": { type: "boolean" }
+            "with-docs": { type: "boolean" },
+            help: { type: "boolean", short: "h" }
         },
         allowPositionals: true,
         strict: false
     });
 
+    const scaffoldHelp = `
+Usage: nooa scaffold <command|prompt> <name> [flags]
+
+Standardize creation of new features and prompts.
+
+Arguments:
+  <command|prompt>    Type of item to scaffold.
+  <name>              Name of the item.
+
+Flags:
+  --dry-run      Log planned operations without writing to disk.
+  --force        Allow overwriting existing files.
+  --json         Output result as structured JSON.
+  --out <file>   Write results report to a specific file.
+  --with-docs    Generate documentation template.
+  -h, --help     Show help message.
+
+Examples:
+  nooa scaffold command authentication
+  nooa scaffold prompt review --with-docs
+`;
+
+    if (values.help) {
+        console.log(scaffoldHelp);
+        return;
+    }
+
     const type = positionals[0] as "command" | "prompt";
     const name = positionals[1];
 
     if (!type || !name || !["command", "prompt"].includes(type)) {
-        console.log("Usage: nooa scaffold <command|prompt> <name> [flags]");
-        console.log("\nFlags:");
-        console.log("  --dry-run      Log planned operations without writing to disk");
-        console.log("  --force        Allow overwriting existing files");
-        console.log("  --json         Output result as structured JSON");
-        console.log("  --out <file>   Write results report to a specific file");
-        console.log("  --with-docs    Generate documentation template");
+        console.error("Error: Missing or invalid arguments.");
+        console.log(scaffoldHelp);
         process.exitCode = 2;
         return;
     }
