@@ -1,6 +1,7 @@
 import type { Command, CommandContext } from "../../core/command";
 import { parseArgs } from "node:util";
 import { buildContext } from "./execute";
+import { logger } from "../../core/logger";
 
 const contextHelp = `
 Usage: nooa context <file|symbol> [flags]
@@ -33,7 +34,20 @@ const contextCommand: Command = {
 
 		const target = positionals[1];
 		if (!target) {
-			console.error("Error: File or symbol required.");
+			const msg = "Error: File or symbol required.";
+			if (values.json) {
+				console.log(
+					JSON.stringify({
+						ok: false,
+						error: msg,
+						traceId: logger.getContext().trace_id,
+						schemaVersion: "1.0.0",
+						timestamp: Date.now(),
+					}),
+				);
+			} else {
+				console.error(msg);
+			}
 			process.exitCode = 2;
 			return;
 		}
@@ -41,15 +55,31 @@ const contextCommand: Command = {
 		try {
 			const result = await buildContext(target);
 			if (values.json) {
-				console.log(JSON.stringify(result, null, 2));
+				console.log(
+					JSON.stringify({ ok: true, ...result, timestamp: Date.now() }, null, 2),
+				);
 			} else {
 				console.log(`Target: ${result.target}`);
 				console.log(`Related: ${result.related.join(", ") || "none"}`);
 				console.log(`Tests: ${result.tests.join(", ") || "none"}`);
+				console.log(`Symbols: ${result.symbols.join(", ") || "none"}`);
 				console.log(`Recent Commits: ${result.recentCommits.length}`);
 			}
-		} catch (e) {
-			console.error(`Error building context: ${(e as Error).message}`);
+		} catch (e: any) {
+			const msg = `Error building context: ${e.message}`;
+			if (values.json) {
+				console.log(
+					JSON.stringify({
+						ok: false,
+						error: msg,
+						traceId: logger.getContext().trace_id,
+						schemaVersion: "1.0.0",
+						timestamp: Date.now(),
+					}),
+				);
+			} else {
+				console.error(msg);
+			}
 			process.exitCode = 1;
 		}
 	},

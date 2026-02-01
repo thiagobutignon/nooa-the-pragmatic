@@ -8,6 +8,7 @@ export interface ContextResult {
 	related: string[];
 	tests: string[];
 	recentCommits: string[];
+	symbols: string[];
 	isSymbol?: boolean;
 }
 
@@ -67,12 +68,20 @@ export async function buildContext(target: string): Promise<ContextResult> {
 	});
 	const recentCommits = stdout.split("\n").filter(Boolean);
 
-	return { 
-        target: isSymbol ? `${target} (in ${filePath})` : filePath, 
-        content, 
-        related, 
-        tests, 
-        recentCommits,
-        isSymbol
-    };
+	// Extract symbols in the file (top-level only)
+	const symbolMatches =
+		content.match(
+			/^(?:export\s+)?(?:class|function|interface|type|const|enum|var|let)\s+([a-zA-Z0-9_]+)/gm,
+		) || [];
+	const symbols = symbolMatches.map((m) => m.trim().split(/\s+/).pop() || "");
+
+	return {
+		target: isSymbol ? `${target} (in ${filePath})` : filePath,
+		content,
+		related,
+		tests,
+		recentCommits,
+		symbols,
+		isSymbol,
+	};
 }
