@@ -1,4 +1,10 @@
-import type { AiProvider, AiRequest, AiResponse } from "../types";
+import type {
+    AiEmbeddingRequest,
+    AiEmbeddingResponse,
+    AiProvider,
+    AiRequest,
+    AiResponse,
+} from "../types";
 
 export class MockProvider implements AiProvider {
 	readonly name = "mock";
@@ -48,6 +54,19 @@ export class MockProvider implements AiProvider {
 				completionTokens: 20,
 				totalTokens: 30,
 			},
+		};
+	}
+
+	async embed(request: AiEmbeddingRequest): Promise<AiEmbeddingResponse> {
+		const inputs = Array.isArray(request.input) ? request.input : [request.input];
+		const embeddings = inputs.map(() =>
+			Array.from({ length: 1536 }, () => Math.random()),
+		);
+
+		return {
+			embeddings,
+			model: request.model || "mock-embedding-model",
+			provider: this.name,
 		};
 	}
 }

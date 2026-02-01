@@ -30,6 +30,9 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 | `commit` | Commit with automated gates |
 | `worktree`| Manage git worktrees for isolated development |
 | `memory` | Manage persistent context |
+| `index` | Semantic indexing for code & memory |
+| `ask` | Semantic search query |
+| `context` | Generate surgical AI context packs |
 | `ignore` | Manage policy exclusions |
 | `scaffold`| Standardize creation of features/prompts |
 

@@ -1,4 +1,10 @@
-import type { AiProvider, AiRequest, AiResponse } from "../types";
+import type {
+    AiEmbeddingRequest,
+    AiEmbeddingResponse,
+    AiProvider,
+    AiRequest,
+    AiResponse,
+} from "../types";
 
 export class OllamaProvider implements AiProvider {
 	readonly name = "ollama";
@@ -42,6 +48,36 @@ export class OllamaProvider implements AiProvider {
 				completionTokens: data.eval_count || 0,
 				totalTokens: (data.prompt_eval_count || 0) + (data.eval_count || 0),
 			},
+		};
+	}
+
+	async embed(request: AiEmbeddingRequest): Promise<AiEmbeddingResponse> {
+		const endpoint = process.env.NOOA_AI_ENDPOINT || "http://localhost:11434";
+		const model =
+			request.model || process.env.NOOA_AI_EMBED_MODEL || "nomic-embed-text";
+
+		const res = await fetch(`${endpoint.replace(/\/$/, "")}/api/embed`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				model,
+				input: request.input,
+			}),
+		});
+
+		if (!res.ok) {
+			const error = await res.text();
+			throw new Error(`Ollama embed error (${res.status}): ${error}`);
+		}
+
+		const data = (await res.json()) as {
+			embeddings: number[][];
+		};
+
+		return {
+			embeddings: data.embeddings,
+			model,
+			provider: this.name,
 		};
 	}
 }

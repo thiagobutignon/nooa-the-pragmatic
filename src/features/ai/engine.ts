@@ -1,9 +1,11 @@
 import { logger } from "../../core/logger";
 import type {
-	AiEngineOptions,
-	AiProvider,
-	AiRequest,
-	AiResponse,
+    AiEngineOptions,
+    AiProvider,
+    AiRequest,
+    AiResponse,
+    AiEmbeddingRequest,
+    AiEmbeddingResponse,
 } from "./types";
 
 export class AiEngine {
@@ -30,7 +32,7 @@ export class AiEngine {
 		} catch (error) {
 			if (options.fallbackProvider) {
 				logger.warn(
-					`Primary provider ${providerName} failed, falling back to ${options.fallbackProvider}`,
+					`Primary provider ${providerName} completed failed, falling back to ${options.fallbackProvider}`,
 					{
 						error: error instanceof Error ? error.message : String(error),
 					},
@@ -39,6 +41,40 @@ export class AiEngine {
 				if (fallback) {
 					return await this.withRetry(
 						() => fallback.complete(request),
+						options,
+					);
+				}
+			}
+			throw error;
+		}
+	}
+
+	async embed(
+		request: AiEmbeddingRequest,
+		options: AiEngineOptions = {},
+	): Promise<AiEmbeddingResponse> {
+		const providerName =
+			options.provider || process.env.NOOA_AI_PROVIDER || "ollama";
+		const provider = this.providers.get(providerName);
+
+		if (!provider) {
+			throw new Error(`AI Provider not found: ${providerName}`);
+		}
+
+		try {
+			return await this.withRetry(() => provider.embed(request), options);
+		} catch (error) {
+			if (options.fallbackProvider) {
+				logger.warn(
+					`Primary provider ${providerName} embed failed, falling back to ${options.fallbackProvider}`,
+					{
+						error: error instanceof Error ? error.message : String(error),
+					},
+				);
+				const fallback = this.providers.get(options.fallbackProvider);
+				if (fallback) {
+					return await this.withRetry(
+						() => fallback.embed(request),
 						options,
 					);
 				}

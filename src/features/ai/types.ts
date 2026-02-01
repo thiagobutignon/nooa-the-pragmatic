@@ -24,9 +24,21 @@ export interface AiResponse {
 	};
 }
 
+export interface AiEmbeddingRequest {
+	input: string | string[];
+	model?: string;
+}
+
+export interface AiEmbeddingResponse {
+	embeddings: number[][];
+	model: string;
+	provider: string;
+}
+
 export interface AiProvider {
 	readonly name: string;
 	complete(request: AiRequest): Promise<AiResponse>;
+	embed(request: AiEmbeddingRequest): Promise<AiEmbeddingResponse>;
 }
 
 export interface AiEngineOptions {
