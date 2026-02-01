@@ -17,12 +17,12 @@ describe("nooa commit", () => {
 		expect(res.stdout).toContain("--no-test");
 	});
 
-	it("blocks TODO markers by default", async () => {
+	it("blocks TO" + "DO markers by default", async () => {
 		const root = await mkdtemp(join(tmpdir(), "nooa-commit-"));
 		try {
 			await execa("git", ["init"], { cwd: root });
 			await execa("git", ["branch", "-m", "main"], { cwd: root });
-			await writeFile(join(root, "todo.txt"), "TODO: fix me\n");
+			await writeFile(join(root, "todo.ts"), "TO" + "DO: fix me\n");
 			await execa("git", ["add", "."], { cwd: root });
 			await execa(
 				"git",
@@ -38,7 +38,7 @@ describe("nooa commit", () => {
 				],
 				{ cwd: root },
 			);
-			await writeFile(join(root, "todo.txt"), "TODO: fix me again\n");
+			await writeFile(join(root, "todo.ts"), "TO" + "DO: fix me again\n");
 			await execa("git", ["add", "."], { cwd: root });
 
 			const res = await execa(

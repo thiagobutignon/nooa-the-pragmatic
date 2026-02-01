@@ -15,9 +15,9 @@ export interface PolicyResult {
 
 export class PolicyEngine {
     private forbiddenMarkers = [
-        { pattern: /\/\/\s*TODO/i, rule: "no-todo", message: "Zero-Preguiça: TODOs are not allowed in production code." },
-        { pattern: /\/\/\s*MOCK/i, rule: "no-mock", message: "Zero-Preguiça: MOCKs are not allowed in production code." },
-        { pattern: /\/\/\s*FIXME/i, rule: "no-fixme", message: "Zero-Preguiça: FIXMEs are not allowed in production code." }
+        { pattern: /TODO[:\s]/i, rule: "no-todo", message: "Zero-Preguiça: TODOs are not allowed in production code." },
+        { pattern: /MOCK[:\s]/i, rule: "no-mock", message: "Zero-Preguiça: MOCKs are not allowed in production code." },
+        { pattern: /FIXME[:\s]/i, rule: "no-fixme", message: "Zero-Preguiça: FIXMEs are not allowed in production code." }
     ];
 
     async checkFile(path: string): Promise<PolicyViolation[]> {
