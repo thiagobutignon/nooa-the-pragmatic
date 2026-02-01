@@ -2,7 +2,7 @@ import { parseArgs } from "node:util";
 import { executeScaffold } from "./execute";
 import { logger } from "../../core/logger";
 
-export async function scaffoldCli(args: string[]) {
+export async function scaffoldCli(args: string[], bus?: any) {
     const { values, positionals } = parseArgs({
         args,
         options: {
@@ -38,7 +38,7 @@ export async function scaffoldCli(args: string[]) {
             force: !!values.force,
             dryRun: !!values["dry-run"],
             withDocs: !!values["with-docs"]
-        });
+        }, bus);
 
         const output = {
             schemaVersion: "1.0",
@@ -94,7 +94,7 @@ const scaffoldCommand = {
     description: "Standardize creation of new features and prompts",
     async execute({ rawArgs, bus }: any) {
         const index = rawArgs.indexOf("scaffold");
-        await scaffoldCli(rawArgs.slice(index + 1));
+        await scaffoldCli(rawArgs.slice(index + 1), bus);
     }
 };
 

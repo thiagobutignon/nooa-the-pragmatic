@@ -60,8 +60,14 @@ export class PromptEngine {
 		return { metadata, body };
 	}
 
-	renderPrompt(prompt: Prompt, vars: Record<string, any>): string {
+	renderPrompt(prompt: Prompt, vars: Record<string, any>, options?: { injectedContext?: string }): string {
 		let rendered = prompt.body;
+		
+		// Inject personality context if available
+		if (options?.injectedContext) {
+			rendered = `${options.injectedContext}\n\n---\n\n${rendered}`;
+		}
+
 		for (const [key, value] of Object.entries(vars)) {
 			const regex = new RegExp(`{{${key}}}`, "g");
 			rendered = rendered.replace(regex, String(value));

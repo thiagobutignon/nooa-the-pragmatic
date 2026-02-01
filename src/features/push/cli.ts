@@ -3,6 +3,9 @@ import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import { execa } from "execa";
 import { ensureGitRepo, git, isWorkingTreeClean } from "./guards";
+import { PolicyEngine } from "../../core/policy/PolicyEngine";
+import { join } from "node:path";
+import { lstat, readdir } from "node:fs/promises";
 
 const pushHelp = `
 Usage: nooa push [remote] [branch] [flags]
@@ -65,6 +68,19 @@ const pushCommand: Command = {
 			return;
 		}
 
+        console.log("Auditing code policies...");
+        const engine = new PolicyEngine();
+        const filesToCheck = await growFileList(cwd);
+        const policyResult = await engine.checkFiles(filesToCheck);
+        if (!policyResult.ok) {
+            console.error(`\n❌ Error: Policy violations found in the project (${policyResult.violations.length}). Push blocked.`);
+            for (const v of policyResult.violations) {
+                console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
+            }
+            process.exitCode = 2;
+            return;
+        }
+
 		telemetry.track(
 			{
 				event: "push.started",
@@ -117,5 +133,28 @@ const pushCommand: Command = {
 		);
 	},
 };
+
+async function growFileList(path: string): Promise<string[]> {
+    try {
+        const stat = await lstat(path);
+        if (stat.isFile()) return [path];
+        
+        const files: string[] = [];
+        const entries = await readdir(path, { withFileTypes: true });
+        
+        for (const entry of entries) {
+            const full = join(path, entry.name);
+            if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "memory") continue;
+            if (entry.isDirectory()) {
+                files.push(...(await growFileList(full)));
+            } else {
+                files.push(full);
+            }
+        }
+        return files;
+    } catch {
+        return [];
+    }
+}
 
 export default pushCommand;

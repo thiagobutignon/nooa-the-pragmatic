@@ -2,7 +2,7 @@ import { parseArgs } from "node:util";
 import { EvalEngine } from "./engine";
 import { logger } from "../../core/logger";
 
-export async function evalCli(args: string[]) {
+export async function evalCli(args: string[], bus?: any) {
     const { values, positionals } = parseArgs({
         args,
         options: {
@@ -111,7 +111,7 @@ const evalCommand = {
     async execute({ rawArgs, bus }: any) {
         // rawArgs starts with 'eval', so we want what's after it
         const evalIndex = rawArgs.indexOf("eval");
-        await evalCli(rawArgs.slice(evalIndex + 1));
+        await evalCli(rawArgs.slice(evalIndex + 1), bus);
     }
 };
 

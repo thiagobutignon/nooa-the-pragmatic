@@ -2,12 +2,12 @@ import type { Command, CommandContext } from "../../core/command";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import {
-	ensureGitRepo,
-	findForbiddenMarkers,
-	git,
-	hasPendingChanges,
-	hasStagedChanges,
+    ensureGitRepo,
+    git,
+    hasPendingChanges,
+    hasStagedChanges,
 } from "./guards";
+import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { execa } from "execa";
 
 const commitHelp = `
@@ -83,10 +83,17 @@ const commitCommand: Command = {
 		}
 
 		if (!values["allow-todo"]) {
-			const violations = await findForbiddenMarkers(cwd);
-			if (violations.length > 0) {
-				console.error("Error: Forbidden markers found:");
-				for (const line of violations) console.error(line);
+            const engine = new PolicyEngine();
+            const { stdout } = await execa("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
+            const filesToCheck = stdout.split("\n").filter(f => f.trim() !== "");
+            
+			const result = await engine.checkFiles(filesToCheck);
+			if (!result.ok) {
+				console.error("\n❌ Error: Zero-Preguiça violation found:");
+				for (const v of result.violations) {
+                    console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
+                }
+                console.error("\nFix these violations or use --allow-todo to override.");
 				process.exitCode = 2;
 				return;
 			}

@@ -39,6 +39,7 @@ const promptCommand: Command = {
 				json: { type: "boolean" },
 				all: { type: "boolean" },
 				help: { type: "boolean", short: "h" },
+				"debug-injection": { type: "boolean" },
 			},
 			strict: true,
 			allowPositionals: true,
@@ -128,16 +129,27 @@ const promptCommand: Command = {
 						vars[key] = rest.join("=");
 					}
 				}
-				const rendered = engine.renderPrompt(prompt, vars);
+				const { InjectionEngine } = await import("./injection");
+				const injectionEngine = new InjectionEngine();
+				const { content: injectedContext, meta: injectionMeta } = await injectionEngine.getInjectedContext();
+
+				const rendered = engine.renderPrompt(prompt, vars, { injectedContext });
+				
 				if (values.json) {
 					console.log(JSON.stringify({ 
 						schemaVersion: "1.0",
 						ok: true,
 						traceId,
 						metadata: prompt.metadata, 
-						rendered 
+						rendered,
+						injection: values["debug-injection"] ? injectionMeta : undefined
 					}, null, 2));
 				} else {
+					if (values["debug-injection"]) {
+						console.log("--- Injection Meta ---");
+						console.log(JSON.stringify(injectionMeta, null, 2));
+						console.log("----------------------\n");
+					}
 					console.log(rendered);
 				}
 			} else {

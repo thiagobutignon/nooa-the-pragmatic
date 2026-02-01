@@ -46,6 +46,10 @@ export async function main(
 		if (values.json) console.log(JSON.stringify(payload, null, 2));
 	});
 
+    // Initialize Reflection Engine (Background)
+    const { MemoryReflector } = await import("./src/core/events/MemoryReflector.js");
+    const reflector = new MemoryReflector(bus);
+
 	// Dynamic Command Registry
 	const { loadCommands } = await import("./src/core/registry.js");
 	const { join } = await import("node:path");
@@ -58,6 +62,7 @@ export async function main(
 
 	if (registeredCmd) {
 		await registeredCmd.execute({ args: positionals, values, rawArgs: args, bus });
+        await reflector.flush();
 		return;
 	}
 
