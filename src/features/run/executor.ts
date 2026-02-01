@@ -1,122 +1,126 @@
-import { execa } from "execa";
-import { CommandRegistry, loadCommands } from "../../core/registry";
-import { logger } from "../../core/logger";
-import type { PipelineResult, PipelineStep, RunOptions, StepResult } from "./types";
 import { join } from "node:path";
+import { execa } from "execa";
+import { loadCommands } from "../../core/registry";
+import type {
+	PipelineResult,
+	PipelineStep,
+	RunOptions,
+	StepResult,
+} from "./types";
 
 export async function executePipeline(
-    steps: PipelineStep[],
-    options: RunOptions,
-    bus: any, // EventBus
+	steps: PipelineStep[],
+	options: RunOptions,
+	bus: any, // EventBus
 ): Promise<PipelineResult> {
-    const results: StepResult[] = [];
-    let failedStepIndex: number | undefined;
+	const results: StepResult[] = [];
+	let failedStepIndex: number | undefined;
 
-    // Load registry for internal commands
-    // We assume features dir is at ../../features relative to this file
-    const featuresDir = join(__dirname, "../../../src/features");
-    const registry = await loadCommands(featuresDir);
+	// Load registry for internal commands
+	// We assume features dir is at ../../features relative to this file
+	const featuresDir = join(__dirname, "../../../src/features");
+	const registry = await loadCommands(featuresDir);
 
-    for (let i = 0; i < steps.length; i++) {
-        const step = steps[i];
-        if (!step) continue;
-        const startTime = Date.now();
+	for (let i = 0; i < steps.length; i++) {
+		const step = steps[i];
+		if (!step) continue;
+		const startTime = Date.now();
 
-        try {
-            if (step.kind === "external") {
-                // Explicit 'exec' prefix used in parser
-                const output = await executeExternal(step, options);
-                results.push({
-                    step,
-                    exitCode: 0,
-                    durationMs: Date.now() - startTime,
-                    stdout: output?.stdout,
-                    stderr: output?.stderr,
-                });
-            } else {
-                // Internal or Implicit External
-                const cmdName = step.argv[0] || "";
-                const command = registry.get(cmdName);
+		try {
+			if (step.kind === "external") {
+				// Explicit 'exec' prefix used in parser
+				const output = await executeExternal(step, options);
+				results.push({
+					step,
+					exitCode: 0,
+					durationMs: Date.now() - startTime,
+					stdout: output?.stdout,
+					stderr: output?.stderr,
+				});
+			} else {
+				// Internal or Implicit External
+				const cmdName = step.argv[0] || "";
+				const command = registry.get(cmdName);
 
-                if (command) {
-                    await executeInternal(step, command, bus);
-                    results.push({
-                        step,
-                        exitCode: 0,
-                        durationMs: Date.now() - startTime,
-                    });
-                } else {
-                    // Not found in registry AND not marked external explicitly
-                    if (options.allowExternal) {
-                        const output = await executeExternal(step, options);
-                        results.push({
-                            step,
-                            exitCode: 0,
-                            durationMs: Date.now() - startTime,
-                            stdout: output?.stdout,
-                            stderr: output?.stderr,
-                        });
-                    } else {
-                        const cmdNamePlaceholder = cmdName || "unknown";
-                        throw new Error(
-                            `Unknown internal command: '${cmdNamePlaceholder}'. To run external commands, use the 'exec' prefix or --allow-external flag.`,
-                        );
-                    }
-                }
-            }
-        } catch (error: any) {
-            const exitCode = error.exitCode ?? 1;
-            results.push({
-                step,
-                exitCode,
-                durationMs: Date.now() - startTime,
-                error: error.message,
-                stderr: error.stderr,
-            });
+				if (command) {
+					await executeInternal(step, command, bus);
+					results.push({
+						step,
+						exitCode: 0,
+						durationMs: Date.now() - startTime,
+					});
+				} else {
+					// Not found in registry AND not marked external explicitly
+					if (options.allowExternal) {
+						const output = await executeExternal(step, options);
+						results.push({
+							step,
+							exitCode: 0,
+							durationMs: Date.now() - startTime,
+							stdout: output?.stdout,
+							stderr: output?.stderr,
+						});
+					} else {
+						const cmdNamePlaceholder = cmdName || "unknown";
+						throw new Error(
+							`Unknown internal command: '${cmdNamePlaceholder}'. To run external commands, use the 'exec' prefix or --allow-external flag.`,
+						);
+					}
+				}
+			}
+		} catch (error: any) {
+			const exitCode = error.exitCode ?? 1;
+			results.push({
+				step,
+				exitCode,
+				durationMs: Date.now() - startTime,
+				error: error.message,
+				stderr: error.stderr,
+			});
 
-            if (!options.continueOnError) {
-                failedStepIndex = i;
-                break;
-            }
-        }
-    }
+			if (!options.continueOnError) {
+				failedStepIndex = i;
+				break;
+			}
+		}
+	}
 
-    return {
-        ok: failedStepIndex === undefined,
-        failedStepIndex,
-        steps: results,
-    };
+	return {
+		ok: failedStepIndex === undefined,
+		failedStepIndex,
+		steps: results,
+	};
 }
 
 async function executeInternal(
-    step: PipelineStep,
-    command: any, // Command type
-    bus: any,
+	step: PipelineStep,
+	command: any, // Command type
+	bus: any,
 ) {
-    await command.execute({
-        rawArgs: step.argv, // Include command name to match main() behavior
-        bus,
-    });
+	await command.execute({
+		rawArgs: step.argv, // Include command name to match main() behavior
+		bus,
+	});
 }
 
 async function executeExternal(step: PipelineStep, options: RunOptions) {
-    const [file, ...args] = step.argv;
-    if (!file) {
-        throw new Error(`Empty external command in step: ${step.original}`);
-    }
+	const [file, ...args] = step.argv;
+	if (!file) {
+		throw new Error(`Empty external command in step: ${step.original}`);
+	}
 
-    const execOptions: any = {
-        cwd: options.cwd || process.cwd(),
-        reject: true, // throw on error
-    };
+	const execOptions: any = {
+		cwd: options.cwd || process.cwd(),
+		reject: true, // throw on error
+	};
 
-    if (options.captureOutput) {
-        // Capture output for JSON/Machine results
-        const result = await execa(file, args, execOptions);
-        return { stdout: result.stdout, stderr: result.stderr };
-    } else {
-        // Inherit stdio for human interactive use
-        await execa(file, args, { ...execOptions, stdio: "inherit" });
-        return undefined;
-    }
+	if (options.captureOutput) {
+		// Capture output for JSON/Machine results
+		const result = await execa(file, args, execOptions);
+		return { stdout: result.stdout, stderr: result.stderr };
+	} else {
+		// Inherit stdio for human interactive use
+		await execa(file, args, { ...execOptions, stdio: "inherit" });
+		return undefined;
+	}
 }

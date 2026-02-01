@@ -1,4 +1,4 @@
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { logger } from "../../core/logger";
@@ -30,7 +30,10 @@ export class PromptEngine {
 					prompts.push(prompt.metadata);
 				} catch (e) {
 					// Skip invalid prompts during listing
-					logger.error(`Error loading prompt ${file}`, e instanceof Error ? e : new Error(String(e)));
+					logger.error(
+						`Error loading prompt ${file}`,
+						e instanceof Error ? e : new Error(String(e)),
+					);
 				}
 			}
 		}
@@ -54,15 +57,21 @@ export class PromptEngine {
 		const metadata = yaml.load(frontmatter) as PromptMetadata;
 
 		if (!metadata.name || !metadata.version || !metadata.description) {
-			throw new Error("Invalid prompt metadata: Missing name, version, or description.");
+			throw new Error(
+				"Invalid prompt metadata: Missing name, version, or description.",
+			);
 		}
 
 		return { metadata, body };
 	}
 
-	renderPrompt(prompt: Prompt, vars: Record<string, any>, options?: { injectedContext?: string }): string {
+	renderPrompt(
+		prompt: Prompt,
+		vars: Record<string, any>,
+		options?: { injectedContext?: string },
+	): string {
 		let rendered = prompt.body;
-		
+
 		// Inject personality context if available
 		if (options?.injectedContext) {
 			rendered = `${options.injectedContext}\n\n---\n\n${rendered}`;
@@ -75,29 +84,38 @@ export class PromptEngine {
 		return rendered;
 	}
 
-    async bumpVersion(name: string, level: "patch" | "minor" | "major"): Promise<string> {
-        const path = join(this.templatesDir, `${name}.md`);
-        const content = await readFile(path, "utf-8");
-        const prompt = this.parsePrompt(content);
-        
-        const parts = prompt.metadata.version.split(".").map(Number);
-        if (parts.length !== 3 || parts.some(isNaN)) {
-            throw new Error(`Invalid version format: ${prompt.metadata.version}`);
-        }
-        const [major, minor, patch] = parts as [number, number, number];
-        let nextVersion = "";
-        
-        switch (level) {
-            case "major": nextVersion = `${major + 1}.0.0`; break;
-            case "minor": nextVersion = `${major}.${minor + 1}.0`; break;
-            case "patch": nextVersion = `${major}.${minor}.${patch + 1}`; break;
-        }
+	async bumpVersion(
+		name: string,
+		level: "patch" | "minor" | "major",
+	): Promise<string> {
+		const path = join(this.templatesDir, `${name}.md`);
+		const content = await readFile(path, "utf-8");
+		const prompt = this.parsePrompt(content);
 
-        const newMetadata = { ...prompt.metadata, version: nextVersion };
-        const newFrontmatter = yaml.dump(newMetadata).trim();
-        const newContent = `---\n${newFrontmatter}\n---\n\n${prompt.body}`;
-        
-        await writeFile(path, newContent);
-        return nextVersion;
-    }
+		const parts = prompt.metadata.version.split(".").map(Number);
+		if (parts.length !== 3 || parts.some(Number.isNaN)) {
+			throw new Error(`Invalid version format: ${prompt.metadata.version}`);
+		}
+		const [major, minor, patch] = parts as [number, number, number];
+		let nextVersion = "";
+
+		switch (level) {
+			case "major":
+				nextVersion = `${major + 1}.0.0`;
+				break;
+			case "minor":
+				nextVersion = `${major}.${minor + 1}.0`;
+				break;
+			case "patch":
+				nextVersion = `${major}.${minor}.${patch + 1}`;
+				break;
+		}
+
+		const newMetadata = { ...prompt.metadata, version: nextVersion };
+		const newFrontmatter = yaml.dump(newMetadata).trim();
+		const newContent = `---\n${newFrontmatter}\n---\n\n${prompt.body}`;
+
+		await writeFile(path, newContent);
+		return nextVersion;
+	}
 }

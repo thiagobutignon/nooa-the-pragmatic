@@ -28,54 +28,56 @@ Exit Codes:
 const VALID_ROLES: MessageRole[] = ["user", "system", "assistant"];
 
 const messageCommand: Command = {
-    name: "message",
-    description: "Send a message to the AI agent",
-    options: {
-        role: { type: "string" },
-        json: { type: "boolean" },
-    },
-    execute: async ({ rawArgs, bus }: CommandContext) => {
-        const { parseArgs } = await import("node:util");
-        const { values, positionals } = parseArgs({
-            args: rawArgs,
-            options: {
-                ...messageCommand.options,
-                help: { type: "boolean", short: "h" },
-            },
-            strict: true,
-            allowPositionals: true,
-        }) as any;
+	name: "message",
+	description: "Send a message to the AI agent",
+	options: {
+		role: { type: "string" },
+		json: { type: "boolean" },
+	},
+	execute: async ({ rawArgs, bus }: CommandContext) => {
+		const { parseArgs } = await import("node:util");
+		const { values, positionals } = parseArgs({
+			args: rawArgs,
+			options: {
+				...messageCommand.options,
+				help: { type: "boolean", short: "h" },
+			},
+			strict: true,
+			allowPositionals: true,
+		}) as any;
 
-        if (values.help) {
-            console.log(messageHelp);
-            return;
-        }
+		if (values.help) {
+			console.log(messageHelp);
+			return;
+		}
 
-        const content = positionals[1];
-        if (!content) {
-            console.error("Error: Message text is required");
-            process.exitCode = 2;
-            return;
-        }
+		const content = positionals[1];
+		if (!content) {
+			console.error("Error: Message text is required");
+			process.exitCode = 2;
+			return;
+		}
 
-        const role = (values.role || "user") as string;
-        if (!VALID_ROLES.includes(role as MessageRole)) {
-            console.error(`Invalid role: ${role}. Must be one of: ${VALID_ROLES.join(", ")}`);
-            process.exitCode = 2;
-            return;
-        }
+		const role = (values.role || "user") as string;
+		if (!VALID_ROLES.includes(role as MessageRole)) {
+			console.error(
+				`Invalid role: ${role}. Must be one of: ${VALID_ROLES.join(", ")}`,
+			);
+			process.exitCode = 2;
+			return;
+		}
 
-        const options: MessageOptions = {
-            role: role as MessageRole,
-            json: !!values.json,
-        };
+		const options: MessageOptions = {
+			role: role as MessageRole,
+			json: !!values.json,
+		};
 
-        const { executeMessage, formatOutput } = await import("./execute");
-        const message = await executeMessage(content, options, bus);
-        const output = formatOutput(message, options.json);
+		const { executeMessage, formatOutput } = await import("./execute");
+		const message = await executeMessage(content, options, bus);
+		const output = formatOutput(message, options.json);
 
-        console.log(output);
-    },
+		console.log(output);
+	},
 };
 
 export default messageCommand;

@@ -20,7 +20,7 @@ describe("Command Cohesion Contract", () => {
 				const helpRes = await run([cmd, "--help"]);
 				if (helpRes.stdout.includes("--json")) {
 					const res = await run([cmd, "--json"]);
-					const stdoutLines = res.stdout.trim().split("\n");
+					const _stdoutLines = res.stdout.trim().split("\n");
 					// Every line should be part of a single JSON structure
 					try {
 						const json = JSON.parse(res.stdout);
@@ -28,16 +28,18 @@ describe("Command Cohesion Contract", () => {
 						expect(json).toHaveProperty("ok");
 						expect(json).toHaveProperty("traceId");
 
-                        if (cmd === "review" && json.ok) {
-                            expect(json).toHaveProperty("findings");
-                            expect(json).toHaveProperty("stats");
-                            expect(json).toHaveProperty("maxSeverity");
-                            if (json.findings && json.findings.length > 0) {
-                                expect(json.findings[0].file).not.toMatch(/^(\/|[a-zA-Z]:)/);
-                            }
-                        }
-					} catch (e) {
-						throw new Error(`Invalid or non-contract JSON output for ${cmd} --json:\n${res.stdout}`);
+						if (cmd === "review" && json.ok) {
+							expect(json).toHaveProperty("findings");
+							expect(json).toHaveProperty("stats");
+							expect(json).toHaveProperty("maxSeverity");
+							if (json.findings && json.findings.length > 0) {
+								expect(json.findings[0].file).not.toMatch(/^(\/|[a-zA-Z]:)/);
+							}
+						}
+					} catch (_e) {
+						throw new Error(
+							`Invalid or non-contract JSON output for ${cmd} --json:\n${res.stdout}`,
+						);
 					}
 				}
 			});
@@ -48,8 +50,8 @@ describe("Command Cohesion Contract", () => {
 		});
 	}
 
-    test("search should validate max-results and return exit 2", async () => {
-        const res = await run(["search", "TODO", "--max-results", "invalid"]);
-        expect(res.exitCode).toBe(2);
-    });
+	test("search should validate max-results and return exit 2", async () => {
+		const res = await run(["search", "TODO", "--max-results", "invalid"]);
+		expect(res.exitCode).toBe(2);
+	});
 });

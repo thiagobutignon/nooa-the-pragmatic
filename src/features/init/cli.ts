@@ -1,27 +1,27 @@
-import { parseArgs } from "node:util";
-import { executeInit } from "./execute";
-import { logger } from "../../core/logger";
 import * as readline from "node:readline/promises";
+import { parseArgs } from "node:util";
+import { logger } from "../../core/logger";
+import { executeInit } from "./execute";
 
 export async function initCli(args: string[], bus?: any) {
-    const { values } = parseArgs({
-        args,
-        options: {
-            json: { type: "boolean" },
-            "dry-run": { type: "boolean" },
-            force: { type: "boolean" },
-            name: { type: "string" },
-            vibe: { type: "string" },
-            "user-name": { type: "string" },
-            root: { type: "string" },
-            "non-interactive": { type: "boolean" },
-            out: { type: "string" },
-            help: { type: "boolean", short: "h" }
-        },
-        strict: false
-    });
+	const { values } = parseArgs({
+		args,
+		options: {
+			json: { type: "boolean" },
+			"dry-run": { type: "boolean" },
+			force: { type: "boolean" },
+			name: { type: "string" },
+			vibe: { type: "string" },
+			"user-name": { type: "string" },
+			root: { type: "string" },
+			"non-interactive": { type: "boolean" },
+			out: { type: "string" },
+			help: { type: "boolean", short: "h" },
+		},
+		strict: false,
+	});
 
-    const initHelp = `
+	const initHelp = `
 Usage: nooa init [flags]
 
 Initialize NOOA's Agentic Soul and Identity.
@@ -41,89 +41,100 @@ Examples:
   nooa init --name "NOOA-Pragmatic" --vibe "snarky" --non-interactive
 `;
 
-    if (values.help) {
-        console.log(initHelp);
-        return;
-    }
+	if (values.help) {
+		console.log(initHelp);
+		return;
+	}
 
-    let name = values.name;
-    let vibe = values.vibe;
-    let userName = values["user-name"];
+	let name = values.name;
+	let vibe = values.vibe;
+	let userName = values["user-name"];
 
-    if (!values["non-interactive"]) {
-        const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
+	if (!values["non-interactive"]) {
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout,
+		});
 
-        console.log("\n✨ Initializing NOOA Agentic Soul...");
-        
-        if (!name) {
-            name = await rl.question("What should I be called? (default: NOOA): ") || "NOOA";
-        }
-        if (!vibe) {
-            vibe = await rl.question("What is my vibe? (snarky, protocol, resourceful) (default: resourceful): ") || "resourceful";
-        }
-        if (!userName) {
-            userName = await rl.question("And what should I call you? (default: Developer): ") || "Developer";
-        }
-        
-        rl.close();
-    }
+		console.log("\n✨ Initializing NOOA Agentic Soul...");
 
-    try {
-        const { results, traceId } = await executeInit({
-            name: name as string,
-            vibe: vibe as string,
-            userName: userName as string,
-            root: (values.root as string) || undefined,
-            force: !!values.force,
-            dryRun: !!values["dry-run"]
-        }, bus);
+		if (!name) {
+			name =
+				(await rl.question("What should I be called? (default: NOOA): ")) ||
+				"NOOA";
+		}
+		if (!vibe) {
+			vibe =
+				(await rl.question(
+					"What is my vibe? (snarky, protocol, resourceful) (default: resourceful): ",
+				)) || "resourceful";
+		}
+		if (!userName) {
+			userName =
+				(await rl.question(
+					"And what should I call you? (default: Developer): ",
+				)) || "Developer";
+		}
 
-        const output = {
-            schemaVersion: "1.0",
-            ok: true,
-            traceId,
-            command: "init",
-            timestamp: new Date().toISOString(),
-            files: results,
-            dryRun: !!values["dry-run"]
-        };
+		rl.close();
+	}
 
-        if (values.json) {
-            const jsonOutput = JSON.stringify(output, null, 2);
-            if (values.out) {
-                const { writeFile } = await import("node:fs/promises");
-                await writeFile(values.out as string, jsonOutput);
-            } else {
-                console.log(jsonOutput);
-            }
-        } else {
-            console.log(`\n✅ Init success (${traceId})`);
-            console.log(`Initialized agent: ${name} (${vibe})`);
-            results.forEach(f => console.log(`  - ${f}`));
-        }
-    } catch (e) {
-        const err = e as Error;
-        if (err.message.includes("already exists")) {
-            console.error(`❌ Validation Error: ${err.message}`);
-            process.exitCode = 2;
-        } else {
-            logger.error("init.error", err);
-            console.error(`❌ Runtime Error: ${err.message}`);
-            process.exitCode = 1;
-        }
-    }
+	try {
+		const { results, traceId } = await executeInit(
+			{
+				name: name as string,
+				vibe: vibe as string,
+				userName: userName as string,
+				root: (values.root as string) || undefined,
+				force: !!values.force,
+				dryRun: !!values["dry-run"],
+			},
+			bus,
+		);
+
+		const output = {
+			schemaVersion: "1.0",
+			ok: true,
+			traceId,
+			command: "init",
+			timestamp: new Date().toISOString(),
+			files: results,
+			dryRun: !!values["dry-run"],
+		};
+
+		if (values.json) {
+			const jsonOutput = JSON.stringify(output, null, 2);
+			if (values.out) {
+				const { writeFile } = await import("node:fs/promises");
+				await writeFile(values.out as string, jsonOutput);
+			} else {
+				console.log(jsonOutput);
+			}
+		} else {
+			console.log(`\n✅ Init success (${traceId})`);
+			console.log(`Initialized agent: ${name} (${vibe})`);
+			results.forEach((f) => console.log(`  - ${f}`));
+		}
+	} catch (e) {
+		const err = e as Error;
+		if (err.message.includes("already exists")) {
+			console.error(`❌ Validation Error: ${err.message}`);
+			process.exitCode = 2;
+		} else {
+			logger.error("init.error", err);
+			console.error(`❌ Runtime Error: ${err.message}`);
+			process.exitCode = 1;
+		}
+	}
 }
 
 const initCommand = {
-    name: "init",
-    description: "Initialize NOOA's Agentic Soul and Identity",
-    async execute({ rawArgs, bus }: any) {
-        const index = rawArgs.indexOf("init");
-        await initCli(rawArgs.slice(index + 1), bus);
-    }
+	name: "init",
+	description: "Initialize NOOA's Agentic Soul and Identity",
+	async execute({ rawArgs, bus }: any) {
+		const index = rawArgs.indexOf("init");
+		await initCli(rawArgs.slice(index + 1), bus);
+	},
 };
 
 export default initCommand;

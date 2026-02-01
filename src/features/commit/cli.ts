@@ -1,5 +1,7 @@
+import { execa } from "execa";
 import type { Command, CommandContext } from "../../core/command";
 import { createTraceId, logger } from "../../core/logger";
+import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
 import {
 	ensureGitRepo,
@@ -7,8 +9,6 @@ import {
 	hasPendingChanges,
 	hasStagedChanges,
 } from "./guards";
-import { PolicyEngine } from "../../core/policy/PolicyEngine";
-import { execa } from "execa";
 
 const commitHelp = `
 Usage: nooa commit -m <message> [flags]
@@ -78,28 +78,41 @@ const commitCommand: Command = {
 		}
 
 		if (!(await hasStagedChanges(cwd))) {
-            const msg = "Error: No staged changes.";
-			if (values.json) console.log(JSON.stringify({ ok: false, error: msg }, null, 2));
+			const msg = "Error: No staged changes.";
+			if (values.json)
+				console.log(JSON.stringify({ ok: false, error: msg }, null, 2));
 			else console.error(msg);
 			process.exitCode = 2;
 			return;
 		}
 
 		if (!values["allow-todo"]) {
-            const engine = new PolicyEngine();
-            const { stdout } = await execa("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
-            const filesToCheck = stdout.split("\n").filter(f => f.trim() !== "");
-            
+			const engine = new PolicyEngine();
+			const { stdout } = await execa("git", [
+				"diff",
+				"--cached",
+				"--name-only",
+				"--diff-filter=ACMR",
+			]);
+			const filesToCheck = stdout.split("\n").filter((f) => f.trim() !== "");
+
 			const result = await engine.checkFiles(filesToCheck);
 			if (!result.ok) {
 				if (values.json) {
-					console.log(JSON.stringify({ ok: false, violations: result.violations }, null, 2));
+					console.log(
+						JSON.stringify(
+							{ ok: false, violations: result.violations },
+							null,
+							2,
+						),
+					);
 				} else {
 					console.error("\n❌ Error: Zero-Preguiça violation found:");
 					for (const v of result.violations) {
 						console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
 					}
-					console.error("\nFix these violations or use --allow-todo to override."); // nooa-ignore
+					console.error(
+						"\nFix these violations or use --allow-todo to override.",  // nooa-ignore
 				}
 				process.exitCode = 2;
 				return;
@@ -162,7 +175,13 @@ const commitCommand: Command = {
 		);
 
 		if (values.json) {
-			console.log(JSON.stringify({ ok: true, traceId, message: "Commit successful" }, null, 2));
+			console.log(
+				JSON.stringify(
+					{ ok: true, traceId, message: "Commit successful" },
+					null,
+					2,
+				),
+			);
 		} else {
 			console.log(`✅ Commit successful [${traceId}]`);
 		}

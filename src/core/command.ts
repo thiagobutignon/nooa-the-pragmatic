@@ -10,6 +10,9 @@ export interface CommandContext {
 export interface Command {
 	name: string;
 	description: string;
-	options?: Record<string, { type: "string" | "boolean"; short?: string; multiple?: boolean }>;
+	options?: Record<
+		string,
+		{ type: "string" | "boolean"; short?: string; multiple?: boolean }
+	>;
 	execute: (context: CommandContext) => Promise<void>;
 }

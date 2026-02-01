@@ -1,28 +1,19 @@
-import { describe, expect, it, beforeEach, afterEach } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { executeCi } from "./execute";
 
 describe("executeCi", () => {
-    let originalProvider: string | undefined;
+	it("should return structured result with ok and traceId", async () => {
+		// Set env to skip long-running tests
+		process.env.NOOA_SKIP_TEST = "1";
 
-    beforeEach(() => {
-        originalProvider = process.env.NOOA_AI_PROVIDER;
-        process.env.NOOA_AI_PROVIDER = "mock";
-    });
+		const result = await executeCi({ json: true });
 
-    afterEach(() => {
-        if (originalProvider) {
-            process.env.NOOA_AI_PROVIDER = originalProvider;
-        } else {
-            delete process.env.NOOA_AI_PROVIDER;
-        }
-    });
+		expect(result.traceId).toBeDefined();
+		expect(result).toHaveProperty("ok");
+		expect(result).toHaveProperty("test");
+		expect(result).toHaveProperty("lint");
+		expect(result).toHaveProperty("check");
 
-    it("should track telemetry and return ok", async () => {
-        const { result, traceId } = await executeCi({
-            json: true
-        });
-
-        expect(traceId).toBeDefined();
-        expect(result.message).toBe("Action performed by ci");
-    });
+		delete process.env.NOOA_SKIP_TEST;
+	}, 30000); // 30s timeout for CI pipeline
 });

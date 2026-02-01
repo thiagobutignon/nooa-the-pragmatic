@@ -96,14 +96,15 @@ const searchCommand: Command = {
 		const traceId = createTraceId();
 		logger.setContext({ trace_id: traceId, command: "search" });
 		const startTime = Date.now();
-		const maxResultsStr = values["max-results"] ?? process.env.NOOA_SEARCH_MAX_RESULTS ?? "100";
+		const maxResultsStr =
+			values["max-results"] ?? process.env.NOOA_SEARCH_MAX_RESULTS ?? "100";
 		const maxResults = parseInt(maxResultsStr, 10);
 
-        if (Number.isNaN(maxResults)) {
-            console.error(`Error: Invalid max-results '${maxResultsStr}'.`);
-            process.exitCode = 2;
-            return;
-        }
+		if (Number.isNaN(maxResults)) {
+			console.error(`Error: Invalid max-results '${maxResultsStr}'.`);
+			process.exitCode = 2;
+			return;
+		}
 		const ignoreCase = Boolean(values["ignore-case"]);
 		const caseSensitive = Boolean(values["case-sensitive"]);
 		const flagsMetadata = {

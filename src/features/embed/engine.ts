@@ -19,13 +19,20 @@ type ProviderResponse = {
 
 type EmbedProvider = {
 	name: string;
-	embed: (input: string, model: string, config: ProviderConfig) => Promise<ProviderResponse>;
+	embed: (
+		input: string,
+		model: string,
+		config: ProviderConfig,
+	) => Promise<ProviderResponse>;
 };
 
 const mockProvider: EmbedProvider = {
 	name: "mock",
 	embed: async (input: string) => {
-		const embedding = Array.from({ length: 8 }, (_, i) => (input.length + i) % 7);
+		const embedding = Array.from(
+			{ length: 8 },
+			(_, i) => (input.length + i) % 7,
+		);
 		return { embedding, dimensions: 8 };
 	},
 };
@@ -33,7 +40,10 @@ const mockProvider: EmbedProvider = {
 const ollamaProvider: EmbedProvider = {
 	name: "ollama",
 	embed: async (input, model, config) => {
-		const endpoint = config.endpoint ?? process.env.NOOA_EMBED_ENDPOINT ?? "http://localhost:11434";
+		const endpoint =
+			config.endpoint ??
+			process.env.NOOA_EMBED_ENDPOINT ??
+			"http://localhost:11434";
 		const res = await fetch(`${endpoint.replace(/\/$/, "")}/api/embeddings`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
@@ -51,7 +61,8 @@ const ollamaProvider: EmbedProvider = {
 };
 
 export function resolveProvider(config: ProviderConfig): EmbedProvider {
-	const provider = config.provider ?? process.env.NOOA_EMBED_PROVIDER ?? "ollama";
+	const provider =
+		config.provider ?? process.env.NOOA_EMBED_PROVIDER ?? "ollama";
 	if (provider === "mock") return mockProvider;
 	if (provider === "ollama") return ollamaProvider;
 	throw new Error("No embed provider configured");
@@ -59,7 +70,8 @@ export function resolveProvider(config: ProviderConfig): EmbedProvider {
 
 export async function embedText(input: string, config: ProviderConfig) {
 	const provider = resolveProvider(config);
-	const model = config.model ?? process.env.NOOA_EMBED_MODEL ?? "nomic-embed-text";
+	const model =
+		config.model ?? process.env.NOOA_EMBED_MODEL ?? "nomic-embed-text";
 	const result = await provider.embed(input, model, config);
 	return { ...result, model, provider: provider.name } as EmbedResult;
 }

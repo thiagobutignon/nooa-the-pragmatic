@@ -1,35 +1,46 @@
 {
-  "name": "review.instant-file",
-  "prompt": "review",
-  "cases": [
-    {
-      "id": "valid-typescript-file",
-      "vars": {
-        "input_path": "index.ts",
-        "input_type": "file",
-        "input_scope": "single_file"
-      },
-      "input": "index.ts",
-      "assertions": [
-        { "type": "is_valid_json" },
-        { "type": "has_property", "property": "findings" },
-        { "type": "enum_check", "property": "findings[].category", "allowed": ["bug", "style", "test", "arch", "security", "observability"] },
-        { "type": "no_absolute_paths", "property": "findings[].file" },
-        { "type": "max_count", "property": "findings", "limit": 7 }
-      ]
-    },
-    {
-      "id": "truncated-large-file",
-      "vars": {
-        "input_path": "large_file.ts",
-        "input_type": "file",
-        "input_scope": "single_file"
-      },
-      "input_text": "// A very large file content simulation... AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "assertions": [
-        { "type": "is_valid_json" },
-        { "type": "property_equals", "property": "truncated", "value": true }
-      ]
-    }
-  ]
+	"name": "review.instant-file",
+	"prompt": "review",
+	"cases": [
+		{
+			"id": "valid-typescript-file",
+			"vars": {
+				"input_path": "index.ts",
+				"input_type": "file",
+				"input_scope": "single_file"
+			},
+			"input": "index.ts",
+			"assertions": [
+				{ "type": "is_valid_json" },
+				{ "type": "has_property", "property": "findings" },
+				{
+					"type": "enum_check",
+					"property": "findings[].category",
+					"allowed": [
+						"bug",
+						"style",
+						"test",
+						"arch",
+						"security",
+						"observability"
+					]
+				},
+				{ "type": "no_absolute_paths", "property": "findings[].file" },
+				{ "type": "max_count", "property": "findings", "limit": 7 }
+			]
+		},
+		{
+			"id": "truncated-large-file",
+			"vars": {
+				"input_path": "large_file.ts",
+				"input_type": "file",
+				"input_scope": "single_file"
+			},
+			"input_text": "// A very large file content simulation... AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+			"assertions": [
+				{ "type": "is_valid_json" },
+				{ "type": "property_equals", "property": "truncated", "value": true }
+			]
+		}
+	]
 }

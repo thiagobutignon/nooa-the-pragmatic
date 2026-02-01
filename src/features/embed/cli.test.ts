@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, it, expect } from "bun:test";
-import { execa } from "execa";
-import { writeFile, rm } from "node:fs/promises";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync, unlinkSync } from "node:fs";
+import { rm, writeFile } from "node:fs/promises";
+import { execa } from "execa";
 import { EventBus } from "../../core/event-bus";
 
 const binPath = "./index.ts";

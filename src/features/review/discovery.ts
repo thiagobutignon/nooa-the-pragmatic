@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join, dirname, basename, extname } from "node:path";
+import { basename, dirname, extname, join } from "node:path";
 
 /**
  * Discovers candidate test files for a given source file path.
@@ -8,7 +8,10 @@ import { join, dirname, basename, extname } from "node:path";
  * 2. foo.spec.ts
  * 3. tests/foo.test.ts
  */
-export async function discoverTests(filePath: string, root: string): Promise<string[]> {
+export async function discoverTests(
+	filePath: string,
+	root: string,
+): Promise<string[]> {
 	const candidates: string[] = [];
 	const dir = dirname(filePath);
 	const base = basename(filePath, extname(filePath));
@@ -25,9 +28,10 @@ export async function discoverTests(filePath: string, root: string): Promise<str
 	const testDir = join(dir, "tests", `${base}.test${ext}`);
 	if (existsSync(testDir)) candidates.push(testDir);
 
-    // 3. Absolute tests/ directory from root
-    const rootTestDir = join(root, "tests", `${base}.test${ext}`);
-    if (existsSync(rootTestDir) && rootTestDir !== testDir) candidates.push(rootTestDir);
+	// 3. Absolute tests/ directory from root
+	const rootTestDir = join(root, "tests", `${base}.test${ext}`);
+	if (existsSync(rootTestDir) && rootTestDir !== testDir)
+		candidates.push(rootTestDir);
 
-	return candidates.map(c => c.replace(root, "").replace(/^[\\\/]/, ""));
+	return candidates.map((c) => c.replace(root, "").replace(/^[\\/]/, ""));
 }

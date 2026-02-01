@@ -1,92 +1,105 @@
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
 
 export interface PolicyViolation {
-    rule: string;
-    file: string;
-    line: number;
-    content: string;
-    message: string;
+	rule: string;
+	file: string;
+	line: number;
+	content: string;
+	message: string;
 }
 
 export interface PolicyResult {
-    ok: boolean;
-    violations: PolicyViolation[];
+	ok: boolean;
+	violations: PolicyViolation[];
 }
 
 export class PolicyEngine {
-    private forbiddenMarkers = [
-        { pattern: /TODO[:\s]/i, rule: "no-todo", message: "Zero-Preguiça: TODOs are not allowed in production code." },
-        { pattern: /MOCK[:\s]/i, rule: "no-mock", message: "Zero-Preguiça: MOCKs are not allowed in production code." },
-        { pattern: /FIXME[:\s]/i, rule: "no-fixme", message: "Zero-Preguiça: FIXMEs are not allowed in production code." }
-    ];
+	private forbiddenMarkers = [
+		{
+			pattern: /TODO[:\s]/i,
+			rule: "no-todo",
+			message: "Zero-Preguiça: TODOs are not allowed in production code.",
+		},
+		{
+			pattern: /MOCK[:\s]/i,
+			rule: "no-mock",
+			message: "Zero-Preguiça: MOCKs are not allowed in production code.",
+		},
+		{
+			pattern: /FIXME[:\s]/i,
+			rule: "no-fixme",
+			message: "Zero-Preguiça: FIXMEs are not allowed in production code.",
+		},
+	];
 
-    private ignoredPatterns: string[] = [];
+	private ignoredPatterns: string[] = [];
 
-    constructor(cwd: string = process.cwd()) {
-        const ignorePath = join(cwd, ".nooa-ignore");
-        if (existsSync(ignorePath)) {
-            this.ignoredPatterns = readFileSync(ignorePath, "utf-8")
-                .split("\n")
-                .map(line => line.trim())
-                .filter(line => line && !line.startsWith("#"));
-        }
-    }
+	constructor(cwd: string = process.cwd()) {
+		const ignorePath = join(cwd, ".nooa-ignore");
+		if (existsSync(ignorePath)) {
+			this.ignoredPatterns = readFileSync(ignorePath, "utf-8")
+				.split("\n")
+				.map((line) => line.trim())
+				.filter((line) => line && !line.startsWith("#"));
+		}
+	}
 
-    private isIgnored(path: string): boolean {
-        return this.ignoredPatterns.some(pattern => path.includes(pattern));
-    }
+	private isIgnored(path: string): boolean {
+		return this.ignoredPatterns.some((pattern) => path.includes(pattern));
+	}
 
-    async checkFile(path: string): Promise<PolicyViolation[]> {
-        if (
-            path.endsWith(".md") || 
-            path.endsWith(".tpl") || 
-            path.includes(".test.") || 
-            path.includes(".spec.") || 
-            path.includes("/mock") || 
-            path.endsWith(".mock.ts") ||
-            this.isIgnored(path)
-        ) return [];
-        
-        const violations: PolicyViolation[] = [];
-        try {
-            const content = await readFile(path, "utf-8");
-            const lines = content.split("\n");
+	async checkFile(path: string): Promise<PolicyViolation[]> {
+		if (
+			path.endsWith(".md") ||
+			path.endsWith(".tpl") ||
+			path.includes(".test.") ||
+			path.includes(".spec.") ||
+			path.includes("/mock") ||
+			path.endsWith(".mock.ts") ||
+			this.isIgnored(path)
+		)
+			return [];
 
-            for (let i = 0; i < lines.length; i++) {
-                const lineContent = lines[i];
-                if (lineContent === undefined) continue;
-                if (lineContent.includes("nooa-ignore")) continue;
+		const violations: PolicyViolation[] = [];
+		try {
+			const content = await readFile(path, "utf-8");
+			const lines = content.split("\n");
 
-                for (const marker of this.forbiddenMarkers) {
-                    if (marker.pattern.test(lineContent)) {
-                        violations.push({
-                            rule: marker.rule,
-                            file: path,
-                            line: i + 1,
-                            content: lineContent.trim(),
-                            message: marker.message
-                        });
-                    }
-                }
-            }
-        } catch {
-            // Skip binary or unreadable files
-        }
-        return violations;
-    }
+			for (let i = 0; i < lines.length; i++) {
+				const lineContent = lines[i];
+				if (lineContent === undefined) continue;
+				if (lineContent.includes("nooa-ignore")) continue;
 
-    async checkFiles(paths: string[]): Promise<PolicyResult> {
-        const allViolations: PolicyViolation[] = [];
-        for (const path of paths) {
-            const violations = await this.checkFile(path);
-            allViolations.push(...violations);
-        }
+				for (const marker of this.forbiddenMarkers) {
+					if (marker.pattern.test(lineContent)) {
+						violations.push({
+							rule: marker.rule,
+							file: path,
+							line: i + 1,
+							content: lineContent.trim(),
+							message: marker.message,
+						});
+					}
+				}
+			}
+		} catch {
+			// Skip binary or unreadable files
+		}
+		return violations;
+	}
 
-        return {
-            ok: allViolations.length === 0,
-            violations: allViolations
-        };
-    }
+	async checkFiles(paths: string[]): Promise<PolicyResult> {
+		const allViolations: PolicyViolation[] = [];
+		for (const path of paths) {
+			const violations = await this.checkFile(path);
+			allViolations.push(...violations);
+		}
+
+		return {
+			ok: allViolations.length === 0,
+			violations: allViolations,
+		};
+	}
 }

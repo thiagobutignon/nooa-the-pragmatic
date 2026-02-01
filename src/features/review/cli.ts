@@ -1,6 +1,6 @@
 import type { Command, CommandContext } from "../../core/command";
-import { executeReview } from "./execute";
 import { logger } from "../../core/logger";
+import { executeReview } from "./execute";
 
 const reviewHelp = `
 Usage: nooa review [path] [flags]
@@ -51,22 +51,31 @@ const reviewCommand: Command = {
 		const { writeFile } = await import("node:fs/promises");
 
 		try {
-			const { content, result, traceId } = await executeReview({
-				path,
-				staged: !path,
-				json: !!values.json,
-				prompt: values.prompt,
-				failOn: values["fail-on"],
-			}, bus);
+			const { content, result, traceId } = await executeReview(
+				{
+					path,
+					staged: !path,
+					json: !!values.json,
+					prompt: values.prompt,
+					failOn: values["fail-on"],
+				},
+				bus,
+			);
 
-			const outputJson = values.json ? JSON.stringify({
-				schemaVersion: "1.0",
-				ok: !!result,
-				traceId,
-				command: "review",
-                timestamp: new Date().toISOString(),
-				...result
-			}, null, 2) : content;
+			const outputJson = values.json
+				? JSON.stringify(
+						{
+							schemaVersion: "1.0",
+							ok: !!result,
+							traceId,
+							command: "review",
+							timestamp: new Date().toISOString(),
+							...result,
+						},
+						null,
+						2,
+					)
+				: content;
 
 			if (values.out) {
 				await writeFile(values.out, outputJson, "utf-8");
@@ -74,43 +83,53 @@ const reviewCommand: Command = {
 				console.log(outputJson);
 			}
 
-            if (values.json && !result) {
-                // Parsing failed or AI error
-                process.exitCode = 1;
-                return;
-            }
+			if (values.json && !result) {
+				// Parsing failed or AI error
+				process.exitCode = 1;
+				return;
+			}
 
 			// Gate check for fail-on
 			if (values["fail-on"] && result) {
 				const levels = ["low", "medium", "high"];
 				const minLevelIdx = levels.indexOf(values["fail-on"]);
 				if (minLevelIdx !== -1) {
-					const highSeverityIssues = result.findings.filter(f => 
-						levels.indexOf(f.severity) >= minLevelIdx
+					const highSeverityIssues = result.findings.filter(
+						(f) => levels.indexOf(f.severity) >= minLevelIdx,
 					);
 					if (highSeverityIssues.length > 0) {
 						if (!values.json && !values.out) {
-							console.error(`\nFound ${highSeverityIssues.length} issues with severity >= ${values["fail-on"]}.`);
+							console.error(
+								`\nFound ${highSeverityIssues.length} issues with severity >= ${values["fail-on"]}.`,
+							);
 						}
 						process.exitCode = 1;
 					}
 				} else {
-                    console.error(`Error: Invalid severity level '${values["fail-on"]}'.`);
-                    process.exitCode = 2;
-                    return;
-                }
+					console.error(
+						`Error: Invalid severity level '${values["fail-on"]}'.`,
+					);
+					process.exitCode = 2;
+					return;
+				}
 			}
-
 		} catch (error: any) {
 			const message = error.message;
-            const isValidationError = message.includes("No input source") || message.includes("not found");
+			const isValidationError =
+				message.includes("No input source") || message.includes("not found");
 			if (values.json) {
-				console.log(JSON.stringify({ 
-                    schemaVersion: "1.0",
-                    ok: false, 
-                    command: "review",
-                    error: message 
-                }, null, 2));
+				console.log(
+					JSON.stringify(
+						{
+							schemaVersion: "1.0",
+							ok: false,
+							command: "review",
+							error: message,
+						},
+						null,
+						2,
+					),
+				);
 			} else {
 				console.error(`Error: ${message}`);
 			}

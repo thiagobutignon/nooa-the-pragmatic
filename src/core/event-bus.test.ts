@@ -25,7 +25,7 @@ describe("EventBus", () => {
 
 	test("handles off with non-existent event", () => {
 		const bus = new EventBus();
-		bus.off("missing", () => { }); // Should not throw
+		bus.off("missing", () => {}); // Should not throw
 	});
 
 	test("handles emit with no subscribers", () => {

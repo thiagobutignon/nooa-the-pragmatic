@@ -16,9 +16,7 @@ export async function isWorkingTreeClean(cwd: string): Promise<boolean> {
 	const filtered = lines.filter((line) => {
 		const path = line.slice(3).trim();
 		return (
-			path !== "nooa.db" &&
-			path !== "nooa.db-wal" &&
-			path !== "nooa.db-shm"
+			path !== "nooa.db" && path !== "nooa.db-wal" && path !== "nooa.db-shm"
 		);
 	});
 	return filtered.length === 0;

@@ -1,5 +1,5 @@
+import type { Dirent } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { Dirent } from "node:fs";
 import { join, relative } from "node:path";
 
 export type SearchResult = {
@@ -102,7 +102,7 @@ async function listFiles(root: string, includeHidden: boolean) {
 		if (!current) continue;
 		let entries: Dirent[];
 		try {
-			entries = await readdir(current, { withFileTypes: true }) as Dirent[];
+			entries = (await readdir(current, { withFileTypes: true })) as Dirent[];
 		} catch {
 			continue;
 		}

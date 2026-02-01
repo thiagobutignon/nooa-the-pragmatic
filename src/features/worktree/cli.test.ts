@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { execa } from "execa";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execa } from "execa";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 

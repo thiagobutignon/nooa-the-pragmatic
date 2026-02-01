@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import type { Command, CommandContext } from "../../core/command";
-import { PromptEngine } from "./engine";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
+import { PromptEngine } from "./engine";
 
 const promptHelp = `
 Usage: nooa prompt <list|view|validate|render> [name] [flags]
@@ -55,7 +55,7 @@ const promptCommand: Command = {
 		const traceId = createTraceId();
 		logger.setContext({ trace_id: traceId, command: "prompt", action });
 
-		// In development, we use the local path. 
+		// In development, we use the local path.
 		// In production, this might be bundled or point to a known location.
 		const templatesDir = join(process.cwd(), "src/features/prompt/templates");
 		const engine = new PromptEngine(templatesDir);
@@ -64,12 +64,18 @@ const promptCommand: Command = {
 			if (action === "list") {
 				const prompts = await engine.listPrompts();
 				if (values.json) {
-					console.log(JSON.stringify({
-						schemaVersion: "1.0",
-						ok: true,
-						traceId,
-						prompts
-					}, null, 2));
+					console.log(
+						JSON.stringify(
+							{
+								schemaVersion: "1.0",
+								ok: true,
+								traceId,
+								prompts,
+							},
+							null,
+							2,
+						),
+					);
 				} else {
 					console.log("Available Prompts:");
 					for (const p of prompts) {
@@ -77,48 +83,69 @@ const promptCommand: Command = {
 					}
 				}
 			} else if (action === "view" || action === "validate") {
-                const validateAll = action === "validate" && (name === "--all" || values.all);
+				const validateAll =
+					action === "validate" && (name === "--all" || values.all);
 				if (!name && !validateAll) throw new Error("Prompt name is required.");
-				
-                if (validateAll) {
-                    const prompts = await engine.listPrompts();
-                    if (values.json) {
-                        console.log(JSON.stringify({ 
-                            schemaVersion: "1.0",
-                            ok: true, 
-                            traceId,
-                            results: prompts.map(p => ({ name: p.name, valid: true }))
-                        }, null, 2));
-                    } else {
-                        console.log("All prompts are valid.");
-                    }
-                } else {
-                    const prompt = await engine.loadPrompt(name!);
-                    if (action === "view") {
-                        if (values.json) {
-                            console.log(JSON.stringify({
-                                schemaVersion: "1.0",
-                                ok: true,
-                                traceId,
-                                prompt
-                            }, null, 2));
-                        } else {
-                            console.log(`--- ${prompt.metadata.name} (v${prompt.metadata.version}) ---`);
-                            console.log(prompt.body);
-                        }
-                    } else {
-                        if (values.json) {
-                            console.log(JSON.stringify({ 
-                                schemaVersion: "1.0",
-                                ok: true, 
-                                traceId,
-                                metadata: prompt.metadata 
-                            }, null, 2));
-                        } else {
-                            console.log(`Prompt '${name}' is valid.`);
-                        }
-                    }
-                }
+
+				if (validateAll) {
+					const prompts = await engine.listPrompts();
+					if (values.json) {
+						console.log(
+							JSON.stringify(
+								{
+									schemaVersion: "1.0",
+									ok: true,
+									traceId,
+									results: prompts.map((p) => ({ name: p.name, valid: true })),
+								},
+								null,
+								2,
+							),
+						);
+					} else {
+						console.log("All prompts are valid.");
+					}
+				} else {
+					const prompt = await engine.loadPrompt(name!);
+					if (action === "view") {
+						if (values.json) {
+							console.log(
+								JSON.stringify(
+									{
+										schemaVersion: "1.0",
+										ok: true,
+										traceId,
+										prompt,
+									},
+									null,
+									2,
+								),
+							);
+						} else {
+							console.log(
+								`--- ${prompt.metadata.name} (v${prompt.metadata.version}) ---`,
+							);
+							console.log(prompt.body);
+						}
+					} else {
+						if (values.json) {
+							console.log(
+								JSON.stringify(
+									{
+										schemaVersion: "1.0",
+										ok: true,
+										traceId,
+										metadata: prompt.metadata,
+									},
+									null,
+									2,
+								),
+							);
+						} else {
+							console.log(`Prompt '${name}' is valid.`);
+						}
+					}
+				}
 			} else if (action === "render") {
 				if (!name) throw new Error("Prompt name is required.");
 				const prompt = await engine.loadPrompt(name);
@@ -131,19 +158,28 @@ const promptCommand: Command = {
 				}
 				const { InjectionEngine } = await import("./injection");
 				const injectionEngine = new InjectionEngine();
-				const { content: injectedContext, meta: injectionMeta } = await injectionEngine.getInjectedContext();
+				const { content: injectedContext, meta: injectionMeta } =
+					await injectionEngine.getInjectedContext();
 
 				const rendered = engine.renderPrompt(prompt, vars, { injectedContext });
-				
+
 				if (values.json) {
-					console.log(JSON.stringify({ 
-						schemaVersion: "1.0",
-						ok: true,
-						traceId,
-						metadata: prompt.metadata, 
-						rendered,
-						injection: values["debug-injection"] ? injectionMeta : undefined
-					}, null, 2));
+					console.log(
+						JSON.stringify(
+							{
+								schemaVersion: "1.0",
+								ok: true,
+								traceId,
+								metadata: prompt.metadata,
+								rendered,
+								injection: values["debug-injection"]
+									? injectionMeta
+									: undefined,
+							},
+							null,
+							2,
+						),
+					);
 				} else {
 					if (values["debug-injection"]) {
 						console.log("--- Injection Meta ---");
@@ -154,13 +190,19 @@ const promptCommand: Command = {
 				}
 			} else {
 				if (values.json) {
-					console.log(JSON.stringify({ 
-						schemaVersion: "1.0",
-						ok: false, 
-						traceId,
-						error: "Missing or unknown subcommand", 
-						usage: "nooa prompt <list|view|validate|render>" 
-					}, null, 2));
+					console.log(
+						JSON.stringify(
+							{
+								schemaVersion: "1.0",
+								ok: false,
+								traceId,
+								error: "Missing or unknown subcommand",
+								usage: "nooa prompt <list|view|validate|render>",
+							},
+							null,
+							2,
+						),
+					);
 				} else {
 					console.log(promptHelp);
 				}
@@ -168,14 +210,16 @@ const promptCommand: Command = {
 				return;
 			}
 
-			telemetry.track({
-				event: `prompt.${action}.success`,
-				level: "info",
-				success: true,
-				trace_id: traceId,
-				metadata: { name, action },
-			}, bus);
-
+			telemetry.track(
+				{
+					event: `prompt.${action}.success`,
+					level: "info",
+					success: true,
+					trace_id: traceId,
+					metadata: { name, action },
+				},
+				bus,
+			);
 		} catch (error: any) {
 			const message = error.message;
 			if (values.json) {
@@ -183,13 +227,16 @@ const promptCommand: Command = {
 			} else {
 				console.error(`Error: ${message}`);
 			}
-			telemetry.track({
-				event: `prompt.${action}.failure`,
-				level: "error",
-				success: false,
-				trace_id: traceId,
-				metadata: { error: message, name, action },
-			}, bus);
+			telemetry.track(
+				{
+					event: `prompt.${action}.failure`,
+					level: "error",
+					success: false,
+					trace_id: traceId,
+					metadata: { error: message, name, action },
+				},
+				bus,
+			);
 			process.exitCode = 1;
 		} finally {
 			logger.clearContext();

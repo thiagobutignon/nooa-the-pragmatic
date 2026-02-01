@@ -1,8 +1,8 @@
-import type { Command, CommandContext } from "../../core/command";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
+import type { Command, CommandContext } from "../../core/command";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import { git } from "./git";
@@ -64,7 +64,10 @@ const worktreeCommand: Command = {
 			return;
 		}
 		// Bug fix #1: Use git check-ref-format for proper branch validation
-		const branchCheck = await git(["check-ref-format", "--branch", branch], process.cwd());
+		const branchCheck = await git(
+			["check-ref-format", "--branch", branch],
+			process.cwd(),
+		);
 		if (branchCheck.exitCode !== 0) {
 			console.error("Error: Invalid branch name (check git naming rules).");
 			process.exitCode = 2;
@@ -112,14 +115,28 @@ const worktreeCommand: Command = {
 		const base = (values.base as string | undefined) ?? "main";
 
 		// Bug fix #2: Support remote base branches (e.g., origin/develop)
-		const baseLocal = await git(["show-ref", "--verify", `refs/heads/${base}`], root);
-		const baseRemote = baseLocal.exitCode === 0
-			? null
-			: await git(["show-ref", "--verify", `refs/remotes/origin/${base}`], root);
-		const resolvedBase = baseLocal.exitCode === 0 ? base : (baseRemote?.exitCode === 0 ? `origin/${base}` : null);
-		
+		const baseLocal = await git(
+			["show-ref", "--verify", `refs/heads/${base}`],
+			root,
+		);
+		const baseRemote =
+			baseLocal.exitCode === 0
+				? null
+				: await git(
+						["show-ref", "--verify", `refs/remotes/origin/${base}`],
+						root,
+					);
+		const resolvedBase =
+			baseLocal.exitCode === 0
+				? base
+				: baseRemote?.exitCode === 0
+					? `origin/${base}`
+					: null;
+
 		if (!resolvedBase) {
-			console.error(`Error: Base branch '${base}' not found locally or in origin.`);
+			console.error(
+				`Error: Base branch '${base}' not found locally or in origin.`,
+			);
 			process.exitCode = 2;
 			telemetry.track(
 				{
@@ -143,7 +160,7 @@ const worktreeCommand: Command = {
 
 		// Bug fix #3: Prune stale worktrees before checking existence
 		await git(["worktree", "prune"], root);
-		
+
 		if (existsSync(worktreePath)) {
 			console.error(`Error: Worktree '${branch}' already exists.`);
 			process.exitCode = 2;
@@ -171,7 +188,10 @@ const worktreeCommand: Command = {
 				? await readFile(gitignorePath, "utf-8")
 				: "";
 			// Bug fix #4: Handle gitignore variations (with/without trailing /)
-			const hasIgnore = current.includes(`${worktreeDir}\n`) || current.includes(`${worktreeDir}/\n`) || current.includes(`${worktreeDir}/`);
+			const hasIgnore =
+				current.includes(`${worktreeDir}\n`) ||
+				current.includes(`${worktreeDir}/\n`) ||
+				current.includes(`${worktreeDir}/`);
 			if (!hasIgnore) {
 				const next =
 					current +
@@ -206,10 +226,10 @@ const worktreeCommand: Command = {
 			return;
 		}
 
-		const skipInstall = Boolean(values["no-install"]) ||
-			process.env.NOOA_SKIP_INSTALL === "1";
-		const skipTest = Boolean(values["no-test"]) ||
-			process.env.NOOA_SKIP_TEST === "1";
+		const skipInstall =
+			Boolean(values["no-install"]) || process.env.NOOA_SKIP_INSTALL === "1";
+		const skipTest =
+			Boolean(values["no-test"]) || process.env.NOOA_SKIP_TEST === "1";
 		const childEnv = { ...process.env };
 		delete childEnv.BUN_TEST;
 		delete childEnv.BUN_TEST_FILE;

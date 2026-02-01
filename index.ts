@@ -46,9 +46,11 @@ export async function main(
 		if (values.json) console.log(JSON.stringify(payload, null, 2));
 	});
 
-    // Initialize Reflection Engine (Background)
-    const { MemoryReflector } = await import("./src/core/events/MemoryReflector.js");
-    const reflector = new MemoryReflector(bus);
+	// Initialize Reflection Engine (Background)
+	const { MemoryReflector } = await import(
+		"./src/core/events/MemoryReflector.js"
+	);
+	const reflector = new MemoryReflector(bus);
 
 	// Dynamic Command Registry
 	const { loadCommands } = await import("./src/core/registry.js");
@@ -61,15 +63,20 @@ export async function main(
 	const registeredCmd = subcommand ? registry.get(subcommand) : undefined;
 
 	if (registeredCmd) {
-		await registeredCmd.execute({ args: positionals, values, rawArgs: args, bus });
-        await reflector.flush();
+		await registeredCmd.execute({
+			args: positionals,
+			values,
+			rawArgs: args,
+			bus,
+		});
+		await reflector.flush();
 		return;
 	}
 
 	if (values.help || !subcommand) {
 		const commands = registry.list();
 		const subcommandHelp = commands
-			.map(cmd => `  ${cmd.name.padEnd(25)} ${cmd.description || ""}`)
+			.map((cmd) => `  ${cmd.name.padEnd(25)} ${cmd.description || ""}`)
 			.join("\n");
 
 		console.log(`

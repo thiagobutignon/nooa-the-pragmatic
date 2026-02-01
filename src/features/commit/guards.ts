@@ -1,5 +1,5 @@
-import { execa } from "execa";
 import { readFile } from "node:fs/promises";
+import { execa } from "execa";
 
 const forbiddenPatterns = [
 	"TODO:", // nooa-ignore
