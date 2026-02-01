@@ -18,6 +18,7 @@ Arguments:
 
 Flags:
   --no-test      Skip automatic test verification before pushing.
+  --json         Output result as JSON.
   -h, --help     Show help message.
 
 Examples:
@@ -41,6 +42,7 @@ const pushCommand: Command = {
 			options: {
 				help: { type: "boolean", short: "h" },
 				"no-test": { type: "boolean" },
+				json: { type: "boolean" },
 			},
 			strict: true,
 			allowPositionals: true,
@@ -73,9 +75,13 @@ const pushCommand: Command = {
         const filesToCheck = await growFileList(cwd);
         const policyResult = await engine.checkFiles(filesToCheck);
         if (!policyResult.ok) {
-            console.error(`\n❌ Error: Policy violations found in the project (${policyResult.violations.length}). Push blocked.`);
-            for (const v of policyResult.violations) {
-                console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
+            if (values.json) {
+                console.log(JSON.stringify({ ok: false, violations: policyResult.violations }, null, 2));
+            } else {
+                console.error(`\n❌ Error: Policy violations found in the project (${policyResult.violations.length}). Push blocked.`);
+                for (const v of policyResult.violations) {
+                    console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
+                }
             }
             process.exitCode = 2;
             return;
@@ -120,7 +126,6 @@ const pushCommand: Command = {
 			process.exitCode = 1;
 			return;
 		}
-
 		telemetry.track(
 			{
 				event: "push.success",
@@ -131,9 +136,14 @@ const pushCommand: Command = {
 			},
 			bus,
 		);
+
+		if (values.json) {
+			console.log(JSON.stringify({ ok: true, traceId, message: "Push successful" }, null, 2));
+		} else {
+			console.log(`✅ Push successful [${traceId}]`);
+		}
 	},
 };
-
 async function growFileList(path: string): Promise<string[]> {
     try {
         const stat = await lstat(path);

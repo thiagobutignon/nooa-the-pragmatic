@@ -34,6 +34,7 @@ export async function checkCli(args: string[]) {
 
     if (values.json) {
         console.log(JSON.stringify(result, null, 2));
+        if (!result.ok) process.exitCode = 2;
     } else {
         if (result.ok) {
             console.log("\n✅ Policy check passed. Code is NOOA-grade (anti-lazy).");

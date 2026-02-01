@@ -34,9 +34,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
-# Local data and temp files
-nooa.db
-resume_verify.*
-verify.*
-resume.pdf
-resume.md
+# NOOA Hygiene
+memory/
+*.local.md
+.nooa/*.local.md
+.nooa/memory.lock
+.nooa/memory/

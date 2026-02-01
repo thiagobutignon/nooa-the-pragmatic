@@ -43,6 +43,7 @@ const commitCommand: Command = {
 				m: { type: "string", short: "m" },
 				"no-test": { type: "boolean" },
 				"allow-todo": { type: "boolean" },
+				json: { type: "boolean" },
 			},
 			strict: true,
 			allowPositionals: true,
@@ -77,7 +78,9 @@ const commitCommand: Command = {
 		}
 
 		if (!(await hasStagedChanges(cwd))) {
-			console.error("Error: No staged changes.");
+            const msg = "Error: No staged changes.";
+			if (values.json) console.log(JSON.stringify({ ok: false, error: msg }, null, 2));
+			else console.error(msg);
 			process.exitCode = 2;
 			return;
 		}
@@ -89,11 +92,15 @@ const commitCommand: Command = {
             
 			const result = await engine.checkFiles(filesToCheck);
 			if (!result.ok) {
-				console.error("\n❌ Error: Zero-Preguiça violation found:");
-				for (const v of result.violations) {
-                    console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
-                }
-                console.error("\nFix these violations or use --allow-todo to override.");
+				if (values.json) {
+					console.log(JSON.stringify({ ok: false, violations: result.violations }, null, 2));
+				} else {
+					console.error("\n❌ Error: Zero-Preguiça violation found:");
+					for (const v of result.violations) {
+						console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
+					}
+					console.error("\nFix these violations or use --allow-todo to override.");
+				}
 				process.exitCode = 2;
 				return;
 			}
@@ -143,7 +150,6 @@ const commitCommand: Command = {
 			process.exitCode = 1;
 			return;
 		}
-
 		telemetry.track(
 			{
 				event: "commit.success",
@@ -154,6 +160,12 @@ const commitCommand: Command = {
 			},
 			bus,
 		);
+
+		if (values.json) {
+			console.log(JSON.stringify({ ok: true, traceId, message: "Commit successful" }, null, 2));
+		} else {
+			console.log(`✅ Commit successful [${traceId}]`);
+		}
 	},
 };
 
