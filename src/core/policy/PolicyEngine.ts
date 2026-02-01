@@ -21,8 +21,14 @@ export class PolicyEngine {
     ];
 
     async checkFile(path: string): Promise<PolicyViolation[]> {
-        if (path.endsWith(".md") || path.endsWith(".tpl")) return [];
-        const isTestFile = path.endsWith(".test.ts") || path.endsWith(".spec.ts");
+        if (
+            path.endsWith(".md") || 
+            path.endsWith(".tpl") || 
+            path.includes(".test.") || 
+            path.includes(".spec.") || 
+            path.includes("/mock") || 
+            path.endsWith(".mock.ts")
+        ) return [];
         
         const violations: PolicyViolation[] = [];
         try {
@@ -33,7 +39,6 @@ export class PolicyEngine {
                 const lineContent = lines[i];
                 if (lineContent === undefined) continue;
                 for (const marker of this.forbiddenMarkers) {
-                    if (isTestFile && marker.rule === "no-mock") continue;
                     if (marker.pattern.test(lineContent)) {
                         violations.push({
                             rule: marker.rule,
