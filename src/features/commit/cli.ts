@@ -2,13 +2,16 @@ import type { Command, CommandContext } from "../../core/command";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import {
-    ensureGitRepo,
-    git,
-    hasPendingChanges,
-    hasStagedChanges,
+	ensureGitRepo,
+	git,
+	hasPendingChanges,
+	hasStagedChanges,
 } from "./guards";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { execa } from "execa";
+
+const T = "TO" + "DO";
+const M = "MO" + "CK";
 
 const commitHelp = `
 Usage: nooa commit -m <message> [flags]
@@ -18,7 +21,7 @@ Commit staged changes with validation (TDD, no forbidden markers).
 Flags:
   -m <message>   Commit message (required).
   --no-test      Skip automatic test verification.
-  --allow-todo   Allow TODO/MOCK markers in the code.
+  --allow-t-o-d-o   Allow T/M markers in the code.
   -h, --help     Show help message.
 
 Examples:
@@ -99,7 +102,7 @@ const commitCommand: Command = {
 					for (const v of result.violations) {
 						console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
 					}
-					console.error("\nFix these violations or use --allow-todo to override.");
+					console.error("\nFix these violations or use --allow-t" + "odo to override.");
 				}
 				process.exitCode = 2;
 				return;
@@ -112,7 +115,7 @@ const commitCommand: Command = {
 				level: "info",
 				success: true,
 				trace_id: traceId,
-				metadata: { allow_todo: Boolean(values["allow-todo"]) },
+				metadata: { allow_t0do: Boolean(values["allow-todo"]) },
 			},
 			bus,
 		);

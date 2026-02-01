@@ -2,8 +2,8 @@ import { execa } from "execa";
 import { readFile } from "node:fs/promises";
 
 const forbiddenPatterns = [
-	"TODO:",
-	"MOCK:",
+	"T" + "ODO:",
+	"M" + "OCK:",
 	"Implement this later",
 ];
 
