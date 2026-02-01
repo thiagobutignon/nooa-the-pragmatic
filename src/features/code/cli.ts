@@ -57,14 +57,13 @@ const codeCommand: Command = {
 			allowPositionals: true,
 		}) as any;
 
+		const { getStdinText } = await import("../../core/io");
 		const action = positionals[1];
 		const traceId = createTraceId();
 		const startTime = Date.now();
-		logger.setContext({ trace_id: traceId, command: "code", action });
 
 		if (values.help) {
 			console.log(codeHelp);
-			logger.clearContext();
 			return;
 		}
 
@@ -86,7 +85,6 @@ const codeCommand: Command = {
 				logger.warn("code.write.missing_path", {
 					duration_ms: Date.now() - startTime,
 				});
-				logger.clearContext();
 				process.exitCode = 2;
 				return;
 			}
@@ -123,12 +121,8 @@ const codeCommand: Command = {
 					let patchText = "";
 					if (values["patch-from"]) {
 						patchText = await readFile(String(values["patch-from"]), "utf-8");
-					} else if (!process.stdin.isTTY) {
-						try {
-							patchText = await new Response(process.stdin).text();
-						} catch {
-							patchText = "";
-						}
+					} else {
+						patchText = await getStdinText();
 					}
 
 					if (!patchText) {
@@ -149,7 +143,6 @@ const codeCommand: Command = {
 						logger.warn("code.patch.missing_input", {
 							duration_ms: Date.now() - startTime,
 						});
-						logger.clearContext();
 						process.exitCode = 2;
 						return;
 					}
@@ -162,16 +155,8 @@ const codeCommand: Command = {
 						await writeFile(targetPath, content, "utf-8");
 					}
 				} else {
-					if (!values.from && !process.stdin.isTTY) {
-						let stdinText = "";
-						try {
-							stdinText = await new Response(process.stdin).text();
-						} catch {
-							stdinText = "";
-						}
-						if (stdinText.length > 0) {
-							content = stdinText;
-						}
+					if (!values.from) {
+						content = await getStdinText();
 					}
 
 					if (!content && values.from) {
@@ -194,7 +179,6 @@ const codeCommand: Command = {
 						logger.warn("code.write.missing_input", {
 							duration_ms: Date.now() - startTime,
 						});
-						logger.clearContext();
 						process.exitCode = 2;
 						return;
 					}
@@ -256,7 +240,6 @@ const codeCommand: Command = {
 						trace_id: traceId,
 						success: true,
 					});
-					logger.clearContext();
 					return;
 				}
 
@@ -333,16 +316,13 @@ const codeCommand: Command = {
 					success: false,
 					error: message,
 				});
-				logger.clearContext();
 				process.exitCode = 1;
 			}
-			logger.clearContext();
 			return;
 		}
 
 		// Fallback for unknown action
 		console.log(codeHelp);
-		logger.clearContext();
 	},
 };
 

@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface LogEntry {
@@ -28,20 +30,21 @@ export function createTraceId(): string {
 }
 
 export class Logger {
-	private context: LoggerContext = {};
+	private storage = new AsyncLocalStorage<LoggerContext>();
 
 	setContext(ctx: LoggerContext) {
-		this.context = { ...this.context, ...ctx };
+		const current = this.storage.getStore() || {};
+		this.storage.enterWith({ ...current, ...ctx });
 	}
 
-	clearContext(keys?: string[]) {
-		if (!keys) {
-			this.context = {};
-			return;
-		}
-		for (const key of keys) {
-			delete this.context[key];
-		}
+	clearContext(_keys?: string[]) {
+		// AsyncLocalStorage doesn't support partial clearing easily in one-shot
+		// but we can enter an empty store.
+		this.storage.enterWith({});
+	}
+
+	runWithContext<T>(ctx: LoggerContext, fn: () => T): T {
+		return this.storage.run(ctx, fn);
 	}
 
 	debug(event: string, metadata?: Record<string, unknown>, message?: string) {
@@ -74,7 +77,7 @@ export class Logger {
 			level,
 			event,
 			timestamp: Date.now(),
-			...this.context,
+			...(this.storage.getStore() || {}),
 		};
 
 		if (message) entry.message = message;

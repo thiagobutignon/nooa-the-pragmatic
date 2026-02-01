@@ -60,18 +60,7 @@ describe("read command", () => {
 		const filePath = join(TEST_DIR, "stdin_path.txt");
 		await writeFile(filePath, "stdin content");
 
-		// Mock stdin
-		const originalStdin = process.stdin;
-		const mockStdin = {
-			isTTY: false,
-			[Symbol.asyncIterator]: async function* () {
-				yield Buffer.from(filePath);
-			},
-		} as any;
-		Object.defineProperty(process, "stdin", {
-			value: mockStdin,
-			configurable: true,
-		});
+		const { runWithStdin } = await import("../../core/io");
 
 		let output = "";
 		spyOn(process.stdout, "write").mockImplementation((data: any) => {
@@ -79,17 +68,15 @@ describe("read command", () => {
 			return true;
 		});
 
-		await readCommand.execute({
-			args: ["read"],
-			rawArgs: ["read"],
-			values: {} as any,
-			bus,
-		});
+		await runWithStdin(filePath, () =>
+			readCommand.execute({
+				args: ["read"],
+				rawArgs: ["read"],
+				values: {} as any,
+				bus,
+			}),
+		);
 
-		Object.defineProperty(process, "stdin", {
-			value: originalStdin,
-			configurable: true,
-		});
 		expect(output).toBe("stdin content");
 	});
 

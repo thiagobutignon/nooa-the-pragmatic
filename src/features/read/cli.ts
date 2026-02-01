@@ -41,22 +41,21 @@ const readCommand: Command = {
 			allowPositionals: true,
 		}) as any;
 
+		const { getStdinText } = await import("../../core/io");
+
 		const traceId = createTraceId();
 		const startTime = Date.now();
-		logger.setContext({ trace_id: traceId, command: "read" });
 
 		if (values.help) {
 			console.log(readHelp);
-			logger.clearContext();
 			return;
 		}
 
 		let path = positionals[1];
 
 		// Handle stdin if no path provided
-		if (!path && !process.stdin.isTTY) {
-			const stdinText = await new Response(process.stdin).text();
-			path = stdinText.trim();
+		if (!path) {
+			path = await getStdinText();
 		}
 
 		if (!path) {
@@ -73,7 +72,6 @@ const readCommand: Command = {
 				bus,
 			);
 			logger.warn("read.missing_path", { duration_ms: Date.now() - startTime });
-			logger.clearContext();
 			process.exitCode = 2;
 			return;
 		}
@@ -153,12 +151,9 @@ const readCommand: Command = {
 				success: false,
 				error: message,
 			});
-			logger.clearContext();
 			process.exitCode = 1;
 			return;
 		}
-
-		logger.clearContext();
 	},
 };
 

@@ -63,12 +63,18 @@ export async function main(
 	const registeredCmd = subcommand ? registry.get(subcommand) : undefined;
 
 	if (registeredCmd) {
-		await registeredCmd.execute({
-			args: positionals,
-			values,
-			rawArgs: args,
-			bus,
+		const { logger, createTraceId } = await import("./src/core/logger.js");
+		const traceId = createTraceId();
+		
+		await logger.runWithContext({ trace_id: traceId, command: subcommand }, async () => {
+			await registeredCmd.execute({
+				args: positionals,
+				values,
+				rawArgs: args,
+				bus,
+			});
 		});
+
 		await reflector.flush();
 		return;
 	}

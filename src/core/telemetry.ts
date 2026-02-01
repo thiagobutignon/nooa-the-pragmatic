@@ -40,8 +40,9 @@ export class TelemetryStore {
 		this.init();
 	}
 
-	private ensureOpen() {
+	private ensureOpen(): Database {
 		if (!this.db) this.open();
+		if (!this.db) throw new Error("Failed to open database");
 		return this.db;
 	}
 
@@ -66,6 +67,10 @@ export class TelemetryStore {
 	}
 
 	track(event: TelemetryEvent, bus?: EventBus): number | bigint {
+		const { logger } = require("./logger");
+		const context = (logger as any).storage?.getStore() || {};
+		const trace_id = event.trace_id ?? context.trace_id;
+
 		const timestamp = event.timestamp ?? Date.now();
 		const db = this.ensureOpen();
 		const query = db.prepare(`
@@ -82,7 +87,7 @@ export class TelemetryStore {
 			$level: event.level,
 			$duration_ms: event.duration_ms ?? null,
 			$metadata: event.metadata ? JSON.stringify(event.metadata) : null,
-			$trace_id: event.trace_id ?? null,
+			$trace_id: trace_id ?? null,
 			$success: event.success === undefined ? null : event.success ? 1 : 0,
 		});
 

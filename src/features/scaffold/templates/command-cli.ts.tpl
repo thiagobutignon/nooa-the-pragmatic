@@ -24,9 +24,15 @@ export async function {{camelName}}Cli(args: string[]) {
     }
 
     try {
+        const { getStdinText } = await import("../../core/io");
+        
+        // Example: Get input from positionals or stdin
+        const input = positionals[0] || await getStdinText();
+
         const { result, traceId } = await execute{{Command}}({
             json: values.json,
-            // Pass flags here
+            input,
+            // Pass other flags here
         });
 
         const output = {
