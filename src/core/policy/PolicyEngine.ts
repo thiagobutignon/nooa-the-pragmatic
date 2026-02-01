@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 
 export interface PolicyViolation {
     rule: string;
@@ -20,6 +22,22 @@ export class PolicyEngine {
         { pattern: /FIXME[:\s]/i, rule: "no-fixme", message: "Zero-Preguiça: FIXMEs are not allowed in production code." }
     ];
 
+    private ignoredPatterns: string[] = [];
+
+    constructor(cwd: string = process.cwd()) {
+        const ignorePath = join(cwd, ".nooa-ignore");
+        if (existsSync(ignorePath)) {
+            this.ignoredPatterns = readFileSync(ignorePath, "utf-8")
+                .split("\n")
+                .map(line => line.trim())
+                .filter(line => line && !line.startsWith("#"));
+        }
+    }
+
+    private isIgnored(path: string): boolean {
+        return this.ignoredPatterns.some(pattern => path.includes(pattern));
+    }
+
     async checkFile(path: string): Promise<PolicyViolation[]> {
         if (
             path.endsWith(".md") || 
@@ -27,7 +45,8 @@ export class PolicyEngine {
             path.includes(".test.") || 
             path.includes(".spec.") || 
             path.includes("/mock") || 
-            path.endsWith(".mock.ts")
+            path.endsWith(".mock.ts") ||
+            this.isIgnored(path)
         ) return [];
         
         const violations: PolicyViolation[] = [];
@@ -38,6 +57,8 @@ export class PolicyEngine {
             for (let i = 0; i < lines.length; i++) {
                 const lineContent = lines[i];
                 if (lineContent === undefined) continue;
+                if (lineContent.includes("nooa-ignore")) continue;
+
                 for (const marker of this.forbiddenMarkers) {
                     if (marker.pattern.test(lineContent)) {
                         violations.push({

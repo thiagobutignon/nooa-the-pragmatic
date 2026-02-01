@@ -10,9 +10,6 @@ import {
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { execa } from "execa";
 
-const T = "TO" + "DO";
-const M = "MO" + "CK";
-
 const commitHelp = `
 Usage: nooa commit -m <message> [flags]
 
@@ -21,12 +18,12 @@ Commit staged changes with validation (TDD, no forbidden markers).
 Flags:
   -m <message>   Commit message (required).
   --no-test      Skip automatic test verification.
-  --allow-t-o-d-o   Allow T/M markers in the code.
+  --allow-todo   Allow TODO/MOCK markers in the code. // nooa-ignore
   -h, --help     Show help message.
 
 Examples:
   nooa commit -m "feat: user authentication"
-  nooa commit -m "docs: api reference" --allow-todo
+  nooa commit -m "docs: api reference" --allow-todo // nooa-ignore
 
 Exit Codes:
   0: Success
@@ -102,7 +99,7 @@ const commitCommand: Command = {
 					for (const v of result.violations) {
 						console.error(`  [${v.rule}] ${v.file}:${v.line} -> ${v.content}`);
 					}
-					console.error("\nFix these violations or use --allow-t" + "odo to override.");
+					console.error("\nFix these violations or use --allow-todo to override."); // nooa-ignore
 				}
 				process.exitCode = 2;
 				return;
@@ -115,7 +112,7 @@ const commitCommand: Command = {
 				level: "info",
 				success: true,
 				trace_id: traceId,
-				metadata: { allow_t0do: Boolean(values["allow-todo"]) },
+				metadata: { allow_todo: Boolean(values["allow-todo"]) }, // nooa-ignore
 			},
 			bus,
 		);

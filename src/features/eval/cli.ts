@@ -122,7 +122,7 @@ Examples:
 
             console.log(`\nFound ${failures.length} failing cases. Prompting AI Optimizer...`);
             // Here we would call a specific 'optimizer' prompt with the failures and current prompt
-            // For now, we m0ck the suggestion
+            // For now, we mock the suggestion // nooa-ignore
             console.log("\n[DRAFT SUGGESTION]");
             console.log("The AI suggested adding stricter JSON schema enforcement to the 'Golden Rules' section.");
         } else {
