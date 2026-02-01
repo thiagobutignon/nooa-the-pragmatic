@@ -10,7 +10,11 @@ describe("ci CLI", () => {
 
 	it("should output JSON with correct schema", async () => {
 		const { stdout } = await execa("bun", ["index.ts", "ci", "--json"], {
-			env: { ...process.env, NOOA_AI_PROVIDER: "mock" },
+			env: {
+				...process.env,
+				NOOA_AI_PROVIDER: "mock",
+				NOOA_SKIP_CI_RECURSION: "1",
+			},
 			timeout: 60000, // 60s timeout
 		});
 		const output = JSON.parse(stdout);

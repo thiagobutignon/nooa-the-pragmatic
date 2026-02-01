@@ -2,10 +2,10 @@ import { join } from "node:path";
 import { execa } from "execa";
 import { loadCommands } from "../../core/registry";
 import type {
-	PipelineResult,
-	PipelineStep,
-	RunOptions,
-	StepResult,
+    PipelineResult,
+    PipelineStep,
+    RunOptions,
+    StepResult,
 } from "./types";
 
 export async function executePipeline(
@@ -61,9 +61,9 @@ export async function executePipeline(
 							stderr: output?.stderr,
 						});
 					} else {
-						const cmdNamePlaceholder = cmdName || "unknown";
+						const cmdNameDisplay = cmdName || "unknown";
 						throw new Error(
-							`Unknown internal command: '${cmdNamePlaceholder}'. To run external commands, use the 'exec' prefix or --allow-external flag.`,
+							`Unknown internal command: '${cmdNameDisplay}'. To run external commands, use the 'exec' prefix or --allow-external flag.`,
 						);
 					}
 				}

@@ -1,5 +1,7 @@
 import { MemoryEngine } from "./engine";
 import { type TelemetryEvent } from "../../core/telemetry";
+import { join } from "node:path";
+import { summarizeMemory } from "./summarize";
 
 export class Reflector {
     private engine: MemoryEngine;
@@ -28,9 +30,40 @@ export class Reflector {
         if (this.reflectionCount >= this.MAX_REFLECTIONS) return false;
         if (!this.isMaterial(event.event) || !event.success) return false;
 
-        // In a real scenario, this would call an LLM. 
-        // For now, we capture the material fact.
-        const content = `Session Reflection: Successfully executed ${event.event}. Resulting in material change to the codebase.`;
+        let content = `Session Reflection: Successfully executed ${event.event}. Resulting in material change to the codebase.`;
+        
+        try {
+            const { AiEngine } = await import("../ai/engine");
+            const { PromptEngine } = await import("../prompt/engine");
+            const { MockProvider, OllamaProvider, OpenAiProvider } = await import("../ai/providers/mod");
+            
+            const templatesDir = join(process.cwd(), "src/features/prompt/templates");
+            const promptEngine = new PromptEngine(templatesDir);
+            const aiEngine = new AiEngine();
+            aiEngine.register(new OllamaProvider());
+            aiEngine.register(new OpenAiProvider());
+            aiEngine.register(new MockProvider());
+
+            const prompt = await promptEngine.loadPrompt("reflection");
+            const rendered = await promptEngine.renderPrompt(prompt, {
+                event: event.event,
+                metadata: JSON.stringify(event.metadata || {}),
+                repo_root: process.cwd(),
+                vibe: "resourceful",
+                posture: "Surgical, high-speed, direct"
+            }, { skipAgentContext: true });
+
+            const response = await aiEngine.complete({
+                messages: [{ role: "system", content: rendered }],
+                traceId: `reflect-${event.trace_id || "gen"}`
+            }, { provider: process.env.NOOA_AI_PROVIDER || "ollama" });
+
+            if (response.content) {
+                content = response.content.trim();
+            }
+        } catch {
+            // Fallback to default content
+        }
         
         await this.engine.addEntry({
             type: "decision",
@@ -41,6 +74,9 @@ export class Reflector {
             sources: [`telemetry:event:${event.event}`],
             content
         });
+        
+        await summarizeMemory(process.cwd());
+        
         this.reflectionCount++;
         return true;
     }

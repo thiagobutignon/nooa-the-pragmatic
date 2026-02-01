@@ -36,8 +36,10 @@ Examples:
 	}
 
 	try {
-		console.log("🔍 Running CI pipeline...\n");
-		const result = await executeCi({ json: values.json }, bus);
+		if (!values.json) {
+			console.log("🔍 Running CI pipeline...\n");
+		}
+		const result = await executeCi({ json: !!values.json }, bus);
 
 		if (values.json) {
 			const output = {
@@ -56,7 +58,7 @@ Examples:
 			const jsonOutput = JSON.stringify(output, null, 2);
 			if (values.out) {
 				const { writeFile } = await import("node:fs/promises");
-				await writeFile(values.out, jsonOutput);
+				await writeFile(String(values.out), jsonOutput);
 				console.log(`✅ Results written to ${values.out}`);
 			} else {
 				console.log(jsonOutput);

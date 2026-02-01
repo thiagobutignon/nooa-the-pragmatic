@@ -2,6 +2,7 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { logger } from "../../core/logger";
+import { InjectionEngine } from "./injection";
 
 export interface PromptMetadata {
 	name: string;
@@ -65,16 +66,32 @@ export class PromptEngine {
 		return { metadata, body };
 	}
 
-	renderPrompt(
+	async getAgentContext(): Promise<string> {
+		const injectionEngine = new InjectionEngine();
+		const { content } = await injectionEngine.getInjectedContext();
+		return content;
+	}
+
+	async renderPrompt(
 		prompt: Prompt,
 		vars: Record<string, any>,
-		options?: { injectedContext?: string },
-	): string {
+		options?: { injectedContext?: string; skipAgentContext?: boolean },
+	): Promise<string> {
 		let rendered = prompt.body;
+		let combinedContext = "";
 
-		// Inject personality context if available
+		// Load agent context if not skipped
+		if (!options?.skipAgentContext) {
+			combinedContext += await this.getAgentContext();
+		}
+
+		// Append specifically injected context
 		if (options?.injectedContext) {
-			rendered = `${options.injectedContext}\n\n---\n\n${rendered}`;
+			combinedContext += (combinedContext ? "\n\n---\n\n" : "") + options.injectedContext;
+		}
+
+		if (combinedContext) {
+			rendered = `${combinedContext}\n\n---\n\n${rendered}`;
 		}
 
 		for (const [key, value] of Object.entries(vars)) {
