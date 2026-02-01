@@ -48,7 +48,7 @@ describe("nooa commit", () => {
 			);
 
 			expect(res.exitCode).toBe(2);
-			expect(res.stderr).toContain("TODO");
+			expect(res.stderr).toContain("violation found");
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
