@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import type { EventBus } from "./event-bus";
+import { logger } from "./logger.js";
 
 export type TelemetryLevel = "info" | "warn" | "error";
 
@@ -67,9 +68,8 @@ export class TelemetryStore {
 	}
 
 	track(event: TelemetryEvent, bus?: EventBus): number | bigint {
-		const { logger } = require("./logger");
-		const context = (logger as any).storage?.getStore() || {};
-		const trace_id = event.trace_id ?? context.trace_id;
+		const context = logger.getContext();
+		const trace_id = event.trace_id || context.trace_id;
 
 		const timestamp = event.timestamp ?? Date.now();
 		const db = this.ensureOpen();

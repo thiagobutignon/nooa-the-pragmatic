@@ -107,17 +107,33 @@ Examples:
 		}
 	} catch (e) {
 		const err = e as Error;
-		if (
-			err.message.includes("Invalid name") ||
-			err.message.includes("already exists")
-		) {
-			console.error(`❌ Validation Error: ${err.message}`);
-			process.exitCode = 2;
+		const { trace_id: traceId } = logger.getContext();
+		if (values.json) {
+			console.log(
+				JSON.stringify(
+					{
+						schemaVersion: "1.0",
+						ok: false,
+						traceId,
+						command: "scaffold",
+						timestamp: new Date().toISOString(),
+						error: err.message,
+					},
+					null,
+					2,
+				),
+			);
 		} else {
-			logger.error("scaffold.error", err);
-			console.error(`❌ Runtime Error: ${err.message}`);
-			process.exitCode = 1;
+			if (
+				err.message.includes("Invalid name") ||
+				err.message.includes("already exists")
+			) {
+				console.error(`❌ Validation Error: ${err.message}`);
+			} else {
+				console.error(`❌ Runtime Error: ${err.message}`);
+			}
 		}
+		process.exitCode = (err.message.includes("Invalid name") || err.message.includes("already exists")) ? 2 : 1;
 	}
 }
 

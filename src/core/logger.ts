@@ -47,6 +47,10 @@ export class Logger {
 		return this.storage.run(ctx, fn);
 	}
 
+	getContext(): LoggerContext {
+		return this.storage.getStore() || {};
+	}
+
 	debug(event: string, metadata?: Record<string, unknown>, message?: string) {
 		this.log("debug", event, metadata, message);
 	}

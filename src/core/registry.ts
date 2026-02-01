@@ -42,8 +42,8 @@ export async function loadCommands(
 				if (module.default?.name) {
 					registry.register(module.default);
 				}
-			} catch (_e) {
-				// Ignore missing cli.ts or import errors
+			} catch (e) {
+				console.error(`Error loading command from ${entry.name}:`, e);
 			}
 		}
 	}

@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { execa } from "execa";
 
 const run = (args: string[]) =>
-	execa("bun", ["index.ts", ...args], { reject: false });
+	execa("bun", ["index.ts", ...args], {
+		reject: false,
+		env: { ...process.env, NOOA_AI_PROVIDER: "mock" },
+	});
 
 describe("Command Cohesion Contract", () => {
 	// List of commands that must follow the contract

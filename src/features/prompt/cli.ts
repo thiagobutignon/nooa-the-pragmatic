@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { Command, CommandContext } from "../../core/command";
-import { createTraceId, logger } from "../../core/logger";
+import { logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import { PromptEngine } from "./engine";
 
@@ -52,8 +52,7 @@ const promptCommand: Command = {
 
 		const action = positionals[1];
 		const name = positionals[2];
-		const traceId = createTraceId();
-		logger.setContext({ trace_id: traceId, command: "prompt", action });
+		const { trace_id: traceId } = logger.getContext();
 
 		// In development, we use the local path.
 		// In production, this might be bundled or point to a known location.
@@ -222,8 +221,22 @@ const promptCommand: Command = {
 			);
 		} catch (error: any) {
 			const message = error.message;
+			const { trace_id: traceId } = logger.getContext();
 			if (values.json) {
-				console.log(JSON.stringify({ ok: false, error: message }, null, 2));
+				console.log(
+					JSON.stringify(
+						{
+							schemaVersion: "1.0",
+							ok: false,
+							traceId,
+							command: "prompt",
+							timestamp: new Date().toISOString(),
+							error: message,
+						},
+						null,
+						2,
+					),
+				);
 			} else {
 				console.error(`Error: ${message}`);
 			}
@@ -238,8 +251,6 @@ const promptCommand: Command = {
 				bus,
 			);
 			process.exitCode = 1;
-		} finally {
-			logger.clearContext();
 		}
 	},
 };

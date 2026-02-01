@@ -23,6 +23,7 @@ export type SearchOptions = {
 	context?: number;
 	count?: boolean;
 	hidden?: boolean;
+	noIgnore?: boolean;
 };
 
 let cachedRg: boolean | null = null;
@@ -130,6 +131,9 @@ async function runRgSearch(options: SearchOptions): Promise<SearchResult[]> {
 	if (options.hidden) args.push("--hidden");
 	if (options.context && options.context > 0) {
 		args.push("-C", String(options.context));
+	}
+	if (options.noIgnore) {
+		args.push("--no-ignore");
 	}
 
 	if (options.include) {

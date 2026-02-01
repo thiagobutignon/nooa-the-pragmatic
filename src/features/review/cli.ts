@@ -118,12 +118,15 @@ const reviewCommand: Command = {
 			const isValidationError =
 				message.includes("No input source") || message.includes("not found");
 			if (values.json) {
+				const { trace_id: traceId } = logger.getContext();
 				console.log(
 					JSON.stringify(
 						{
 							schemaVersion: "1.0",
 							ok: false,
+							traceId,
 							command: "review",
+							timestamp: new Date().toISOString(),
 							error: message,
 						},
 						null,
@@ -134,8 +137,6 @@ const reviewCommand: Command = {
 				console.error(`Error: ${message}`);
 			}
 			process.exitCode = isValidationError ? 2 : 1;
-		} finally {
-			logger.clearContext();
 		}
 	},
 };

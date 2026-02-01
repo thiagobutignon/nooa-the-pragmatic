@@ -121,7 +121,8 @@ export class MemoryEngine {
             root: this.root,
             include: ["memory/*.md", ".nooa/MEMORY.md"],
             regex: true,
-            ignoreCase: true
+            ignoreCase: true,
+            noIgnore: true
         });
         
         const entryIds = new Set<string>();
