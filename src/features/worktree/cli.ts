@@ -19,6 +19,7 @@ Flags:
   --base <branch>   Base branch to branch from (default: main).
   --no-install      Skip automatic dependency installation.
   --no-test         Skip automatic test verification.
+  --json            Output results as JSON.
   -h, --help        Show help message.
 
 Examples:
@@ -31,7 +32,8 @@ Exit Codes:
   2: Validation Error (invalid branch or not a git repo)
 `;
 
-const branchPattern = /^[A-Za-z0-9/_-]+$/;
+// Bug fix: Use git check-ref-format instead of restrictive regex
+// const branchPattern = /^[A-Za-z0-9/_-]+$/; // REMOVED - too restrictive
 
 const worktreeCommand: Command = {
 	name: "worktree",
@@ -61,8 +63,10 @@ const worktreeCommand: Command = {
 			);
 			return;
 		}
-		if (!branchPattern.test(branch)) {
-			console.error("Error: Invalid branch name.");
+		// Bug fix #1: Use git check-ref-format for proper branch validation
+		const branchCheck = await git(["check-ref-format", "--branch", branch], process.cwd());
+		if (branchCheck.exitCode !== 0) {
+			console.error("Error: Invalid branch name (check git naming rules).");
 			process.exitCode = 2;
 			telemetry.track(
 				{
@@ -107,9 +111,15 @@ const worktreeCommand: Command = {
 		const root = repoRoot.stdout.trim();
 		const base = (values.base as string | undefined) ?? "main";
 
-		const baseRef = await git(["show-ref", "--verify", `refs/heads/${base}`], root);
-		if (baseRef.exitCode !== 0) {
-			console.error(`Error: Base branch '${base}' not found.`);
+		// Bug fix #2: Support remote base branches (e.g., origin/develop)
+		const baseLocal = await git(["show-ref", "--verify", `refs/heads/${base}`], root);
+		const baseRemote = baseLocal.exitCode === 0
+			? null
+			: await git(["show-ref", "--verify", `refs/remotes/origin/${base}`], root);
+		const resolvedBase = baseLocal.exitCode === 0 ? base : (baseRemote?.exitCode === 0 ? `origin/${base}` : null);
+		
+		if (!resolvedBase) {
+			console.error(`Error: Base branch '${base}' not found locally or in origin.`);
 			process.exitCode = 2;
 			telemetry.track(
 				{
@@ -131,6 +141,9 @@ const worktreeCommand: Command = {
 				: ".worktrees";
 		const worktreePath = join(root, worktreeDir, branch);
 
+		// Bug fix #3: Prune stale worktrees before checking existence
+		await git(["worktree", "prune"], root);
+		
 		if (existsSync(worktreePath)) {
 			console.error(`Error: Worktree '${branch}' already exists.`);
 			process.exitCode = 2;
@@ -157,11 +170,13 @@ const worktreeCommand: Command = {
 			const current = existsSync(gitignorePath)
 				? await readFile(gitignorePath, "utf-8")
 				: "";
-			if (!current.includes(`${worktreeDir}\n`)) {
+			// Bug fix #4: Handle gitignore variations (with/without trailing /)
+			const hasIgnore = current.includes(`${worktreeDir}\n`) || current.includes(`${worktreeDir}/\n`) || current.includes(`${worktreeDir}/`);
+			if (!hasIgnore) {
 				const next =
 					current +
 					(current.endsWith("\n") || current.length === 0 ? "" : "\n") +
-					`${worktreeDir}\n`;
+					`${worktreeDir}/\n`;
 				await writeFile(gitignorePath, next);
 			}
 		}
@@ -173,7 +188,7 @@ const worktreeCommand: Command = {
 		const addArgs =
 			branchExists.exitCode === 0
 				? ["worktree", "add", worktreePath, branch]
-				: ["worktree", "add", worktreePath, "-b", branch, base];
+				: ["worktree", "add", worktreePath, "-b", branch, resolvedBase];
 		const addResult = await git(addArgs, root);
 		if (addResult.exitCode !== 0) {
 			console.error(`Error: Git worktree failed: ${addResult.stderr}`);
