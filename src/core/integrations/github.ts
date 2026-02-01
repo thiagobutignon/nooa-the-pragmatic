@@ -14,7 +14,7 @@ export class GitHubClient {
         });
         
         if (!response.ok) {
-            const err = await response.json();
+            const err = (await response.json()) as any;
             throw new Error(`GitHub API Error: ${err.message || response.statusText}`);
         }
         
@@ -30,10 +30,26 @@ export class GitHubClient {
         });
         
         if (!response.ok) {
-            const err = await response.json();
+            const err = (await response.json()) as any;
             throw new Error(`GitHub API Error: ${err.message || response.statusText}`);
         }
         
         return response.json();
+    }
+
+    async getPRDiff(owner: string, repo: string, pullNumber: number): Promise<string> {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
+            headers: { 
+                Authorization: `Bearer ${this.token}`,
+                "User-Agent": "nooa-cli",
+                "Accept": "application/vnd.github.v3.diff"
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`GitHub API Error: Failed to fetch PR diff (${response.statusText})`);
+        }
+        
+        return response.text();
     }
 }

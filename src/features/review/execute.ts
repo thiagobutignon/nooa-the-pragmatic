@@ -5,9 +5,9 @@ import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import { AiEngine } from "../ai/engine";
 import {
-	MockProvider,
-	OllamaProvider,
-	OpenAiProvider,
+    MockProvider,
+    OllamaProvider,
+    OpenAiProvider,
 } from "../ai/providers/mod";
 import { PromptEngine } from "../prompt/engine";
 
@@ -36,6 +36,7 @@ export interface ReviewResult {
 export interface ReviewOptions {
 	path?: string;
 	staged?: boolean;
+	diff?: string;
 	json?: boolean;
 	prompt?: string;
 	failOn?: string;
@@ -55,7 +56,10 @@ export async function executeReview(
 	let truncated = false;
 	const MAX_REVIEW_BYTES = 50 * 1024; // 50KB limit for "instant" review
 
-	if (options.path) {
+	if (options.diff) {
+		input = options.diff;
+		fileCount = (input.match(/^diff --git/gm) || []).length;
+	} else if (options.path) {
 		input = await readFile(options.path, "utf-8");
 		fileCount = 1;
 	} else if (options.staged) {
@@ -64,7 +68,7 @@ export async function executeReview(
 		// Basic file count from diff
 		fileCount = (input.match(/^diff --git/gm) || []).length;
 	} else {
-		throw new Error("No input source provided (path or staged).");
+		throw new Error("No input source provided (path, staged, or diff).");
 	}
 
 	if (input.length > MAX_REVIEW_BYTES) {
