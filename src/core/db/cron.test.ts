@@ -9,13 +9,19 @@ describe("Cron DB Schema", () => {
 		db = new Database(":memory:");
 	});
 
-	test("can create cron_jobs table", () => {
+	test("can create cron_jobs and cron_logs tables", () => {
 		setupCronTable(db);
-		const result = db
+		const jobs = db
 			.query(
 				"SELECT name FROM sqlite_master WHERE type='table' AND name='cron_jobs'",
 			)
 			.get();
-		expect(result).toBeDefined();
+		const logs = db
+			.query(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='cron_logs'",
+			)
+			.get();
+		expect(jobs).toBeDefined();
+		expect(logs).toBeDefined();
 	});
 });
