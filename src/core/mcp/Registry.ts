@@ -2,12 +2,15 @@ import type { Database } from "bun:sqlite";
 import { ConfigStore } from "./ConfigStore";
 import { ServerManager } from "./ServerManager";
 import type { HealthStatus, McpServer } from "./types";
+import { AliasStore, type McpAlias } from "./alias";
 
 export class Registry {
 	private configStore: ConfigStore;
+	private aliasStore: AliasStore;
 
 	constructor(db: Database) {
 		this.configStore = new ConfigStore(db);
+		this.aliasStore = new AliasStore(db);
 	}
 
 	async add(server: McpServer): Promise<void> {
@@ -86,5 +89,33 @@ export class Registry {
 		} finally {
 			await manager.stop(name);
 		}
+	}
+
+	async aliasCreate(
+		name: string,
+		command: string,
+		args: string[] = [],
+		options?: { env?: Record<string, string>; description?: string },
+	): Promise<void> {
+		const alias: McpAlias = {
+			name,
+			command,
+			args,
+			env: options?.env,
+			description: options?.description,
+		};
+		await this.aliasStore.save(alias);
+	}
+
+	async aliasGet(name: string): Promise<McpAlias | undefined> {
+		return await this.aliasStore.get(name);
+	}
+
+	async aliasList(): Promise<McpAlias[]> {
+		return await this.aliasStore.list();
+	}
+
+	async aliasDelete(name: string): Promise<void> {
+		await this.aliasStore.delete(name);
 	}
 }
