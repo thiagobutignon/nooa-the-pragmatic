@@ -62,6 +62,7 @@ Input Path: {{input_path}}
 Input Type: {{input_type}}
 Input Scope: {{input_scope}}
 Test Grounding: {{test_grounding}}
+Current Goal: {{goal}}
 
 Input Content:
 {{input}}
