@@ -42,6 +42,14 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 - [Project Policy](.nooa/POLICY.md)
 - [Constitution](.nooa/CONSTITUTION.md)
 
+## 🔐 Environment
+
+Some commands require GitHub access (e.g. `nooa pr`). Provide a token in your environment:
+
+```bash
+export GITHUB_TOKEN=your_token_here
+```
+
 ---
 
 **NOOA v1.2** — *Engineering with Soul.*
