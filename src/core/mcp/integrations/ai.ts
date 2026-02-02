@@ -38,6 +38,13 @@ export async function executeMcpToolFromAi(
 	args: any,
 	// biome-ignore lint/suspicious/noExplicitAny: Tool result is dynamic JSON-RPC response
 ): Promise<any> {
+	if (process.env.MCP_MOCK_RESPONSE) {
+		try {
+			return JSON.parse(process.env.MCP_MOCK_RESPONSE);
+		} catch (error) {
+			console.warn("Invalid MCP_MOCK_RESPONSE:", error);
+		}
+	}
 	const registry = new Registry(db);
 	const serverManager = new ServerManager();
 	const toolProvider = new ToolProvider(registry, serverManager);
