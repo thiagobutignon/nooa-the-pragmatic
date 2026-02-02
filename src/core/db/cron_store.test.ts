@@ -44,4 +44,39 @@ describe("CronStore", () => {
 		expect(job).toBeDefined();
 		expect(job?.name).toBe("run-now");
 	});
+
+	test("delete and toggle jobs behave consistently", async () => {
+		await store.createJob({
+			name: "cleanup",
+			schedule: "0 0 * * *",
+			command: "echo clean",
+		});
+		expect(store.listJobs()).toHaveLength(1);
+		store.toggleJobByName("cleanup", false);
+		expect(store.getByName("cleanup")?.enabled).toBe(false);
+		store.toggleJobByName("cleanup", true);
+		expect(store.getByName("cleanup")?.enabled).toBe(true);
+		expect(store.deleteJobByName("cleanup")).toBe(true);
+		expect(store.getByName("cleanup")).toBeNull();
+	});
+
+	test("recordExecution logs runs and listLogs returns entries", async () => {
+		await store.createJob({
+			name: "runner",
+			schedule: "@daily",
+			command: "echo run",
+		});
+		const log = store.recordExecution("runner", "success", {
+			output: "ok",
+			durationMs: 120,
+		});
+		expect(log).toBeDefined();
+		const logs = store.listLogs("runner", 5);
+		expect(logs).toHaveLength(1);
+		expect(logs[0]).toMatchObject({
+			job_name: "runner",
+			status: "success",
+			output: "ok",
+		});
+	});
 });
