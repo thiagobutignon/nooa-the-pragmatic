@@ -1,11 +1,8 @@
 import { Client } from "./Client";
-import type { ConfigStore } from "./ConfigStore";
 import type { McpServer } from "./types";
 
 export class ServerManager {
 	private clients = new Map<string, Client>();
-
-	constructor(_configStore: ConfigStore) {}
 
 	async start(config: McpServer): Promise<Client> {
 		// Stop existing client if already running
