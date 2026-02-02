@@ -1,8 +1,8 @@
 import { test, expect } from "bun:test";
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createPrompt } from "./service";
+import { createPrompt, editPrompt } from "./service";
 
 test("createPrompt writes a new prompt file with frontmatter and body", async () => {
 	const root = await mkdtemp(join(tmpdir(), "nooa-prompt-"));
@@ -24,6 +24,41 @@ test("createPrompt writes a new prompt file with frontmatter and body", async ()
 		expect(content).toContain("description: Alpha");
 		expect(content).toContain("output: markdown");
 		expect(content).toContain("Hello {{world}}");
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+test("editPrompt applies a unified diff patch to a prompt file", async () => {
+	const root = await mkdtemp(join(tmpdir(), "nooa-prompt-"));
+	const templatesDir = join(root, "src/features/prompt/templates");
+	await mkdir(templatesDir, { recursive: true });
+
+	const initial = [
+		"---",
+		"name: beta",
+		"version: 1.0.0",
+		"description: Beta",
+		"output: markdown",
+		"---",
+		"",
+		"Hello",
+		"",
+		].join("\n");
+
+	try {
+		await writeFile(join(templatesDir, "beta.md"), initial);
+		await editPrompt({
+			templatesDir,
+			name: "beta",
+			patch: `@@ -8,1 +8,1 @@
+-Hello
++Hello world
+`,
+		});
+
+		const content = await readFile(join(templatesDir, "beta.md"), "utf8");
+		expect(content).toContain("Hello world");
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
