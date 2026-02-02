@@ -23,18 +23,35 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 
 | Command | Purpose |
 |---------|---------|
-| `init` | Initialize Agentic Soul and Identity |
-| `ci` | Run local CI pipeline |
-| `doctor` | Check environment health |
-| `check` | Audit code against project policies |
-| `commit` | Commit with automated gates |
-| `worktree`| Manage git worktrees for isolated development |
-| `memory` | Manage persistent context |
-| `index` | Semantic indexing for code & memory |
-| `ask` | Semantic search query |
-| `context` | Generate surgical AI context packs |
-| `ignore` | Manage policy exclusions |
-| `scaffold`| Standardize creation of features/prompts |
+| `ai` | Query the AI stack (completion, refactor, fix, review flows). |
+| `ask` | Semantic search for code or memory entries. |
+| `check` | Audit workspace against project policies (Zero-Preguiça). |
+| `ci` | Run the local CI loop (`test`, `linter`, `check`). |
+| `code` | Write/refactor/format files with AI helpers. |
+| `commit` | Commit changes only after validation passes. |
+| `context` | Build surgical context bundles for prompts or subagents. |
+| `cron` | Schedule autonomous jobs (`add`, `list`, `run`, `health`, `history`, etc.). |
+| `doctor` | Verify local environment health (node, git, tooling). |
+| `embed` | Generate embeddings and record telemetry. |
+| `eval` | Compare/evaluate prompt outputs (`report`, `history`, `compare`). |
+| `fix` | Drive autonomous fix loop (with telemetry, JSON output). |
+| `goal` | Create and track agent goals + status. |
+| `ignore` | Manage `.nooa-ignore` patterns and run match tests. |
+| `index` | Build/query semantic indexes across workspace/memory. |
+| `init` | Seed Agentic Soul (identity, templates, configuration). |
+| `mcp` | Manage MCP servers (`install`, `configure`, `alias`, `call`, `health`, etc.). |
+| `memory` | Add, read, and summarize persistent memory entries. |
+| `message` | Send human-style messages via agent channels. |
+| `pr` | Manage GitHub pull requests (create, merge, close). |
+| `prompt` | Create/edit/publish prompt templates with changelog. |
+| `push` | Push worktree changes to remote with safety checks. |
+| `read` | Read file contents (TTY-aware + JSON output). |
+| `review` | Execute code review prompts with scoring. |
+| `run` | Execute chained commands (`nooa run -- ...`). |
+| `scaffold` | Generate consistent project scaffolding with AI notes. |
+| `search` | Search files and contents (rg/native engines). |
+| `skills` | Manage Codex skills enabling/disabling. |
+| `worktree` | Handle isolated worktrees (create, list, prune, lock). |
 
 ## 📖 Documentation
 
