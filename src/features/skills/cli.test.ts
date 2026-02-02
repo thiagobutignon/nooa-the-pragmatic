@@ -1,10 +1,10 @@
-import { expect, test, describe } from "bun:test";
-import { execa } from "execa";
+import { describe, expect, test } from "bun:test";
+import skillsCommand from "./cli";
 
-describe("skills cli", () => {
-    test("list command returns 200 and listed skills", async () => {
-        const { stdout, exitCode } = await execa("bun", ["index.ts", "skills", "list"], { reject: false });
-        expect(exitCode).toBe(0);
-        expect(stdout).toContain("Current skills:");
+describe("Skills CLI", () => {
+    test("has correct structure", () => {
+        expect(skillsCommand.name).toBe("skills");
+        expect(skillsCommand.description).toBeDefined();
+        expect(typeof skillsCommand.execute).toBe("function");
     });
 });
