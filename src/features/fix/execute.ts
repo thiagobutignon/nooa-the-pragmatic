@@ -1,5 +1,6 @@
 import { execa } from "execa";
 import { createTraceId } from "../../core/logger";
+import { telemetry } from "../../core/telemetry";
 import { executeSearch } from "../index/execute";
 import { AiEngine } from "../ai/engine";
 import { OllamaProvider } from "../ai/providers/ollama";
@@ -27,6 +28,48 @@ export interface FixResult {
 		commit: boolean;
 	};
 	error?: string;
+}
+
+export interface ExecuteFixOptions {
+	issue?: string;
+	dryRun?: boolean;
+	json?: boolean;
+}
+
+export interface ExecuteFixResponse {
+	result: { message: string; ok: boolean };
+	traceId: string;
+}
+
+export async function executeFix(
+	options: ExecuteFixOptions,
+	bus?: any,
+): Promise<ExecuteFixResponse> {
+	const issue = options.issue || "unspecified issue";
+	const dryRun = options.dryRun ?? true;
+	const fixResult = await runFix({ issue, dryRun });
+
+	telemetry.track(
+		{
+			event: fixResult.ok ? "fix.success" : "fix.failure",
+			level: fixResult.ok ? "info" : "warn",
+			success: fixResult.ok,
+			trace_id: fixResult.traceId,
+			metadata: {
+				dry_run: dryRun,
+				issue,
+			},
+		},
+		bus,
+	);
+
+	return {
+		result: {
+			message: "Action performed by fix",
+			ok: fixResult.ok,
+		},
+		traceId: fixResult.traceId,
+	};
 }
 
 export async function runFix(options: FixOptions): Promise<FixResult> {

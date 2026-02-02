@@ -53,12 +53,13 @@ export class Reflector {
                 posture: "Surgical, high-speed, direct"
             }, { skipAgentContext: true });
 
+            const provider = process.env.NOOA_AI_PROVIDER || "ollama";
             const response = await aiEngine.complete({
                 messages: [{ role: "system", content: rendered }],
                 traceId: `reflect-${event.trace_id || "gen"}`
-            }, { provider: process.env.NOOA_AI_PROVIDER || "ollama" });
+            }, { provider });
 
-            if (response.content) {
+            if (provider !== "mock" && response.content) {
                 content = response.content.trim();
             }
         } catch {

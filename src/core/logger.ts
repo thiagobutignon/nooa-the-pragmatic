@@ -29,26 +29,58 @@ export function createTraceId(): string {
 	return out;
 }
 
+type LogWriter = (line: string) => void;
+
 export class Logger {
-	private storage = new AsyncLocalStorage<LoggerContext>();
+	private storage?: AsyncLocalStorage<LoggerContext>;
+	private write: LogWriter;
+	private context: LoggerContext = {};
+
+	constructor(
+		writer: LogWriter = (line) => {
+			process.stderr.write(line);
+		},
+		useAsyncStorage = true,
+	) {
+		this.write = writer;
+		if (useAsyncStorage) {
+			this.storage = new AsyncLocalStorage<LoggerContext>();
+		}
+	}
 
 	setContext(ctx: LoggerContext) {
-		const current = this.storage.getStore() || {};
-		this.storage.enterWith({ ...current, ...ctx });
+		if (this.storage) {
+			const current = this.storage.getStore() || {};
+			this.storage.enterWith({ ...current, ...ctx });
+			return;
+		}
+		this.context = { ...this.context, ...ctx };
 	}
 
 	clearContext(_keys?: string[]) {
-		// AsyncLocalStorage doesn't support partial clearing easily in one-shot
-		// but we can enter an empty store.
-		this.storage.enterWith({});
+		if (this.storage) {
+			// AsyncLocalStorage doesn't support partial clearing easily in one-shot
+			// but we can enter an empty store.
+			this.storage.enterWith({});
+			return;
+		}
+		this.context = {};
 	}
 
 	runWithContext<T>(ctx: LoggerContext, fn: () => T): T {
-		return this.storage.run(ctx, fn);
+		if (this.storage) return this.storage.run(ctx, fn);
+		const previous = this.context;
+		this.context = ctx;
+		try {
+			return fn();
+		} finally {
+			this.context = previous;
+		}
 	}
 
 	getContext(): LoggerContext {
-		return this.storage.getStore() || {};
+		if (this.storage) return this.storage.getStore() || {};
+		return this.context;
 	}
 
 	debug(event: string, metadata?: Record<string, unknown>, message?: string) {
@@ -81,18 +113,23 @@ export class Logger {
 			level,
 			event,
 			timestamp: Date.now(),
-			...(this.storage.getStore() || {}),
+			...(this.storage ? this.storage.getStore() || {} : this.context),
 		};
 
 		if (message) entry.message = message;
 		if (metadata && Object.keys(metadata).length > 0) entry.metadata = metadata;
 
-		process.stderr.write(`${JSON.stringify(entry)}\n`);
+		this.write(`${JSON.stringify(entry)}\n`);
 	}
 }
 
-export function createLogger() {
-	return new Logger();
+export function createLogger(
+	options?: LogWriter | { writer?: LogWriter; useAsyncStorage?: boolean },
+) {
+	if (typeof options === "function" || options === undefined) {
+		return new Logger(options);
+	}
+	return new Logger(options.writer, options.useAsyncStorage);
 }
 
 export const logger = createLogger();

@@ -29,8 +29,8 @@ const runCommand: Command = {
 	name: "run",
 	description: "Execute multiple commands in a pipeline",
 	execute: async ({ rawArgs, bus }: CommandContext) => {
-		// rawArgs contains the subcommand name as first element (e.g. "run" or "combine").
-		// We need to strip it to process flags and args.
+		// rawArgs contains the subcommand name as the first element (e.g. "run").
+		// Strip it before parsing flags and args.
 		const args = rawArgs.slice(1);
 		const { parseArgs } = await import("node:util");
 		const { randomUUID } = await import("node:crypto");

@@ -1,16 +1,15 @@
-# Command Pipeline / Combine Feature Design
+# Command Pipeline Feature Design
 
 **Goal**: Enable users to chain multiple NOOA CLI commands in a single execution flow, allowing for powerful one-liners and automation macros.
 
 ## User Request
 The user suggested a usage like:
-`nooa combine code "teste unitario" --from "path" lint commit --"test: message" message "create the production code for file path"`
+`nooa run code "teste unitario" --from "path" lint commit --"test: message" message "create the production code for file path"`
 
 ## Architecture Decisions
 
 ### 1. Naming
-- **Canonical Command**: `run` (e.g., `nooa run ...`)
-- **Alias**: `combine` (via a separate entry point or alias registration)
+- **Canonical Command**: `run` (e.g., `nooa run ...`). The duplicate `combine` alias was removed early in the rollout, so only `run` remains.
 
 ### 2. Syntax Modes
 
@@ -74,10 +73,7 @@ nooa run "code write test.ts" "exec bun run lint" "push"
     - The main `run` command entry point.
     - Handles flags: `--json`, `--continue-on-error`, `--allow-external`.
 
-### 3. Alias (`src/features/combine/`)
-- **`cli.ts`**: simple re-export or wrapper around `run` command.
-
-### 4. Verification
+### 3. Verification
 - Test Mode A (delimiters).
 - Test Mode B (strings).
 - Test External Execution policies.

@@ -12,6 +12,7 @@ describe("NOOA Contract Tests", () => {
 		await rm(TEST_ROOT, { recursive: true, force: true });
 		await mkdir(TEST_ROOT, { recursive: true });
 		process.env.NOOA_SEARCH_ENGINE = "native";
+		process.env.NOOA_AI_PROVIDER = "mock";
 	});
 
 	afterEach(async () => {

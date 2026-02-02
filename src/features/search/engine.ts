@@ -66,7 +66,14 @@ function globToRegExp(glob: string): RegExp {
 
 function matchesAny(patterns: string[] | undefined, value: string) {
 	if (!patterns || patterns.length === 0) return false;
-	return patterns.some((pattern) => globToRegExp(pattern).test(value));
+	return patterns.some((pattern) => {
+		if (globToRegExp(pattern).test(value)) return true;
+		if (pattern.startsWith("**/")) {
+			const trimmed = pattern.slice(3);
+			return globToRegExp(trimmed).test(value);
+		}
+		return false;
+	});
 }
 
 function shouldInclude(
