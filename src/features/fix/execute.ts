@@ -7,6 +7,7 @@ import { MockProvider } from "../ai/providers/mock";
 import { OllamaProvider } from "../ai/providers/ollama";
 import { OpenAiProvider } from "../ai/providers/openai";
 import { executeSearch } from "../index/execute";
+import { getGoal } from "../goal/execute";
 
 const ai = new AiEngine();
 ai.register(new OllamaProvider());
@@ -114,6 +115,9 @@ export async function runFix(options: FixOptions): Promise<FixResult> {
 					role: "user",
 					content: `You are NOOA, a pragmatic programming agent.
 The user wants to fix this issue: "${options.issue}"
+
+Current Goal context:
+${await getGoal() || "No specific goal set."}
 
 Context found:
 ${contextText}
