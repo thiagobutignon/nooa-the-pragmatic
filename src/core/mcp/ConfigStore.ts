@@ -42,6 +42,7 @@ export class ConfigStore {
 	async get(name: string): Promise<McpServer | undefined> {
 		const row = this.db
 			.query("SELECT * FROM mcp_servers WHERE name = ?")
+			// biome-ignore lint/suspicious/noExplicitAny: SQLite results are dynamic
 			.get(name) as any;
 
 		if (!row) return undefined;
@@ -50,6 +51,7 @@ export class ConfigStore {
 	}
 
 	async listAll(): Promise<McpServer[]> {
+		// biome-ignore lint/suspicious/noExplicitAny: SQLite results are dynamic
 		const rows = this.db.query("SELECT * FROM mcp_servers").all() as any[];
 		return rows.map((row) => this.rowToServer(row));
 	}
@@ -58,6 +60,7 @@ export class ConfigStore {
 		this.db.run("DELETE FROM mcp_servers WHERE name = ?", [name]);
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: SQLite rows are dynamic
 	private rowToServer(row: any): McpServer {
 		return {
 			id: row.id,

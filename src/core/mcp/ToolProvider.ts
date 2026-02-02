@@ -5,6 +5,7 @@ import type { McpTool } from "./types";
 interface ToolExecutionRequest {
 	mcpSource: string;
 	name: string;
+	// biome-ignore lint/suspicious/noExplicitAny: Tool arguments are dynamic JSON
 	args: any;
 }
 
@@ -39,6 +40,7 @@ export class ToolProvider {
 		return toolsArrays.flat();
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: Tool results are dynamic JSON
 	async executeTool(request: ToolExecutionRequest): Promise<any> {
 		const server = await this.registry.get(request.mcpSource);
 		if (!server) {

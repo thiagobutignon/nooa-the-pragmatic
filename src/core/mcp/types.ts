@@ -13,6 +13,7 @@ export interface McpServer {
 export interface McpTool {
 	name: string;
 	description?: string;
+	// biome-ignore lint/suspicious/noExplicitAny: MCP tool schemas are dynamic JSON objects
 	inputSchema: any;
 }
 
@@ -25,5 +26,6 @@ export interface McpResource {
 export interface McpPrompt {
 	name: string;
 	description?: string;
+	// biome-ignore lint/suspicious/noExplicitAny: MCP tool arguments are dynamic
 	arguments?: any[];
 }

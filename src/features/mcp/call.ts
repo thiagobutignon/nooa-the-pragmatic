@@ -31,21 +31,24 @@ Examples:
 		return 0;
 	}
 
-	if (positionals.length < 2) {
+	const mcpName = positionals[0];
+	const toolName = positionals[1];
+
+	if (!mcpName || !toolName) {
 		console.error("Error: MCP name and tool name required");
 		return 2;
 	}
 
-	const mcpName = positionals[0];
-	const toolName = positionals[1];
-
 	// Parse tool arguments from remaining args
+	// biome-ignore lint/suspicious/noExplicitAny: Tool arguments are dynamic JSON
 	const toolArgs: Record<string, any> = {};
 	for (const arg of rawArgs) {
 		if (arg.startsWith("--") && arg.includes("=")) {
-			const [key, ...valueParts] = arg.slice(2).split("=");
-			if (key !== "json" && key !== "help") {
-				toolArgs[key] = valueParts.join("=");
+			const parts = arg.slice(2).split("=");
+			const key = parts[0];
+			const value = parts.slice(1).join("=");
+			if (key && key !== "json" && key !== "help") {
+				toolArgs[key] = value;
 			}
 		}
 	}
@@ -53,7 +56,7 @@ Examples:
 	// TODO: Use actual database path
 	const db = new Database(":memory:");
 	const registry = new Registry(db);
-	const serverManager = new ServerManager(registry.configStore);
+	const serverManager = new ServerManager();
 
 	const mcp = await registry.get(mcpName);
 	if (!mcp) {

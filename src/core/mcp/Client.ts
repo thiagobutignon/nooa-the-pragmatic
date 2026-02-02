@@ -12,12 +12,14 @@ interface JsonRpcRequest {
 	jsonrpc: string;
 	id: number;
 	method: string;
+	// biome-ignore lint/suspicious/noExplicitAny: JSON-RPC params are dynamic
 	params?: any;
 }
 
 interface JsonRpcResponse {
 	jsonrpc: string;
 	id: number;
+	// biome-ignore lint/suspicious/noExplicitAny: JSON-RPC result is dynamic
 	result?: any;
 	error?: {
 		code: number;
