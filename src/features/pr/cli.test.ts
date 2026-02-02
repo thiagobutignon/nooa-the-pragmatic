@@ -1,4 +1,4 @@
-import { expect, test, describe } from "bun:test";
+import { expect, test, describe, spyOn } from "bun:test";
 import { execa } from "execa";
 import { fileURLToPath } from "node:url";
 
@@ -48,5 +48,35 @@ describe("nooa pr", () => {
 		);
 		expect(exitCode).toBe(1);
 		expect(stderr).toContain("PR number");
+	});
+
+	test("merge uses gh and validates pr number", async () => {
+		const { ghMergePr } = await import("./gh");
+		const mergeSpy = spyOn({ ghMergePr }, "ghMergePr");
+
+		const { stderr, exitCode } = await execa(
+			"bun",
+			[binPath, "pr", "merge"],
+			{ reject: false },
+		);
+
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("PR number");
+		expect(mergeSpy).not.toHaveBeenCalled();
+	});
+
+	test("status uses gh and validates pr number", async () => {
+		const { ghStatusPr } = await import("./gh");
+		const statusSpy = spyOn({ ghStatusPr }, "ghStatusPr");
+
+		const { stderr, exitCode } = await execa(
+			"bun",
+			[binPath, "pr", "status"],
+			{ reject: false },
+		);
+
+		expect(exitCode).toBe(1);
+		expect(stderr).toContain("PR number");
+		expect(statusSpy).not.toHaveBeenCalled();
 	});
 });

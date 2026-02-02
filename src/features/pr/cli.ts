@@ -1,8 +1,7 @@
 // src/features/pr/cli.ts
 import type { Command, CommandContext } from "../../core/command";
 import { parseArgs } from "node:util";
-import { GitHubClient } from "../../core/integrations/github";
-import { getRepoInfo, getCurrentBranch } from "../../core/integrations/git";
+import { getCurrentBranch } from "../../core/integrations/git";
 import { executeReview } from "../review/execute";
 
 const prHelp = `
@@ -53,39 +52,15 @@ const prCommand: Command = {
             return;
         }
 
-        const token = process.env.GITHUB_TOKEN;
-        if (!token) {
-            const msg = "Error: GITHUB_TOKEN environment variable is required.";
-            if (values.json) console.log(JSON.stringify({ ok: false, error: msg }));
-            else console.error(msg);
-            process.exitCode = 2;
-            return;
-        }
-
         const sub = positionals[1];
         if (!sub) {
             console.log(prHelp);
             return;
         }
 
-        const client = new GitHubClient(token);
+        const { ghPrCreate, ghPrList, ghPrDiff, ghMergePr, ghClosePr, ghCommentPr, ghStatusPr } = await import("./gh");
 
         try {
-            let owner: string = "";
-            let repo: string = "";
-
-            if (typeof values.repo === "string") {
-                const [o, r] = values.repo.split("/");
-                owner = o;
-                repo = r;
-            } else {
-                const info = await getRepoInfo();
-                owner = info.owner;
-                repo = info.repo;
-            }
-
-            if (!owner || !repo) throw new Error("Could not determine repository owner or name.");
-
             if (sub === "create") {
                 const title = values.title as string;
                 const body = values.body as string;
@@ -96,27 +71,22 @@ const prCommand: Command = {
                     throw new Error("Missing --title or --body for PR creation.");
                 }
 
-                if (values.json) {
-                    const result = (await client.createPR(owner, repo, head, base, title, body)) as any;
-                    console.log(JSON.stringify({ ok: true, result }, null, 2));
-                } else {
-                    process.stdout.write(`Creating PR: ${title} from ${head} to ${base}... `);
-                    const result = (await client.createPR(owner, repo, head, base, title, body)) as any;
-                    console.log("✅");
-                    console.log(`URL: ${result.html_url}`);
-                }
+                const result = await ghPrCreate({ title, body, head, base });
+                if (values.json) console.log(JSON.stringify({ ok: true, result }, null, 2));
+                else console.log(`URL: ${result.url || "(no url)"}`);
             } else if (sub === "list") {
-                const prs = (await client.listPRs(owner, repo)) as any[];
+                const prs = (await ghPrList()) as any[];
                 if (values.json) {
                     console.log(JSON.stringify({ ok: true, prs }, null, 2));
                 } else {
-                    console.log(`\nOpen PRs in ${owner}/${repo}:`);
+                    console.log("\nOpen PRs:");
                     if (prs.length === 0) {
                         console.log("No open PRs found.");
                     } else {
                         prs.forEach((pr: any) => {
-                            console.log(`#${pr.number}  ${pr.title} (${pr.user.login})`);
-                            console.log(`    ${pr.html_url}`);
+                            const author = pr.author?.login || "unknown";
+                            console.log(`#${pr.number}  ${pr.title} (${author})`);
+                            console.log(`    ${pr.url}`);
                         });
                     }
                 }
@@ -125,7 +95,7 @@ const prCommand: Command = {
                 if (isNaN(prNumber)) throw new Error("PR number is required.");
 
                 if (!values.json) console.log(`Fetching diff for PR #${prNumber}...`);
-                const diff = await client.getPRDiff(owner, repo, prNumber);
+                const diff = await ghPrDiff(prNumber);
                 
                 if (!values.json) console.log("Reviewing changes...");
                 const { content, result } = await executeReview({
@@ -147,7 +117,8 @@ const prCommand: Command = {
                     throw new Error("Invalid merge method. Use merge, squash, or rebase.");
                 }
 
-                const result = await client.mergePR(owner, repo, prNumber, {
+                const result = await ghMergePr({
+                    number: prNumber,
                     method: method as "merge" | "squash" | "rebase",
                     title: values.title as string,
                     message: values.message as string
@@ -162,7 +133,7 @@ const prCommand: Command = {
                 const prNumber = parseInt(positionals[2], 10);
                 if (isNaN(prNumber)) throw new Error("PR number is required.");
 
-                const result = await client.closePR(owner, repo, prNumber);
+                const result = await ghClosePr(prNumber);
                 if (values.json) {
                     console.log(JSON.stringify({ ok: true, result }, null, 2));
                 } else {
@@ -175,7 +146,7 @@ const prCommand: Command = {
                 const body = (values.body as string) || (await getStdinText());
                 if (!body) throw new Error("Comment body is required.");
 
-                const result = await client.commentPR(owner, repo, prNumber, body);
+                const result = await ghCommentPr(prNumber, body);
                 if (values.json) {
                     console.log(JSON.stringify({ ok: true, result }, null, 2));
                 } else {
@@ -185,17 +156,26 @@ const prCommand: Command = {
                 const prNumber = parseInt(positionals[2], 10);
                 if (isNaN(prNumber)) throw new Error("PR number is required.");
 
-                const status = await client.getPRStatus(owner, repo, prNumber);
+                const status = await ghStatusPr(prNumber);
                 if (values.json) {
                     console.log(JSON.stringify({ ok: true, status }, null, 2));
                 } else {
+                    const labels = Array.isArray(status.labels)
+                        ? status.labels.map((label: any) => label.name).filter(Boolean)
+                        : [];
+                    const approvals = status.reviewDecision === "APPROVED" ? 1 : 0;
+                    const checks = Array.isArray(status.statusCheckRollup)
+                        ? status.statusCheckRollup
+                        : [];
+
+                    const passed = checks.filter((c: any) => c.conclusion === "SUCCESS").length;
+                    const failed = checks.filter((c: any) => c.conclusion === "FAILURE").length;
+
                     console.log(`#${status.number} ${status.title}`);
                     console.log(`State: ${status.state}`);
-                    console.log(`Approvals: ${status.approvals}`);
-                    console.log(`Labels: ${status.labels.join(", ") || "(none)"}`);
-                    console.log(
-                        `Checks: ${status.checks.passed}/${status.checks.total} passed, ${status.checks.failed} failed, ${status.checks.skipped} skipped`,
-                    );
+                    console.log(`Approvals: ${approvals}`);
+                    console.log(`Labels: ${labels.join(", ") || "(none)"}`);
+                    console.log(`Checks: ${passed}/${checks.length} passed, ${failed} failed`);
                 }
             } else {
                 console.error(`Unknown subcommand: ${sub}`);

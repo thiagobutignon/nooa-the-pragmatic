@@ -44,10 +44,10 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 
 ## 🔐 Environment
 
-Some commands require GitHub access (e.g. `nooa pr`). Provide a token in your environment:
+Some commands require GitHub access (e.g. `nooa pr`). Authenticate via GitHub CLI:
 
 ```bash
-export GITHUB_TOKEN=your_token_here
+gh auth login
 ```
 
 ---

@@ -1,6 +1,6 @@
 # nooa pr
 
-Manage GitHub Pull Requests directly from the terminal. This command integrates with the GitHub REST API to streamline your workflow without switching to a browser.
+Manage GitHub Pull Requests directly from the terminal. This command uses the GitHub CLI (`gh`) to streamline your workflow without switching to a browser.
 
 ## Usage
 
@@ -30,9 +30,9 @@ nooa pr <subcommand> [flags]
 
 ## How it works
 
-1. **Auth**: Uses the `GITHUB_TOKEN` environment variable for authentication.
-2. **Inference**: Automatically detects the repository owner and name from the `origin` remote.
-3. **API Call**: Executes the requested action via the GitHub REST API.
+1. **Auth**: Uses `gh auth login` for authentication.
+2. **Repository**: Uses `gh`'s current context (repo/owner inferred by `gh`).
+3. **API Call**: Executes the requested action via `gh` commands.
 4. **Review (optional)**: For `pr review`, it fetches the raw diff and pipes it through NOOA's internal review engine.
 
 ## Examples
