@@ -29,6 +29,8 @@ nooa mcp <subcommand> [args]
 
 - `call <mcp> <tool> [--json] --arg=value...`: Execute a tool exposed by an MCP. Tool arguments are translated into JSON-RPC params.
 
+- `resource <mcp> <uri> [--json]`: Read a resource from an MCP server by its URI. Supports `file://`, `schema://`, etc., and emits JSON when `--json` is provided.
+
 - `info <name>`: Describe how an MCP is configured (command, args, env, enabled).
 
 - `configure <name> --args <arg>... --env KEY=VAL --command <cmd> [--enable|--disable]`: Update the stored command, args, env, or enabled toggle for a server.

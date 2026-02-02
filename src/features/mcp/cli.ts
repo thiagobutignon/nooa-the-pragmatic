@@ -63,6 +63,11 @@ Examples:
 			return await callCommand(rawArgs.slice(1));
 		}
 
+		case "resource": {
+			const { resourceCommand } = await import("./resource");
+			return await resourceCommand(rawArgs.slice(1));
+		}
+
 		case "info": {
 			const { infoCommand } = await import("./info");
 			return await infoCommand(rawArgs.slice(1));
