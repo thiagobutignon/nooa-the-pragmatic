@@ -2,8 +2,23 @@
 export class GitHubClient {
     constructor(private token: string) {}
 
+	private async requestJson(url: string, init?: RequestInit) {
+		const response = await fetch(url, init);
+		if (!response.ok) {
+			let message = response.statusText;
+			try {
+				const err = (await response.json()) as any;
+				message = err.message || message;
+			} catch {
+				// ignore parse errors
+			}
+			throw new Error(`GitHub API Error: ${message}`);
+		}
+		return response.json();
+	}
+
     async createPR(owner: string, repo: string, head: string, base: string, title: string, body: string) {
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+        return this.requestJson(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${this.token}`,
@@ -12,29 +27,15 @@ export class GitHubClient {
             },
             body: JSON.stringify({ title, body, head, base })
         });
-        
-        if (!response.ok) {
-            const err = (await response.json()) as any;
-            throw new Error(`GitHub API Error: ${err.message || response.statusText}`);
-        }
-        
-        return response.json();
     }
 
     async listPRs(owner: string, repo: string) {
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+        return this.requestJson(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
             headers: { 
                 Authorization: `Bearer ${this.token}`,
                 "User-Agent": "nooa-cli"
             }
         });
-        
-        if (!response.ok) {
-            const err = (await response.json()) as any;
-            throw new Error(`GitHub API Error: ${err.message || response.statusText}`);
-        }
-        
-        return response.json();
     }
 
     async getPRDiff(owner: string, repo: string, pullNumber: number): Promise<string> {
@@ -52,4 +53,105 @@ export class GitHubClient {
         
         return response.text();
     }
+
+	async mergePR(
+		owner: string,
+		repo: string,
+		pullNumber: number,
+		options: { method?: "merge" | "squash" | "rebase"; title?: string; message?: string } = {},
+	) {
+		return this.requestJson(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/merge`, {
+			method: "PUT",
+			headers: {
+				Authorization: `Bearer ${this.token}`,
+				"Content-Type": "application/json",
+				"User-Agent": "nooa-cli"
+			},
+			body: JSON.stringify({
+				merge_method: options.method || "merge",
+				commit_title: options.title,
+				commit_message: options.message
+			})
+		});
+	}
+
+	async closePR(owner: string, repo: string, pullNumber: number) {
+		return this.requestJson(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
+			method: "PATCH",
+			headers: {
+				Authorization: `Bearer ${this.token}`,
+				"Content-Type": "application/json",
+				"User-Agent": "nooa-cli"
+			},
+			body: JSON.stringify({ state: "closed" })
+		});
+	}
+
+	async commentPR(owner: string, repo: string, pullNumber: number, body: string) {
+		return this.requestJson(`https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments`, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${this.token}`,
+				"Content-Type": "application/json",
+				"User-Agent": "nooa-cli"
+			},
+			body: JSON.stringify({ body })
+		});
+	}
+
+	async getPRStatus(owner: string, repo: string, pullNumber: number) {
+		const pr = await this.requestJson(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
+			headers: {
+				Authorization: `Bearer ${this.token}`,
+				"User-Agent": "nooa-cli"
+			}
+		});
+
+		const labels: string[] = Array.isArray(pr.labels)
+			? pr.labels.map((label: any) => label.name).filter(Boolean)
+			: [];
+
+		const reviews = await this.requestJson(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/reviews`, {
+			headers: {
+				Authorization: `Bearer ${this.token}`,
+				"User-Agent": "nooa-cli"
+			}
+		});
+		const approvals = Array.isArray(reviews)
+			? reviews.filter((review: any) => review.state === "APPROVED").length
+			: 0;
+
+		const sha = pr?.head?.sha;
+		let checks = { total: 0, passed: 0, failed: 0, neutral: 0, skipped: 0 };
+		if (sha) {
+			const checkRuns = await this.requestJson(
+				`https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs`,
+				{
+					headers: {
+						Authorization: `Bearer ${this.token}`,
+						"User-Agent": "nooa-cli",
+						"Accept": "application/vnd.github+json"
+					}
+				},
+			);
+			const runs = Array.isArray(checkRuns.check_runs) ? checkRuns.check_runs : [];
+			checks.total = runs.length;
+			for (const run of runs) {
+				const conclusion = run.conclusion || "neutral";
+				if (conclusion === "success") checks.passed += 1;
+				else if (conclusion === "failure" || conclusion === "cancelled" || conclusion === "timed_out") checks.failed += 1;
+				else if (conclusion === "skipped") checks.skipped += 1;
+				else checks.neutral += 1;
+			}
+		}
+
+		return {
+			number: pr.number,
+			title: pr.title,
+			state: pr.state,
+			labels,
+			approvals,
+			checks,
+		};
+	}
 }
