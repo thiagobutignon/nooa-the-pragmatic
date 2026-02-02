@@ -1,5 +1,7 @@
 import { Database } from "bun:sqlite";
 import { parseArgs } from "node:util";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
 import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";
@@ -60,10 +62,16 @@ const contextCommand: Command = {
 			const includeMcp = Boolean(values["include-mcp"]);
 			let mcpResources;
 			if (includeMcp) {
-				const dbPath = process.env.NOOA_DB_PATH || "nooa.db";
-				const db = new Database(dbPath);
+				const dbPath = process.env.NOOA_DB_PATH || ".nooa/nooa.db";
+				mkdirSync(dirname(dbPath), { recursive: true });
+				const db = new Database(dbPath, { create: true });
 				try {
 					mcpResources = await getMcpResourcesForContext(db);
+				} catch (error) {
+					const message =
+						error instanceof Error ? error.message : String(error);
+					logger.warn("MCP resources unavailable", { error: message });
+					mcpResources = [];
 				} finally {
 					db.close();
 				}

@@ -1,29 +1,39 @@
 import { Database } from "bun:sqlite";
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execa } from "execa";
-import { Registry } from "../../core/mcp/Registry";
 import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
-async function mkTempDb() {
-	const dir = await mkdtemp(join(tmpdir(), "nooa-context-mcp-"));
-	const dbPath = join(dir, "nooa.db");
-	return { dir, dbPath };
-}
+let tempDir: string;
+let mockDbPath: string;
 
-async function seedMockMcp(dbPath: string) {
-	const registry = new Registry(new Database(dbPath));
-	await registry.add({
-		id: "mock",
-		name: "mock",
-		package: "mock-mcp-server",
-		command: "node",
-		args: ["./test/fixtures/mock-mcp-server.cjs"],
-		enabled: true,
-	});
-}
+beforeAll(async () => {
+	tempDir = await mkdtemp(join(tmpdir(), "nooa-context-mcp-"));
+	mockDbPath = join(tempDir, "nooa.db");
+	const db = new Database(mockDbPath, { create: true });
+	db.exec(`
+    CREATE TABLE IF NOT EXISTS mcp_servers (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      package TEXT,
+      command TEXT,
+      args TEXT,
+      enabled INTEGER
+    );
+  `);
+	db.exec(`
+    INSERT OR REPLACE INTO mcp_servers
+    (id, name, package, command, args, enabled)
+    VALUES ('mock', 'mock-mcp', 'mock', 'node', '[]', 1);
+  `);
+	db.close();
+});
+
+afterAll(async () => {
+	await rm(tempDir, { recursive: true, force: true });
+});
 
 describe("context CLI", () => {
 	test("outputs context for a file", async () => {
@@ -38,27 +48,23 @@ describe("context CLI", () => {
 	});
 
 	test("includes MCP resources when requested", async () => {
-		const { dir, dbPath } = await mkTempDb();
-		try {
-			await seedMockMcp(dbPath);
-			const env = { ...baseEnv, NOOA_DB_PATH: dbPath };
-			const { stdout, exitCode } = await execa(
-				bunPath,
-				[
-					"index.ts",
-					"context",
-					"src/core/logger.ts",
-					"--json",
-					"--include-mcp",
-				],
-				{ env, cwd: repoRoot },
-			);
-			expect(exitCode).toBe(0);
-			const result = JSON.parse(stdout);
-			expect(result).toHaveProperty("mcpResources");
-			expect(Array.isArray(result.mcpResources)).toBe(true);
-		} finally {
-			await rm(dir, { recursive: true, force: true });
-		}
+		const env = { ...baseEnv, NOOA_DB_PATH: mockDbPath };
+		const { stdout, exitCode } = await execa(
+			bunPath,
+			[
+				"index.ts",
+				"context",
+				"src/core/logger.ts",
+				"--json",
+				"--include-mcp",
+			],
+			{ env, cwd: repoRoot, timeout: 10000 },
+		);
+		expect(exitCode).toBe(0);
+		const result = JSON.parse(stdout);
+		expect(result).toHaveProperty("mcpResources");
+		expect(Array.isArray(result.mcpResources)).toBe(true);
+		expect(result.mcpResources.length).toBeGreaterThan(0);
+		expect(result.mcpResources[0]).toHaveProperty("name", "mock-mcp");
 	});
 });

@@ -1,9 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { discoverTests } from "../../../src/features/review/discovery";
+import { discoverTests } from "./discovery";
 
 describe("Test Discovery heuristic", () => {
 	const createWorkspace = async () => {
