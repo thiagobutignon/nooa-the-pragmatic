@@ -47,12 +47,7 @@ export async function main(
 	});
 
 	// Initialize Reflection Engine (Background)
-	const disableReflection =
-		process.env.NOOA_DISABLE_REFLECTION === "1" ||
-		process.env.NODE_ENV === "test" ||
-		process.env.BUN_TEST === "1";
-
-
+	// Initialize Reflection Engine (Background)
 	// Dynamic Command Registry
 	const { loadCommands } = await import("./src/core/registry.js");
 	const { join } = await import("node:path");
@@ -63,30 +58,24 @@ export async function main(
 	const subcommand = positionals[0];
 	const registeredCmd = subcommand ? registry.get(subcommand) : undefined;
 
-	if (registeredCmd) {
+	if (registeredCmd && subcommand) {
 		const { logger, createTraceId } = await import("./src/core/logger.js");
 		const traceId = createTraceId();
-
 
 		await logger.runWithContext(
 			{ trace_id: traceId, command: subcommand },
 			async () => {
-				let result: any;
-				try {
-					result = await registeredCmd.execute({
-						args: positionals,
-						values,
-						rawArgs: args,
-						bus,
-					});
+				const result: unknown = await registeredCmd.execute({
+					args: positionals,
+					values,
+					rawArgs: args,
+					bus,
+				});
 
-					// Auto-Reflection Hook (Lightweight Observation)
-					if (process.env.NOOA_DISABLE_REFLECTION !== "1") {
-						const { autoReflect } = await import("./src/core/reflection/hook.ts");
-						await autoReflect(subcommand!, args, result);
-					}
-				} catch (e) {
-					throw e;
+				// Auto-Reflection Hook (Lightweight Observation)
+				if (process.env.NOOA_DISABLE_REFLECTION !== "1") {
+					const { autoReflect } = await import("./src/core/reflection/hook.ts");
+					await autoReflect(subcommand, args, result);
 				}
 			},
 		);
