@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { setupCronTable } from "./schema/cron";
 import { setupEmbeddingsTable } from "./schema/embeddings";
 
 const DEFAULT_DB_PATH = process.env.NOOA_DB_PATH || "nooa.db";
@@ -13,6 +14,7 @@ export class Store {
 
 	private init() {
 		setupEmbeddingsTable(this.db);
+		setupCronTable(this.db);
 	}
 
 	async storeEmbedding(path: string, chunk: string, vector: number[]) {
