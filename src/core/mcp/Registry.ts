@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { ConfigStore } from "./ConfigStore";
-import type { McpServer } from "./types";
+import { ServerManager } from "./ServerManager";
+import type { HealthStatus, McpServer } from "./types";
 
 export class Registry {
 	private configStore: ConfigStore;
@@ -42,5 +43,48 @@ export class Registry {
 
 	async remove(name: string): Promise<void> {
 		await this.configStore.delete(name);
+	}
+
+	async healthCheck(name: string): Promise<HealthStatus> {
+		const server = await this.get(name);
+		if (!server) {
+			return {
+				status: "down",
+				latency: -1,
+				lastCheck: Date.now(),
+				reason: "not found",
+			};
+		}
+
+		if (!server.enabled) {
+			return {
+				status: "down",
+				latency: -1,
+				lastCheck: Date.now(),
+				reason: "disabled",
+			};
+		}
+
+		const manager = new ServerManager();
+		const startAt = Date.now();
+		try {
+			const client = await manager.start(server);
+			const success = await client.ping();
+			const latency = Date.now() - startAt;
+			return {
+				status: success ? (latency < 1000 ? "healthy" : "degraded") : "down",
+				latency,
+				lastCheck: Date.now(),
+			};
+		} catch (error) {
+			return {
+				status: "down",
+				latency: -1,
+				lastCheck: Date.now(),
+				lastError: (error as Error).message,
+			};
+		} finally {
+			await manager.stop(name);
+		}
 	}
 }

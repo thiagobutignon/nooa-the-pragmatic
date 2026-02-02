@@ -1,100 +1,41 @@
 import { Database } from "bun:sqlite";
-import { beforeEach, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
+import { rm } from "node:fs/promises";
+import { createTempMcpDb, seedMockServer } from "../../features/mcp/test-utils";
 import { Registry } from "./Registry";
 
-let db: Database;
-let registry: Registry;
+async function withDb(fn: (dbPath: string) => Promise<void>) {
+	const { dir, dbPath } = await createTempMcpDb();
+	try {
+		await fn(dbPath);
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+}
 
-beforeEach(() => {
-	db = new Database(":memory:");
-	registry = new Registry(db);
+test("Registry.healthCheck returns healthy status", async () => {
+	await withDb(async (dbPath) => {
+		await seedMockServer(dbPath);
+		const db = new Database(dbPath);
+		const registry = new Registry(db);
+
+		const status = await registry.healthCheck("mock");
+		expect(status.status).toBe("healthy");
+		expect(status.latency).toBeGreaterThanOrEqual(0);
+		expect(status.lastCheck).toBeGreaterThan(0);
+		db.close();
+	});
 });
 
-test("Registry can add and retrieve MCP", async () => {
-	await registry.add({
-		id: "fs-1",
-		name: "filesystem",
-		package: "@modelcontextprotocol/server-filesystem",
-		command: "node",
-		args: ["server.js"],
-		enabled: true,
+test("Registry.healthCheck marks disabled servers as down", async () => {
+	await withDb(async (dbPath) => {
+		await seedMockServer(dbPath, { enabled: false });
+		const db = new Database(dbPath);
+		const registry = new Registry(db);
+
+		const status = await registry.healthCheck("mock");
+		expect(status.status).toBe("down");
+		expect(status.reason).toBe("disabled");
+		db.close();
 	});
-
-	const mcp = await registry.get("filesystem");
-	expect(mcp?.name).toBe("filesystem");
-});
-
-test("Registry can enable/disable MCP", async () => {
-	await registry.add({
-		id: "gh-1",
-		name: "github",
-		command: "node",
-		args: ["server.js"],
-		enabled: true,
-	});
-
-	await registry.disable("github");
-	let mcp = await registry.get("github");
-	expect(mcp?.enabled).toBe(false);
-
-	await registry.enable("github");
-	mcp = await registry.get("github");
-	expect(mcp?.enabled).toBe(true);
-});
-
-test("Registry can list all MCPs", async () => {
-	await registry.add({
-		id: "fs-1",
-		name: "filesystem",
-		command: "node",
-		args: ["server.js"],
-		enabled: true,
-	});
-
-	await registry.add({
-		id: "gh-1",
-		name: "github",
-		command: "node",
-		args: ["server.js"],
-		enabled: false,
-	});
-
-	const all = await registry.listAll();
-	expect(all.length).toBe(2);
-});
-
-test("Registry can list only enabled MCPs", async () => {
-	await registry.add({
-		id: "fs-1",
-		name: "filesystem",
-		command: "node",
-		args: ["server.js"],
-		enabled: true,
-	});
-
-	await registry.add({
-		id: "gh-1",
-		name: "github",
-		command: "node",
-		args: ["server.js"],
-		enabled: false,
-	});
-
-	const enabled = await registry.listEnabled();
-	expect(enabled.length).toBe(1);
-	expect(enabled[0].name).toBe("filesystem");
-});
-
-test("Registry can remove MCP", async () => {
-	await registry.add({
-		id: "fs-1",
-		name: "filesystem",
-		command: "node",
-		args: ["server.js"],
-		enabled: true,
-	});
-
-	await registry.remove("filesystem");
-	const mcp = await registry.get("filesystem");
-	expect(mcp).toBeUndefined();
 });

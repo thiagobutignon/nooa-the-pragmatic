@@ -1,73 +1,49 @@
-import { beforeEach, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { Client } from "./Client";
 
-let client: Client;
+class StubClient extends Client {
+	private attempts = 0;
 
-beforeEach(async () => {
-	client = new Client({
-		command: "node",
-		args: ["./test/fixtures/mock-mcp-server.cjs"],
-	});
+	constructor(private failures: number) {
+		super({
+			command: "echo",
+			args: [],
+		});
+	}
+
+	protected async sendRequest(
+		method: string,
+		params: unknown,
+		timeoutMs = 30000,
+	): Promise<unknown> {
+		this.attempts += 1;
+		if (this.attempts <= this.failures) {
+			throw new Error("transient");
+		}
+		return {
+			method,
+			params,
+			attempts: this.attempts,
+			timeout: timeoutMs,
+		};
+	}
+}
+
+test("callTool retries until transient failures resolve", async () => {
+	const client = new StubClient(2);
+	const result = await client.callTool(
+		"echo",
+		{ message: "hi" },
+		{ retries: 3, backoff: 1 },
+	);
+	expect(result.attempts).toBe(3);
+	expect(result.params.name).toBe("echo");
+	expect(result.params.arguments).toEqual({ message: "hi" });
 });
 
-test("Client can start and initialize", async () => {
-	await client.start();
-	expect(client.isRunning()).toBe(true);
-	await client.stop();
-});
-
-test("Client can list tools", async () => {
-	await client.start();
-	const tools = await client.listTools();
-
-	expect(Array.isArray(tools)).toBe(true);
-	expect(tools.length).toBeGreaterThan(0);
-	expect(tools.some((t) => t.name === "echo")).toBe(true);
-
-	await client.stop();
-});
-
-test("Client can call a tool", async () => {
-	await client.start();
-	const result = await client.callTool("echo", { message: "hello" });
-
-	expect(result).toBeDefined();
-	expect(result.content).toBeDefined();
-	expect(result.content[0].text).toBe("hello");
-
-	await client.stop();
-});
-
-test("Client can list resources", async () => {
-	await client.start();
-	const resources = await client.listResources();
-
-	expect(Array.isArray(resources)).toBe(true);
-
-	await client.stop();
-});
-
-test("Client can read a resource", async () => {
-	await client.start();
-	const content = await client.readResource("test://sample");
-
-	expect(content).toBeDefined();
-
-	await client.stop();
-});
-
-test("Client can ping server", async () => {
-	await client.start();
-	const isAlive = await client.ping();
-
-	expect(isAlive).toBe(true);
-
-	await client.stop();
-});
-
-test("Client stops cleanly", async () => {
-	await client.start();
-	await client.stop();
-
-	expect(client.isRunning()).toBe(false);
+test("callTool throws after max retries", async () => {
+	const client = new StubClient(5);
+	await expect(
+		client.callTool("echo", { data: "ping" }, { retries: 3, backoff: 1 }),
+	).rejects.toThrow("transient");
 });

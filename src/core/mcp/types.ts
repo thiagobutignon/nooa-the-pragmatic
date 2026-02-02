@@ -29,3 +29,13 @@ export interface McpPrompt {
 	// biome-ignore lint/suspicious/noExplicitAny: MCP tool arguments are dynamic
 	arguments?: any[];
 }
+
+export type HealthStatusLevel = "healthy" | "degraded" | "down";
+
+export interface HealthStatus {
+	status: HealthStatusLevel;
+	latency: number;
+	lastCheck: number;
+	reason?: string;
+	lastError?: string;
+}

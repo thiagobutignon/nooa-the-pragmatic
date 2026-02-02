@@ -33,9 +33,9 @@ export class Client {
 	private pendingRequests = new Map<
 		number,
 		{
-			// biome-ignore lint/suspicious/noExplicitAny: JSON-RPC responses are dynamic
-			resolve: (value: any) => void;
+			resolve: (value: unknown) => void;
 			reject: (error: Error) => void;
+			timer: ReturnType<typeof setTimeout>;
 		}
 	>();
 	private readline?: ReturnType<typeof createInterface>;
@@ -67,6 +67,7 @@ export class Client {
 				const pending = this.pendingRequests.get(response.id);
 
 				if (pending) {
+					clearTimeout(pending.timer);
 					this.pendingRequests.delete(response.id);
 					if (response.error) {
 						pending.reject(new Error(`RPC Error: ${response.error.message}`));
@@ -104,28 +105,50 @@ export class Client {
 		return !!this.process && !this.process.killed;
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: MCP tools have dynamic schemas
-	async listTools(): Promise<any[]> {
-		const result = await this.sendRequest("tools/list", {});
+	async listTools(): Promise<unknown[]> {
+		const result = (await this.sendRequest("tools/list", {})) as {
+			tools?: unknown[];
+		};
 		return result.tools || [];
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: Tool args and results are dynamic
-	async callTool(name: string, args: any): Promise<any> {
-		return await this.sendRequest("tools/call", {
-			name,
-			arguments: args,
-		});
+	async callTool(
+		name: string,
+		args: Record<string, unknown>,
+		options: CallOptions = {},
+	): Promise<unknown> {
+		const retries = Math.max(1, options.retries ?? 3);
+		const timeout = options.timeout ?? 30000;
+		const backoff = options.backoff ?? 500;
+
+		for (let attempt = 1; attempt <= retries; attempt += 1) {
+			try {
+				return await this.sendRequest(
+					"tools/call",
+					{ name, arguments: args },
+					timeout,
+				);
+			} catch (error) {
+				if (attempt === retries) {
+					throw error;
+				}
+
+				const delay = Math.min(backoff * 2 ** (attempt - 1), 10000);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
+
+		throw new Error("callTool exhausted retries");
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: MCP resources have dynamic schemas
-	async listResources(): Promise<any[]> {
-		const result = await this.sendRequest("resources/list", {});
+	async listResources(): Promise<unknown[]> {
+		const result = (await this.sendRequest("resources/list", {})) as {
+			resources?: unknown[];
+		};
 		return result.resources || [];
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: Resource content is dynamic
-	async readResource(uri: string): Promise<any> {
+	async readResource(uri: string): Promise<unknown> {
 		return await this.sendRequest("resources/read", { uri });
 	}
 
@@ -138,8 +161,11 @@ export class Client {
 		}
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: JSON-RPC is fully dynamic
-	private async sendRequest(method: string, params: any): Promise<any> {
+	protected async sendRequest(
+		method: string,
+		params: unknown,
+		timeoutMs = 30000,
+	): Promise<unknown> {
 		if (!this.process?.stdin) {
 			throw new Error("Client not started");
 		}
@@ -153,18 +179,23 @@ export class Client {
 		};
 
 		return new Promise((resolve, reject) => {
-			this.pendingRequests.set(id, { resolve, reject });
-
-			const requestLine = JSON.stringify(request);
-			this.process?.stdin?.write(`${requestLine}\n`);
-
-			// Timeout after 30 seconds
-			setTimeout(() => {
+			const timer = setTimeout(() => {
 				if (this.pendingRequests.has(id)) {
 					this.pendingRequests.delete(id);
 					reject(new Error(`Request timeout: ${method}`));
 				}
-			}, 30000);
+			}, timeoutMs);
+
+			this.pendingRequests.set(id, { resolve, reject, timer });
+
+			const requestLine = JSON.stringify(request);
+			this.process?.stdin?.write(`${requestLine}\n`);
 		});
 	}
+}
+
+export interface CallOptions {
+	retries?: number;
+	timeout?: number;
+	backoff?: number;
 }

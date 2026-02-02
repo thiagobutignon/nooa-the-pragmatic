@@ -3,12 +3,28 @@ import { openMcpDatabase } from "../../core/mcp/db";
 import { Registry } from "../../core/mcp/Registry";
 import { ServerManager } from "../../core/mcp/ServerManager";
 
+const reservedCallFlags = new Set([
+	"json",
+	"help",
+	"retries",
+	"timeout",
+	"backoff",
+]);
+
+function parseNumber(value: string | undefined, fallback: number): number {
+	const parsed = value ? Number(value) : NaN;
+	return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export async function callCommand(rawArgs: string[]): Promise<number> {
 	const { values, positionals } = parseArgs({
 		args: rawArgs,
 		options: {
 			help: { type: "boolean", short: "h" },
 			json: { type: "boolean" },
+			retries: { type: "string" },
+			timeout: { type: "string" },
+			backoff: { type: "string" },
 		},
 		allowPositionals: true,
 		strict: false,
@@ -39,14 +55,13 @@ Examples:
 		return 2;
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: Tool arguments are dynamic JSON
-	const toolArgs: Record<string, any> = {};
+	const toolArgs: Record<string, unknown> = {};
 	for (const arg of rawArgs) {
 		if (arg.startsWith("--") && arg.includes("=")) {
 			const parts = arg.slice(2).split("=");
 			const key = parts[0];
 			const value = parts.slice(1).join("=");
-			if (key && key !== "json" && key !== "help") {
+			if (key && !reservedCallFlags.has(key)) {
 				toolArgs[key] = value;
 			}
 		}
@@ -67,7 +82,12 @@ Examples:
 			client = await serverManager.start(mcp);
 		}
 
-		const result = await client.callTool(toolName, toolArgs);
+		const callOptions = {
+			retries: parseNumber(values.retries, 3),
+			timeout: parseNumber(values.timeout, 30000),
+			backoff: parseNumber(values.backoff, 500),
+		};
+		const result = await client.callTool(toolName, toolArgs, callOptions);
 
 		if (values.json) {
 			console.log(JSON.stringify(result, null, 2));

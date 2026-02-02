@@ -25,6 +25,7 @@ Subcommands:
   configure    Configure MCP server settings
   uninstall    Remove an MCP configuration
   test         Ping an MCP server
+  health       Check MCP server health
 
 Options:
   -h, --help   Show this help message
@@ -72,6 +73,11 @@ Examples:
 			return await resourceCommand(rawArgs.slice(1));
 		}
 
+		case "health": {
+			const { healthCommand } = await import("./health");
+			return await healthCommand(rawArgs.slice(1));
+		}
+
 		case "info": {
 			const { infoCommand } = await import("./info");
 			return await infoCommand(rawArgs.slice(1));
@@ -102,7 +108,8 @@ Examples:
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic command registration
 const mcpCommandObject: any = {
 	name: "mcp",
-	description: "Manage MCP integrations (list, install, enable, disable, call)",
+	description:
+		"Manage MCP integrations (list, install, enable, disable, call, health)",
 	// biome-ignore lint/suspicious/noExplicitAny: Raw args are dynamic
 	execute: async ({ rawArgs }: any) => {
 		return await mcpCommand(rawArgs);

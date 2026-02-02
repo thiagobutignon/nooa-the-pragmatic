@@ -27,8 +27,14 @@ nooa mcp <subcommand> [args]
 
 - `enable <name>` / `disable <name>`: Toggle MCP availability. Use `--json` to emit structured confirmation.
 
-- `call <mcp> <tool> [--json] --arg=value...`: Execute a tool exposed by an MCP. Tool arguments are translated into JSON-RPC params.
+-- `call <mcp> <tool> [--json] [--retries <n>] [--timeout <ms>] [--backoff <ms>] --arg=value...`: Execute a tool exposed by an MCP. Tool arguments are translated into JSON-RPC params. Flags:
+  - `--retries`: Number of attempts before giving up (default: 3).
+  - `--timeout`: Milliseconds before the MCP call times out (default: 30000).
+  - `--backoff`: Initial backoff delay (ms) between retries (doubles each attempt up to 10s, default: 500).
+  Examples: `nooa mcp call filesystem read_file --path README.md --retries 5 --timeout 10000`.
 
+- `health <name> [--json]`: Check the given MCP server’s health by starting it, pinging it, and measuring latency. Returns 0 only when the status is `healthy`; `degraded`/`down` exit with code 1. Use `--json` to emit the full health object (status, latency, lastCheck, reason, lastError).
+- `resource <mcp> <uri> [--json]`: Read a resource from an MCP server by its URI. Supports `file://`, `schema://`, etc., and emits JSON when `--json` is provided.
 - `resource <mcp> <uri> [--json]`: Read a resource from an MCP server by its URI. Supports `file://`, `schema://`, etc., and emits JSON when `--json` is provided.
 - `uninstall <name>`: Remove an MCP configuration from the registry.
 - `test <name> [--json]`: Ping the MCP server to verify it starts and responds; outputs `ok` (or JSON when requested).
