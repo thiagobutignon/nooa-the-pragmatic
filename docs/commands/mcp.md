@@ -56,6 +56,11 @@ nooa mcp <subcommand> [args]
 
 - `info <name>`: Describe the stored configuration (command, args, env, enabled timestamp).
 
+- `alias <subcommand>`: Create, list, or remove shortcut names that replay MCP workflows. The CLI stores each alias (`name`, `command`, `args`, optional `env`) inside SQLite so you can later run `nooa <alias>` without remembering the long invocation.
+  - `alias create <name> --command <cmd> [--args <arg>...] [--env KEY=VAL] [--description <text>]`: Persist a new shortcut.
+  - `alias list [--json]`: Dump available aliases; default is human-friendly but `--json` is machine-readable.
+  - `alias delete <name>`: Remove an alias.
+
 - `test <name> [--json]`: Start and ping the MCP, printing `ok`/`failed` or JSON.
 
 - `uninstall <name>`: Remove an MCP configuration completely.

@@ -23,6 +23,7 @@ Subcommands:
   resource     Read an MCP resource URI
   info         Show MCP server information
   configure    Configure MCP server settings
+  alias        Manage stored MCP alias shortcuts
   uninstall    Remove an MCP configuration
   test         Ping an MCP server
   health       Check MCP server health
@@ -43,6 +44,16 @@ Examples:
 
 	// Import subcommands dynamically
 	switch (subcommand) {
+		case "init": {
+			const { initCommand } = await import("./init");
+			return await initCommand(rawArgs.slice(1));
+		}
+
+		case "alias": {
+			const { aliasCommand } = await import("./alias");
+			return await aliasCommand(rawArgs.slice(1));
+		}
+
 		case "list": {
 			const { listCommand } = await import("./list");
 			return await listCommand(rawArgs.slice(1));

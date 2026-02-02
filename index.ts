@@ -51,16 +51,33 @@ export async function main(
 	// Dynamic Command Registry
 	const { loadCommands } = await import("./src/core/registry.js");
 	const { join } = await import("node:path");
+	const { Database } = await import("bun:sqlite");
+	const { Registry: McpRegistry } = await import("./src/core/mcp/Registry.js");
 	// Ensure we look in src/features relative to the current file or process
 	const featuresDir = join(import.meta.dir, "src/features");
-	const registry = await loadCommands(featuresDir);
+	const commandRegistry = await loadCommands(featuresDir);
+
+	const dbPath = process.env.NOOA_DB_PATH || "nooa.db";
+	const aliasDb = new Database(dbPath);
+	const aliasRegistry = new McpRegistry(aliasDb);
 
 	const subcommand = positionals[0];
-	const registeredCmd = subcommand ? registry.get(subcommand) : undefined;
+	const registeredCmd = subcommand ? commandRegistry.get(subcommand) : undefined;
 
-	if (registeredCmd && subcommand) {
-		const { logger, createTraceId } = await import("./src/core/logger.js");
-		const traceId = createTraceId();
+	try {
+		const aliasEntry = subcommand ? await aliasRegistry.aliasGet(subcommand) : undefined;
+		if (aliasEntry) {
+			const aliasArgs = [
+				aliasEntry.command,
+				...(aliasEntry.args ?? []),
+				...positionals.slice(1),
+			];
+			return main(aliasArgs);
+		}
+
+		if (registeredCmd && subcommand) {
+			const { logger, createTraceId } = await import("./src/core/logger.js");
+			const traceId = createTraceId();
 
 		await logger.runWithContext(
 			{ trace_id: traceId, command: subcommand },
@@ -80,6 +97,8 @@ export async function main(
 			},
 		);
 		return;
+	} finally {
+		aliasDb.close();
 	}
 
 	if (values.help || !subcommand) {

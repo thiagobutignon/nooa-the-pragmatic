@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite";
+import { AliasStore, type McpAlias } from "./alias";
 import { ConfigStore } from "./ConfigStore";
 import { ServerManager } from "./ServerManager";
 import type { HealthStatus, McpServer } from "./types";
-import { AliasStore, type McpAlias } from "./alias";
 
 export class Registry {
 	private configStore: ConfigStore;

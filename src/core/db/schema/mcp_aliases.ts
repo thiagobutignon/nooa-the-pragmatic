@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite";
 
 export function createMcpAliasesTable(db: Database) {
-  db.run(
-    `
+	db.run(
+		`
     CREATE TABLE IF NOT EXISTS mcp_aliases (
       name TEXT PRIMARY KEY,
       command TEXT NOT NULL,
@@ -12,5 +12,5 @@ export function createMcpAliasesTable(db: Database) {
       created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
     )
     `,
-  );
+	);
 }
