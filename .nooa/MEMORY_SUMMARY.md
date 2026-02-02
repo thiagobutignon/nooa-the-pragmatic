@@ -2,6 +2,16 @@
 > Context curated for high-integrity results. Precedence: Constitution.
 
 ### Recent Observations
+- [2026-02-02] Ran command: review review --help
+Outcome: Failure
+- [2026-02-02] Ran command: prompt prompt
+Outcome: Failure
+- [2026-02-02] Ran command: prompt prompt --json
+Outcome: Failure
+- [2026-02-02] Ran command: prompt prompt --help
+Outcome: Failure
+- [2026-02-02] Ran command: prompt prompt --help
+Outcome: Failure
 - [2026-02-02] Ran command: cron cron status cleanup
 Outcome: Success
 - [2026-02-02] Ran command: cron cron remove cleanup --force
@@ -31,14 +41,4 @@ Outcome: Success
 - [2026-02-02] Ran command: cron cron add daily-index --every 6h -- echo index
 Outcome: Success
 - [2026-02-02] Ran command: cron cron --help
-Outcome: Success
-- [2026-02-02] Ran command: goal goal status --json
-Outcome: Success
-- [2026-02-02] Ran command: goal goal --help
-Outcome: Success
-- [2026-02-02] Ran command: eval eval compare review --suite standard
-Outcome: Success
-- [2026-02-02] Ran command: eval eval report review --suite standard
-Outcome: Success
-- [2026-02-02] Ran command: eval eval history review --suite standard
 Outcome: Success
