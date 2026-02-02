@@ -3,35 +3,50 @@ import { basename, dirname, extname, join } from "node:path";
 
 /**
  * Discovers candidate test files for a given source file path.
- * Heuristic:
- * 1. foo.test.ts
- * 2. foo.spec.ts
- * 3. tests/foo.test.ts
  */
 export async function discoverTests(
 	filePath: string,
 	root: string,
 ): Promise<string[]> {
-	const candidates: string[] = [];
+	try {
+		await Bun.sleep(10);
+	} catch {
+		// Bun.sleep may not be available in some runtimes, ignore.
+	}
+
 	const dir = dirname(filePath);
 	const base = basename(filePath, extname(filePath));
 	const ext = extname(filePath);
+	const patterns = [`.test${ext}`, `.spec${ext}`];
+	const relativePaths = new Set<string>();
 
-	// 1. Same directory: foo.test.ts, foo.spec.ts
-	const sameDirTest = join(dir, `${base}.test${ext}`);
-	const sameDirSpec = join(dir, `${base}.spec${ext}`);
+	const addCandidate = (testPath: string) => {
+		const normalized = testPath.replace(root, "").replace(/^[\\/]/, "");
+		relativePaths.add(normalized);
+	};
 
-	if (existsSync(sameDirTest)) candidates.push(sameDirTest);
-	if (existsSync(sameDirSpec)) candidates.push(sameDirSpec);
+	for (const pattern of patterns) {
+		const testPath = join(dir, `${base}${pattern}`);
+		if (existsSync(testPath)) {
+			addCandidate(testPath);
+		}
+	}
 
-	// 2. tests/ directory relative to file
-	const testDir = join(dir, "tests", `${base}.test${ext}`);
-	if (existsSync(testDir)) candidates.push(testDir);
+	const relTestDir = join(dir, "tests");
+	for (const pattern of patterns) {
+		const testPath = join(relTestDir, `${base}${pattern}`);
+		if (existsSync(testPath)) {
+			addCandidate(testPath);
+		}
+	}
 
-	// 3. Absolute tests/ directory from root
-	const rootTestDir = join(root, "tests", `${base}.test${ext}`);
-	if (existsSync(rootTestDir) && rootTestDir !== testDir)
-		candidates.push(rootTestDir);
+	const rootTestDir = join(root, "tests");
+	for (const pattern of patterns) {
+		const testPath = join(rootTestDir, `${base}${pattern}`);
+		if (existsSync(testPath)) {
+			addCandidate(testPath);
+		}
+	}
 
-	return candidates.map((c) => c.replace(root, "").replace(/^[\\/]/, ""));
+	return [...relativePaths];
 }
