@@ -658,9 +658,382 @@ nooa ai "List files in the current directory using filesystem MCP"
 
 ## 📊 Summary
 
-- **Total tasks:** 18 TDD tasks
+- **Total tasks:** 18 TDD tasks (core) + 7 optional enhancements
 - **New files:** ~36 files (18 implementations + 18 tests)
 - **CLI commands:** 10+ subcommands
 - **Coverage:** Core infrastructure + Complete CLI + Integration
 
 This plan covers **100%** of the requirements for MCP integration, versus ~10% of the previous plan.
+
+---
+
+## 🌟 Optional Enhancements (Phase 4)
+
+### Enhancement 1: `nooa mcp init` (Onboarding Wizard)
+
+**Purpose:** Reduce friction for first-time MCP users
+
+**Implementation:**
+```typescript
+// src/features/mcp/init.ts
+export async function initMcp() {
+  console.log("🚀 Welcome to MCP! Let's get you started.\n");
+  
+  // 1. Install recommended MCPs
+  const installRecommended = await prompt(
+    "Install recommended MCPs? (filesystem, github) [Y/n]"
+  );
+  
+  if (installRecommended !== "n") {
+    await registry.install("@modelcontextprotocol/server-filesystem");
+    await registry.install("@modelcontextprotocol/server-github");
+  }
+  
+  // 2. Configure GitHub
+  const configureGithub = await prompt("Configure GitHub token? [y/N]");
+  if (configureGithub === "y") {
+    const token = await promptSecret("GitHub Personal Access Token:");
+    await registry.configure("github", { env: { GITHUB_TOKEN: token } });
+    await registry.enable("github");
+  }
+  
+  console.log("\n✅ Setup complete! Run 'nooa mcp list' to see available tools.");
+}
+```
+
+**CLI Usage:**
+```bash
+nooa mcp init
+```
+
+---
+
+### Enhancement 2: Health Checks
+
+**Purpose:** Verify MCP availability before use
+
+**Implementation:**
+```typescript
+// Add to Registry.ts
+async healthCheck(name: string): Promise<HealthStatus> {
+  const config = await this.configStore.get(name);
+  if (!config || !config.enabled) {
+    return { status: 'down', reason: 'not enabled' };
+  }
+  
+  try {
+    const startTime = Date.now();
+    const client = await this.serverManager.start(config);
+    
+    await client.ping();
+    const latency = Date.now() - startTime;
+    
+    await this.serverManager.stop(name);
+    
+    return {
+      status: latency < 1000 ? 'healthy' : 'degraded',
+      latency,
+      lastCheck: Date.now()
+    };
+  } catch (error) {
+    return {
+      status: 'down',
+      latency: -1,
+      lastError: (error as Error).message,
+      lastCheck: Date.now()
+    };
+  }
+}
+
+interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'down';
+  latency: number;
+  lastCheck: number;
+  lastError?: string;
+  reason?: string;
+}
+```
+
+---
+
+### Enhancement 3: Retry Logic
+
+**Purpose:** Handle transient failures gracefully
+
+**Implementation:**
+```typescript
+// Add to Client.ts
+async callTool(
+  name: string, 
+  args: any,
+  options: CallOptions = {}
+): Promise<any> {
+  const { retries = 3, timeout = 30000 } = options;
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await this.callToolWithTimeout(name, args, timeout);
+    } catch (error) {
+      const isLastAttempt = attempt === retries - 1;
+      if (isLastAttempt) throw error;
+      
+      logger.warn(`Tool call failed (attempt ${attempt + 1}/${retries})`, {
+        tool: name,
+        error: (error as Error).message
+      });
+      
+      // Exponential backoff
+      const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+interface CallOptions {
+  retries?: number;
+  timeout?: number;
+}
+```
+
+---
+
+### Enhancement 4: MCP Marketplace
+
+**Purpose:** Discover MCPs easily
+
+**Implementation:**
+```typescript
+// Add to Registry.ts
+async searchAvailable(query: string): Promise<McpPackage[]> {
+  // Option 1: Query npm registry
+  const npmResults = await fetch(
+    `https://registry.npmjs.org/-/v1/search?text=${query}+mcp-server`
+  );
+  
+  // Option 2: Query curated list
+  const curatedList = await fetch(
+    'https://raw.githubusercontent.com/modelcontextprotocol/servers/main/registry.json'
+  );
+  
+  return npmResults.map(pkg => ({
+    name: pkg.name,
+    description: pkg.description,
+    downloads: pkg.downloads,
+    verified: curatedList.some(c => c.name === pkg.name),
+    rating: pkg.rating
+  }));
+}
+
+interface McpPackage {
+  name: string;
+  description: string;
+  downloads: number;
+  verified: boolean;
+  rating: number;
+}
+```
+
+**CLI Usage:**
+```bash
+nooa mcp search filesystem
+nooa mcp search database --verified-only
+```
+
+---
+
+### Enhancement 5: Environment File Support
+
+**Purpose:** Secure secret management
+
+**Implementation:**
+```typescript
+// Add to configure.ts
+export async function configureMcp(name: string, flags: ConfigureFlags) {
+  const registry = new Registry();
+  
+  if (flags.envFile) {
+    // Read .env file
+    const envContent = await Bun.file(flags.envFile).text();
+    const env = parseEnvFile(envContent);
+    
+    await registry.configure(name, { env });
+    console.log(`✅ Configured ${name} with env from ${flags.envFile}`);
+  }
+}
+```
+
+**CLI Usage:**
+```bash
+nooa mcp configure github --env-file .env.github
+
+# .env.github:
+# GITHUB_TOKEN=ghp_xxx
+# GITHUB_ORG=myorg
+```
+
+---
+
+### Enhancement 6: MCP Aliases
+
+**Purpose:** Create shortcuts for frequent operations
+
+**Implementation:**
+```typescript
+// Add alias table to SQLite
+CREATE TABLE mcp_aliases (
+  name TEXT PRIMARY KEY,
+  command TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER
+);
+
+// src/features/mcp/alias.ts
+export async function createAlias(name: string, command: string) {
+  await db.run(
+    'INSERT INTO mcp_aliases (name, command, created_at) VALUES (?, ?, ?)',
+    [name, command, Date.now()]
+  );
+  
+  console.log(`✅ Created alias: ${name} -> ${command}`);
+}
+```
+
+**CLI Usage:**
+```bash
+nooa mcp alias create read-readme \
+  "mcp call filesystem read_file --path README.md"
+
+# Use later:
+nooa read-readme
+```
+
+---
+
+### Enhancement 7: Tool Schema Caching
+
+**Purpose:** Avoid unnecessary MCP restarts
+
+**Implementation:**
+```typescript
+// Add cache table to SQLite
+CREATE TABLE mcp_tool_cache (
+  mcp_name TEXT NOT NULL,
+  tool_name TEXT NOT NULL,
+  schema TEXT NOT NULL,
+  cached_at INTEGER,
+  PRIMARY KEY (mcp_name, tool_name)
+);
+
+// Add to ConfigStore.ts
+async cacheToolSchema(mcpName: string, tools: McpTool[]): Promise<void> {
+  for (const tool of tools) {
+    await db.run(
+      'INSERT OR REPLACE INTO mcp_tool_cache VALUES (?, ?, ?, ?)',
+      [mcpName, tool.name, JSON.stringify(tool.inputSchema), Date.now()]
+    );
+  }
+}
+
+async getCachedTools(mcpName: string): Promise<McpTool[] | null> {
+  const cached = await db.all(
+    'SELECT * FROM mcp_tool_cache WHERE mcp_name = ? AND cached_at > ?',
+    [mcpName, Date.now() - 86400000] // 24h TTL
+  );
+  
+  if (cached.length === 0) return null;
+  
+  return cached.map(row => ({
+    name: row.tool_name,
+    inputSchema: JSON.parse(row.schema)
+  }));
+}
+```
+
+---
+
+## 🚀 Implementation Approaches
+
+### Approach A: Sequential (Traditional)
+```bash
+git checkout -b feat/mcp-integration
+# Implement Tasks 1-18 sequentially
+# 2-3 weeks estimated
+```
+
+**Pros:** Full control, deep learning  
+**Cons:** Slow, manual coordination needed
+
+---
+
+### Approach B: Subagent-Driven (Recommended)
+```bash
+nooa fix "Implement MCP integration plan at docs/plans/2026-02-02-mcp-integration-complete.md"
+# Agent executes all 18 tasks autonomously
+# Few hours estimated
+```
+
+**Pros:** Fast, consistent quality  
+**Cons:** Less hands-on experience
+
+---
+
+### Approach C: Hybrid (Best of Both)
+```bash
+# Phase 1: Core (manual, 6 tasks)
+git checkout -b feat/mcp-core
+# Implement Tasks 1-6 yourself
+
+# Phase 2: CLI (subagent, 10 tasks)
+nooa fix "Implement MCP CLI commands (Tasks 7-16)"
+
+# Phase 3: Integration (manual, 2 tasks)
+# Implement Tasks 17-18 yourself
+```
+
+**Pros:** Control over critical paths, speed on boilerplate  
+**Cons:** Requires coordination
+
+---
+
+## 📋 Readiness Checklist
+
+Before starting implementation:
+
+- [ ] **Dependencies installed:**
+  ```bash
+  bun add @modelcontextprotocol/sdk
+  bun add -d @types/node
+  ```
+
+- [ ] **Test fixtures ready:**
+  ```bash
+  mkdir -p test/fixtures
+  # Create mock-mcp-server.js
+  ```
+
+- [ ] **Directory structure:**
+  ```bash
+  mkdir -p src/core/mcp src/features/mcp src/core/db/schema
+  ```
+
+- [ ] **SQLite configured:**
+  ```bash
+  # Verify bun:sqlite is available
+  bun run -e "import { Database } from 'bun:sqlite'; console.log('OK')"
+  ```
+
+- [ ] **Plan committed:**
+  ```bash
+  git add docs/plans/2026-02-02-mcp-integration-complete.md
+  git commit -m "docs: MCP integration plan"
+  ```
+
+---
+
+## 🎯 Recommended Next Steps
+
+1. **Create mock MCP server** for testing
+2. **Start with Task 1** (types.ts) - zero dependencies
+3. **Build incrementally** through phases
+4. **Verify continuously** with `bun test`
+5. **Use optional enhancements** as needed
