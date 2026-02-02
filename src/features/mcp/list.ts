@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
-import { Registry } from "../../core/mcp/Registry";
 import { openMcpDatabase } from "../../core/mcp/db";
+import { Registry } from "../../core/mcp/Registry";
 
 export async function listCommand(rawArgs: string[]): Promise<number> {
 	const { values } = parseArgs({

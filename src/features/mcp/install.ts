@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
+import { openMcpDatabase } from "../../core/mcp/db";
 import { Registry } from "../../core/mcp/Registry";
 import type { McpServer } from "../../core/mcp/types";
-import { openMcpDatabase } from "../../core/mcp/db";
 import { deriveServerName, parseEnvEntries } from "./helpers";
 
 export async function installCommand(rawArgs: string[]): Promise<number> {

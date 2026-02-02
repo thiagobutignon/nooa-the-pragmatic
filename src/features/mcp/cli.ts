@@ -80,9 +80,11 @@ Examples:
 	}
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic command registration
 const mcpCommandObject: any = {
 	name: "mcp",
 	description: "Manage MCP integrations (list, install, enable, disable, call)",
+	// biome-ignore lint/suspicious/noExplicitAny: Raw args are dynamic
 	execute: async ({ rawArgs }: any) => {
 		return await mcpCommand(rawArgs);
 	},

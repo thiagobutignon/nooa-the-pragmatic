@@ -22,6 +22,8 @@ export async function getMcpToolsForAi(db: Database): Promise<McpTool[]> {
 	} catch (error) {
 		console.error("Failed to load MCP tools for AI:", error);
 		return [];
+	} finally {
+		await serverManager.stopAll();
 	}
 }
 
@@ -40,9 +42,13 @@ export async function executeMcpToolFromAi(
 	const serverManager = new ServerManager();
 	const toolProvider = new ToolProvider(registry, serverManager);
 
-	return await toolProvider.executeTool({
-		mcpSource,
-		name: toolName,
-		args,
-	});
+	try {
+		return await toolProvider.executeTool({
+			mcpSource,
+			name: toolName,
+			args,
+		});
+	} finally {
+		await serverManager.stopAll();
+	}
 }

@@ -10,6 +10,7 @@ Generate context pack for AI consumption.
 
 Flags:
   --json         Output results as JSON.
+  --include-mcp  Include MCP resource metadata.
   -h, --help     Show help message.
 `;
 
@@ -54,20 +55,35 @@ const contextCommand: Command = {
 
 		try {
 			const result = await buildContext(target);
+			const includeMcp = Boolean(values["include-mcp"]);
+			let mcpResources;
+			if (includeMcp) {
+				const db = openMcpDatabase();
+				try {
+					mcpResources = await getMcpResourcesForContext(db);
+				} finally {
+					db.close();
+				}
+			}
 			if (values.json) {
-				console.log(
-					JSON.stringify(
-						{ ok: true, ...result, timestamp: Date.now() },
-						null,
-						2,
-					),
-				);
+				const output = { ok: true, ...result, timestamp: Date.now() };
+				if (mcpResources) {
+					output.mcpResources = mcpResources;
+				}
+				console.log(JSON.stringify(output, null, 2));
 			} else {
 				console.log(`Target: ${result.target}`);
 				console.log(`Related: ${result.related.join(", ") || "none"}`);
 				console.log(`Tests: ${result.tests.join(", ") || "none"}`);
 				console.log(`Symbols: ${result.symbols.join(", ") || "none"}`);
 				console.log(`Recent Commits: ${result.recentCommits.length}`);
+				if (mcpResources) {
+					console.log(
+						`MCP Resources: ${mcpResources
+							.map((r) => r.name)
+							.join(", ") || "none"}`,
+					);
+				}
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

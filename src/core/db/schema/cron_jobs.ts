@@ -4,7 +4,7 @@ import type { Database } from "bun:sqlite";
  * Setup the cron_jobs table used to persist recurring job definitions.
  */
 export function setupCronJobsTable(db: Database) {
-    db.run(`
+	db.run(`
         CREATE TABLE IF NOT EXISTS cron_jobs (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
@@ -26,34 +26,37 @@ export function setupCronJobsTable(db: Database) {
         )
     `);
 
-    // Add missing columns if they don't exist (primitive migration)
-    const columns = db.query("PRAGMA table_info(cron_jobs)").all() as {
-        name: string;
-    }[];
-    const columnNames = columns.map((c) => c.name);
+	// Add missing columns if they don't exist (primitive migration)
+	const columns = db.query("PRAGMA table_info(cron_jobs)").all() as {
+		name: string;
+	}[];
+	const columnNames = columns.map((c) => c.name);
 
-    const missingColumns = [
-        { name: "description", type: "TEXT" },
-        { name: "on_failure", type: "TEXT DEFAULT 'notify'" },
-        { name: "retries", type: "INTEGER DEFAULT 0" },
-        { name: "timeout", type: "TEXT" },
-        { name: "start_at", type: "TEXT" },
-        { name: "end_at", type: "TEXT" },
-        { name: "max_runs", type: "INTEGER DEFAULT 0" },
-        { name: "last_run_at", type: "TEXT" },
-        { name: "last_status", type: "TEXT" },
-        { name: "created_at", type: "TEXT DEFAULT CURRENT_TIMESTAMP" },
-        { name: "updated_at", type: "TEXT DEFAULT CURRENT_TIMESTAMP" },
-    ];
+	const missingColumns = [
+		{ name: "description", type: "TEXT" },
+		{ name: "on_failure", type: "TEXT DEFAULT 'notify'" },
+		{ name: "retries", type: "INTEGER DEFAULT 0" },
+		{ name: "timeout", type: "TEXT" },
+		{ name: "start_at", type: "TEXT" },
+		{ name: "end_at", type: "TEXT" },
+		{ name: "max_runs", type: "INTEGER DEFAULT 0" },
+		{ name: "last_run_at", type: "TEXT" },
+		{ name: "last_status", type: "TEXT" },
+		{ name: "created_at", type: "TEXT DEFAULT CURRENT_TIMESTAMP" },
+		{ name: "updated_at", type: "TEXT DEFAULT CURRENT_TIMESTAMP" },
+	];
 
-    for (const col of missingColumns) {
-        if (!columnNames.includes(col.name)) {
-            try {
-                db.run(`ALTER TABLE cron_jobs ADD COLUMN ${col.name} ${col.type}`);
-            } catch (err) {
-                // Specific handling for overlapping columns during migration
-                console.warn(`Could not add column ${col.name}:`, (err as Error).message);
-            }
-        }
-    }
+	for (const col of missingColumns) {
+		if (!columnNames.includes(col.name)) {
+			try {
+				db.run(`ALTER TABLE cron_jobs ADD COLUMN ${col.name} ${col.type}`);
+			} catch (err) {
+				// Specific handling for overlapping columns during migration
+				console.warn(
+					`Could not add column ${col.name}:`,
+					(err as Error).message,
+				);
+			}
+		}
+	}
 }

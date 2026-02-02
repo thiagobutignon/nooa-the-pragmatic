@@ -20,7 +20,7 @@ export type CronLogEntry = {
 class CronService {
 	private _store: CronStore | undefined;
 
-	constructor(private dbPath: string = DEFAULT_DB_PATH) { }
+	constructor(private dbPath: string = DEFAULT_DB_PATH) {}
 
 	private get store(): CronStore {
 		if (!this._store) {

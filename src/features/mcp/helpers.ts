@@ -12,8 +12,8 @@ export function deriveServerName(source: string): string {
 	const candidate = source
 		.split("/")
 		.filter(Boolean)
-		.pop()!
-		.replace(/@/g, "")
+		.pop()
+		?.replace(/@/g, "")
 		.replace(/[^a-z0-9-]/gi, "-")
 		.replace(/^-+|-+$/g, "")
 		.toLowerCase();

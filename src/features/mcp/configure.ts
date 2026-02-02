@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
-import { Registry } from "../../core/mcp/Registry";
 import { openMcpDatabase } from "../../core/mcp/db";
+import { Registry } from "../../core/mcp/Registry";
 import { parseEnvEntries } from "./helpers";
 
 export async function configureCommand(rawArgs: string[]): Promise<number> {
@@ -58,16 +58,14 @@ Flags:
 		const updated = {
 			...server,
 			command: (values.command as string | undefined) ?? server.command,
-			args:
-				(values.args as string[] | undefined)?.length
-					? values.args
-					: server.args,
+			args: (values.args as string[] | undefined)?.length
+				? values.args
+				: server.args,
 			env: {
 				...(server.env ?? {}),
 				...parseEnvEntries(values.env as string[] | undefined),
 			},
-			enabled:
-				values.enable ?? (!values.disable ? server.enabled : false),
+			enabled: values.enable ?? (!values.disable ? server.enabled : false),
 		};
 
 		await registry.add(updated);
