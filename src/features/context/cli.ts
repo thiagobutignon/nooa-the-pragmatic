@@ -2,9 +2,11 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
+
 import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
 import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";
+import type { McpResource } from "../../core/mcp/types";
 import { buildContext } from "./execute";
 
 const contextHelp = `
@@ -60,7 +62,7 @@ const contextCommand: Command = {
 		try {
 			const result = await buildContext(target);
 			const includeMcp = Boolean(values["include-mcp"]);
-			let mcpResources;
+			let mcpResources: McpResource[] | undefined;
 			if (includeMcp) {
 				const dbPath = process.env.NOOA_DB_PATH || ".nooa/nooa.db";
 				mkdirSync(dirname(dbPath), { recursive: true });

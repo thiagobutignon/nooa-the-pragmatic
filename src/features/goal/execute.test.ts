@@ -22,6 +22,7 @@ describe("Goal Manager", () => {
 		await setGoal(expectedGoal, testDir);
 		const goal = await getGoal(testDir);
 		expect(goal).not.toBeNull();
-		expect(goal!).toContain(expectedGoal);
+		if (!goal) return;
+		expect(goal).toContain(expectedGoal);
 	});
 });
