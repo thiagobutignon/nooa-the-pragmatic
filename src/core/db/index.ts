@@ -38,9 +38,9 @@ export class Store {
 
 	async searchEmbeddings(vector: number[], limit = 5) {
 		const all = this.db.query("SELECT id, path, chunk, vector FROM embeddings").all() as any[];
-		
+
 		const queryVector = new Float32Array(vector);
-		
+
 		const results = all.map((row) => {
 			if (!row.vector) return { ...row, score: 0 };
 			const rowVector = new Float32Array(
@@ -61,12 +61,33 @@ export class Store {
 		let mA = 0;
 		let mB = 0;
 		for (let i = 0; i < a.length; i++) {
-			dotProduct += a[i] * b[i];
-			mA += a[i] * a[i];
-			mB += b[i] * b[i];
+			const valA = a[i] ?? 0;
+			const valB = b[i] ?? 0;
+			dotProduct += valA * valB;
+			mA += valA * valA;
+			mB += valB * valB;
 		}
 		const denom = Math.sqrt(mA) * Math.sqrt(mB);
 		return denom === 0 ? 0 : dotProduct / denom;
+	}
+
+
+	async stats() {
+		const docCount = this.db
+			.query("SELECT COUNT(DISTINCT path) as count FROM embeddings")
+			.get() as { count: number };
+		const chunkCount = this.db
+			.query("SELECT COUNT(*) as count FROM embeddings")
+			.get() as { count: number };
+
+		return {
+			documents: docCount.count,
+			chunks: chunkCount.count,
+		};
+	}
+
+	async clear() {
+		this.db.query("DELETE FROM embeddings").run();
 	}
 
 	close() {

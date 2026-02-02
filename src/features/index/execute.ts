@@ -68,6 +68,19 @@ export async function executeSearch(query: string, limit = 5) {
 	}));
 }
 
+export async function clearIndex() {
+	await store.clear();
+}
+
+export async function getIndexStats() {
+	return await store.stats();
+}
+
+export async function rebuildIndex(root: string = ".") {
+	await clearIndex();
+	return await indexRepo(root);
+}
+
 function chunkText(text: string, size = 1000): string[] {
 	// Simple paragraph-based chunking
 	const paragraphs = text.split("\n\n");

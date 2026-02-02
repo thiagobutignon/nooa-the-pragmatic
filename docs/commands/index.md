@@ -11,6 +11,10 @@ nooa index <subcommand> [flags]
 ## Subcommands
 
 - `repo`: Index all TypeScript (`.ts`) and Markdown (`.md`) files in the repository.
+- `file <path>`: Index a specific file.
+- `clear`: Clear the index.
+- `stats`: Show index statistics.
+- `rebuild`: Clear and rebuild the index.
 
 ## Flags
 
@@ -32,6 +36,15 @@ nooa index repo
 
 # Index and get JSON output
 nooa index repo --json
+
+# Index a specific file
+nooa index file src/index.ts
+
+# Show index statistics
+nooa index stats
+
+# Clear the index
+nooa index clear
 ```
 
 ---
