@@ -1,6 +1,6 @@
-import { Database } from "bun:sqlite";
 import { parseArgs } from "node:util";
 import { Registry } from "../../core/mcp/Registry";
+import { openMcpDatabase } from "../../core/mcp/db";
 
 export async function disableCommand(rawArgs: string[]): Promise<number> {
 	const { values, positionals } = parseArgs({
@@ -30,18 +30,20 @@ Options:
 
 	const name = positionals[0];
 
-	// TODO: Use actual database path
-	const db = new Database(":memory:");
+	const db = openMcpDatabase();
 	const registry = new Registry(db);
+	try {
+		const mcp = await registry.get(name);
+		if (!mcp) {
+			console.error(`Error: MCP "${name}" not found`);
+			return 1;
+		}
 
-	const mcp = await registry.get(name);
-	if (!mcp) {
-		console.error(`Error: MCP "${name}" not found`);
-		return 1;
+		await registry.disable(name);
+		console.log(`✅ Disabled MCP: ${name}`);
+
+		return 0;
+	} finally {
+		db.close();
 	}
-
-	await registry.disable(name);
-	console.log(`✅ Disabled MCP: ${name}`);
-
-	return 0;
 }

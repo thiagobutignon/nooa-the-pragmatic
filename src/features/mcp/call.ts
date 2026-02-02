@@ -1,7 +1,7 @@
-import { Database } from "bun:sqlite";
 import { parseArgs } from "node:util";
 import { Registry } from "../../core/mcp/Registry";
 import { ServerManager } from "../../core/mcp/ServerManager";
+import { openMcpDatabase } from "../../core/mcp/db";
 
 export async function callCommand(rawArgs: string[]): Promise<number> {
 	const { values, positionals } = parseArgs({
@@ -39,7 +39,6 @@ Examples:
 		return 2;
 	}
 
-	// Parse tool arguments from remaining args
 	// biome-ignore lint/suspicious/noExplicitAny: Tool arguments are dynamic JSON
 	const toolArgs: Record<string, any> = {};
 	for (const arg of rawArgs) {
@@ -53,18 +52,16 @@ Examples:
 		}
 	}
 
-	// TODO: Use actual database path
-	const db = new Database(":memory:");
+	const db = openMcpDatabase();
 	const registry = new Registry(db);
 	const serverManager = new ServerManager();
-
-	const mcp = await registry.get(mcpName);
-	if (!mcp) {
-		console.error(`Error: MCP "${mcpName}" not found`);
-		return 1;
-	}
-
 	try {
+		const mcp = await registry.get(mcpName);
+		if (!mcp) {
+			console.error(`Error: MCP "${mcpName}" not found`);
+			return 1;
+		}
+
 		let client = serverManager.getClient(mcpName);
 		if (!client || !client.isRunning()) {
 			client = await serverManager.start(mcp);
@@ -78,11 +75,12 @@ Examples:
 			console.log(result);
 		}
 
-		await serverManager.stopAll();
 		return 0;
 	} catch (error) {
 		console.error(`Error executing tool: ${(error as Error).message}`);
-		await serverManager.stopAll();
 		return 1;
+	} finally {
+		await serverManager.stopAll();
+		db.close();
 	}
 }
