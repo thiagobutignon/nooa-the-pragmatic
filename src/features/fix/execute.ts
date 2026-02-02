@@ -108,19 +108,40 @@ export async function runFix(options: FixOptions): Promise<FixResult> {
 		stages.context = true;
 
 		// Stage 3: Apply Patch (AI Generation)
-		// Note: In a real scenario, we'd use the AI to generate the file changes.
-		// For now, we'll simulate the AI loop or provide a hook.
-		const _aiPrompt = `
-        You are NOOA, a pragmatic programming agent.
-        The user wants to fix this issue: "${options.issue}"
-        
-        Context found:
-        ${contextText}
-        
-        Please provide a fix. (SIMULATED FOR NOW)
-        `;
+		const aiResponse = await ai.complete({
+			messages: [
+				{
+					role: "user",
+					content: `You are NOOA, a pragmatic programming agent.
+The user wants to fix this issue: "${options.issue}"
 
-		// Simulation of AI completing the task (simulated)
+Context found:
+${contextText}
+
+Please analyze the context and provide specific file changes to fix this issue.
+Format your response as actionable steps.`,
+				},
+			],
+			model: "qwen2.5-coder:7b",
+			temperature: 0.2,
+			traceId,
+		});
+
+		// Log AI response for debugging
+		telemetry.track(
+			{
+				event: "fix.ai_patch_generated",
+				level: "info",
+				trace_id: traceId,
+				metadata: {
+					model: aiResponse.model,
+					provider: aiResponse.provider,
+					response_length: aiResponse.content.length,
+				},
+			},
+			undefined,
+		);
+
 		stages.patch = true;
 
 		// Stage 4: Verify (CI)
