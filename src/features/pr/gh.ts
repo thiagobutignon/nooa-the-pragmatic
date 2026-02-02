@@ -8,12 +8,16 @@ export async function ghPrCreate(args: {
 	title: string;
 	body: string;
 }) {
-	const { stdout } = await execa(
+	const { stdout, stderr, exitCode } = await execa(
 		"gh",
-		["pr", "create", "--base", args.base, "--head", args.head, "--title", args.title, "--body", args.body, "--json", "url"],
+		["pr", "create", "--base", args.base, "--head", args.head, "--title", args.title, "--body", args.body],
 		{ reject: false },
 	);
-	return JSON.parse(stdout || "{}");
+	if (exitCode !== 0) {
+		throw new Error((stderr || "").trim() || "gh pr create failed");
+	}
+	const url = (stdout || "").trim();
+	return { url };
 }
 
 export async function ghPrList() {
