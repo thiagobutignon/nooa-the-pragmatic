@@ -16,27 +16,31 @@ export async function getMcpResourcesForContext(
 	const registry = new Registry(db);
 	const serverManager = new ServerManager();
 
-	const enabledServers = await registry.listEnabled();
-	const allResources: McpResource[] = [];
+	try {
+		const enabledServers = await registry.listEnabled();
+		const allResources: McpResource[] = [];
 
-	for (const server of enabledServers) {
-		try {
-			let client = serverManager.getClient(server.name);
-			if (!client || !client.isRunning()) {
-				client = await serverManager.start(server);
+		for (const server of enabledServers) {
+			try {
+				let client = serverManager.getClient(server.name);
+				if (!client || !client.isRunning()) {
+					client = await serverManager.start(server);
+				}
+
+				const resources = await client.listResources();
+				allResources.push(
+					// biome-ignore lint/suspicious/noExplicitAny: Dynamic resource mapping
+					...resources.map((r: any) => ({ ...r, source: server.name })),
+				);
+			} catch (error) {
+				console.error(`Failed to get resources from ${server.name}:`, error);
 			}
-
-			const resources = await client.listResources();
-			allResources.push(
-				// biome-ignore lint/suspicious/noExplicitAny: Dynamic resource mapping
-				...resources.map((r: any) => ({ ...r, source: server.name })),
-			);
-		} catch (error) {
-			console.error(`Failed to get resources from ${server.name}:`, error);
 		}
-	}
 
-	return allResources;
+		return allResources;
+	} finally {
+		await serverManager.stopAll();
+	}
 }
 
 /**
@@ -51,15 +55,19 @@ export async function readMcpResourceFromContext(
 	const registry = new Registry(db);
 	const serverManager = new ServerManager();
 
-	const server = await registry.get(mcpSource);
-	if (!server) {
-		throw new Error(`MCP server not found: ${mcpSource}`);
-	}
+	try {
+		const server = await registry.get(mcpSource);
+		if (!server) {
+			throw new Error(`MCP server not found: ${mcpSource}`);
+		}
 
-	let client = serverManager.getClient(server.name);
-	if (!client || !client.isRunning()) {
-		client = await serverManager.start(server);
-	}
+		let client = serverManager.getClient(server.name);
+		if (!client || !client.isRunning()) {
+			client = await serverManager.start(server);
+		}
 
-	return await client.readResource(uri);
+		return await client.readResource(uri);
+	} finally {
+		await serverManager.stopAll();
+	}
 }

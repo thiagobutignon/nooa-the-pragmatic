@@ -1,6 +1,8 @@
+import { Database } from "bun:sqlite";
 import { parseArgs } from "node:util";
 import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
+import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";
 import { buildContext } from "./execute";
 
 const contextHelp = `
@@ -58,7 +60,8 @@ const contextCommand: Command = {
 			const includeMcp = Boolean(values["include-mcp"]);
 			let mcpResources;
 			if (includeMcp) {
-				const db = openMcpDatabase();
+				const dbPath = process.env.NOOA_DB_PATH || "nooa.db";
+				const db = new Database(dbPath);
 				try {
 					mcpResources = await getMcpResourcesForContext(db);
 				} finally {
@@ -79,9 +82,9 @@ const contextCommand: Command = {
 				console.log(`Recent Commits: ${result.recentCommits.length}`);
 				if (mcpResources) {
 					console.log(
-						`MCP Resources: ${mcpResources
-							.map((r) => r.name)
-							.join(", ") || "none"}`,
+						`MCP Resources: ${
+							mcpResources.map((r) => r.name).join(", ") || "none"
+						}`,
 					);
 				}
 			}

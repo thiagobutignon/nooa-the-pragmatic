@@ -15,6 +15,7 @@ nooa context <file_path> [flags]
 ## Flags
 
 - `--json`: Output results as a structured JSON object.
+- `--include-mcp`: Append MCP resource metadata from enabled servers.
 - `-h, --help`: Show the help message.
 
 ## How it works
@@ -23,6 +24,7 @@ nooa context <file_path> [flags]
 2. **Related**: Uses a basic heuristic to find local imports and list them as related files.
 3. **Tests**: Automatically looks for a `.test.ts` counterpart.
 4. **Commits**: Extracts the last 5 commits related to that file using `git log`.
+5. **MCP Resources**: When `--include-mcp` is used, NOOA gathers resource metadata from enabled MCP servers and adds it to the pack.
 
 ## Examples
 
@@ -30,6 +32,9 @@ nooa context <file_path> [flags]
 # Human readable output
 nooa context src/core/logger.ts
 
-# JSON output for AI pipe
+## JSON output for AI pipe
 nooa context src/features/ci/execute.ts --json
+
+# Include MCP resources in the pack
+nooa context src/features/ci/execute.ts --json --include-mcp
 ```
