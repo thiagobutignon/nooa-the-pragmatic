@@ -2,10 +2,12 @@ import { join } from "node:path";
 import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
+import { getStdinText } from "../../core/io";
 import { PromptEngine } from "./engine";
+import { createPrompt, editPrompt, deletePrompt, publishPrompt } from "./service";
 
 const promptHelp = `
-Usage: nooa prompt <list|view|validate|render> [name] [flags]
+Usage: nooa prompt <list|view|validate|render|create|edit|delete|publish> [name] [flags]
 
 Manage and render versioned AI prompts.
 
@@ -14,9 +16,19 @@ Subcommands:
   view <name>         View a specific prompt's metadata and body.
   validate <name|--all> Check if prompt templates are valid.
   render <name>       Render a prompt with variables.
+  create <name>       Create a new prompt template.
+  edit <name>         Edit a prompt via unified diff patch (stdin).
+  delete <name>       Delete a prompt template.
+  publish <name>      Bump prompt version and update changelog.
 
 Flags:
   --var key=value     Variable for rendering (can be used multiple times).
+  --body <text>       Body content for create (or via stdin).
+  --description <t>   Description for create.
+  --output <format>   Output format for create (json|markdown).
+  --patch             Read unified diff patch from stdin (edit).
+  --level <l>         Publish level: patch, minor, major.
+  --note <text>       Changelog note for publish (or via stdin).
   --json              Output as JSON.
   --all               Operate on all prompts (used with validate).
   -h, --help          Show help message.
@@ -25,6 +37,9 @@ Examples:
   nooa prompt list
   nooa prompt view review --json
   nooa prompt render review --var input="some code"
+  nooa prompt create my-prompt --description "My Prompt" --body "Hello"
+  nooa prompt edit my-prompt --patch < patch.diff
+  nooa prompt publish my-prompt --level patch --note "Refined instructions"
 `;
 
 const promptCommand: Command = {
@@ -38,6 +53,12 @@ const promptCommand: Command = {
 				var: { type: "string", multiple: true },
 				json: { type: "boolean" },
 				all: { type: "boolean" },
+				body: { type: "string" },
+				description: { type: "string" },
+				output: { type: "string" },
+				patch: { type: "boolean" },
+				level: { type: "string" },
+				note: { type: "string" },
 				help: { type: "boolean", short: "h" },
 				"debug-injection": { type: "boolean" },
 			},
@@ -60,7 +81,121 @@ const promptCommand: Command = {
 		const engine = new PromptEngine(templatesDir);
 
 		try {
-			if (action === "list") {
+			if (action === "create") {
+				if (!name) throw new Error("Prompt name is required.");
+				const description = values.description as string;
+				if (!description) throw new Error("Missing --description for create.");
+				const output = (values.output as string) || "markdown";
+				if (output && !["json", "markdown"].includes(output)) {
+					throw new Error("Invalid --output. Use json or markdown.");
+				}
+				const body = (values.body as string) || (await getStdinText());
+				if (!body) throw new Error("Prompt body is required.");
+
+				await createPrompt({
+					templatesDir,
+					name,
+					description,
+					output: output as "json" | "markdown",
+					body,
+				});
+
+				if (values.json) {
+					console.log(
+						JSON.stringify(
+							{
+								schemaVersion: "1.0",
+								ok: true,
+								traceId,
+								name,
+							},
+							null,
+							2,
+						),
+					);
+				} else {
+					console.log(`Prompt '${name}' created.`);
+				}
+			} else if (action === "edit") {
+				if (!name) throw new Error("Prompt name is required.");
+				if (!values.patch) throw new Error("Missing --patch for edit.");
+				const patch = await getStdinText();
+				if (!patch) throw new Error("Patch input is required.");
+
+				await editPrompt({ templatesDir, name, patch });
+				if (values.json) {
+					console.log(
+						JSON.stringify(
+							{
+								schemaVersion: "1.0",
+								ok: true,
+								traceId,
+								name,
+							},
+							null,
+							2,
+						),
+					);
+				} else {
+					console.log(`Prompt '${name}' updated.`);
+				}
+			} else if (action === "delete") {
+				if (!name) throw new Error("Prompt name is required.");
+				await deletePrompt({ templatesDir, name });
+				if (values.json) {
+					console.log(
+						JSON.stringify(
+							{
+								schemaVersion: "1.0",
+								ok: true,
+								traceId,
+								name,
+							},
+							null,
+							2,
+						),
+					);
+				} else {
+					console.log(`Prompt '${name}' deleted.`);
+				}
+			} else if (action === "publish") {
+				if (!name) throw new Error("Prompt name is required.");
+				const level = values.level as string;
+				if (!level) throw new Error("Missing --level for publish.");
+				if (!["patch", "minor", "major"].includes(level)) {
+					throw new Error("Invalid --level. Use patch, minor, or major.");
+				}
+				const note = (values.note as string) || (await getStdinText());
+				if (!note) throw new Error("Changelog note is required.");
+
+				const next = await publishPrompt({
+					templatesDir,
+					name,
+					level: level as "patch" | "minor" | "major",
+					changelogPath: join(
+						process.cwd(),
+						"src/features/prompt/CHANGELOG.md",
+					),
+					note,
+				});
+				if (values.json) {
+					console.log(
+						JSON.stringify(
+							{
+								schemaVersion: "1.0",
+								ok: true,
+								traceId,
+								name,
+								version: next,
+							},
+							null,
+							2,
+						),
+					);
+				} else {
+					console.log(`Prompt '${name}' published as v${next}.`);
+				}
+			} else if (action === "list") {
 				const prompts = await engine.listPrompts();
 				if (values.json) {
 					console.log(
