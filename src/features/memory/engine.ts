@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { readFile, mkdir, appendFile, writeFile, unlink } from "node:fs/promises";
+import { readFile, mkdir, appendFile, writeFile, unlink, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { type MemoryEntry, formatMemoryAsMarkdown, parseMemoryFromMarkdown } from "../../core/memory/schema";
 import { runSearch } from "../search/engine";
@@ -49,12 +49,12 @@ export class MemoryEngine {
         }
     }
 
-    async addEntry(entry: Omit<MemoryEntry, "id" | "timestamp">): Promise<MemoryEntry> {
+    async addEntry(entry: Omit<MemoryEntry, "id" | "timestamp"> & { id?: string; timestamp?: string }): Promise<MemoryEntry> {
         await this.ensureDirs();
         const fullEntry: MemoryEntry = {
             ...entry,
-            id: `mem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-            timestamp: new Date().toISOString(),
+            id: entry.id || `mem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            timestamp: entry.timestamp || new Date().toISOString(),
             trace_id: entry.trace_id || createTraceId()
         };
 
@@ -65,7 +65,7 @@ export class MemoryEngine {
         await this.acquireLock();
         try {
             await appendFile(dailyPath, `\n${content}\n`);
-            
+
             // Generate and store embedding
             try {
                 const { embedText } = await import("../embed/engine");
@@ -81,28 +81,112 @@ export class MemoryEngine {
         return fullEntry;
     }
 
+    async deleteEntry(id: string): Promise<void> {
+        const entry = await this.getEntryById(id);
+        if (!entry) return; // Silent fail if not found? Or throw?
+
+        const date = entry.timestamp.split("T")[0];
+        const filePath = join(this.memoryDir, `${date}.md`);
+
+        await this.acquireLock();
+        try {
+            if (!existsSync(filePath)) return;
+            const content = await readFile(filePath, "utf-8");
+            const blockRegex = /---\r?\n[\s\S]*?---\r?\n?[\s\S]*?(?=\r?\n---\r?\n|$)/g;
+            const blocks = content.match(blockRegex) || [];
+
+            const newBlocks = blocks.filter(block => {
+                try {
+                    const parsed = parseMemoryFromMarkdown(block.trim());
+                    return parsed.id !== id;
+                } catch {
+                    return true;
+                }
+            });
+
+            if (newBlocks.length === 0) {
+                await unlink(filePath);
+            } else {
+                await writeFile(filePath, newBlocks.join("\n\n"));
+            }
+            // Remove embedding
+            try {
+                const { store } = await import("../../core/db/index");
+                // store.deleteEmbedding(id); // If supported
+            } catch { }
+
+        } finally {
+            await this.releaseLock();
+        }
+    }
+
+    async updateEntry(id: string, newContent: string): Promise<void> {
+        const entry = await this.getEntryById(id);
+        if (!entry) throw new Error(`Entry ${id} not found`);
+
+        const date = entry.timestamp.split("T")[0];
+        const filePath = join(this.memoryDir, `${date}.md`);
+
+        await this.acquireLock();
+        try {
+            const fileContent = await readFile(filePath, "utf-8");
+            const blockRegex = /---\r?\n[\s\S]*?---\r?\n?[\s\S]*?(?=\r?\n---\r?\n|$)/g;
+            const blocks = fileContent.match(blockRegex) || [];
+
+            const newBlocks = blocks.map(block => {
+                try {
+                    const parsed = parseMemoryFromMarkdown(block.trim());
+                    if (parsed.id === id) {
+                        parsed.content = newContent;
+                        // parsed.timestamp = new Date().toISOString(); // Keep original timestamp? usually yes for update.
+                        // But maybe add updated_at field if schema allowed.
+                        return formatMemoryAsMarkdown(parsed);
+                    }
+                    return block;
+                } catch {
+                    return block;
+                }
+            });
+
+            await writeFile(filePath, newBlocks.join("\n\n"));
+
+            // Update embedding
+            try {
+                const { embedText } = await import("../embed/engine");
+                const { store } = await import("../../core/db/index");
+                const { embedding } = await embedText(newContent, {});
+                await store.storeEmbedding(id, newContent, embedding);
+            } catch { }
+
+        } finally {
+            await this.releaseLock();
+        }
+    }
+
     async getEntryById(id: string): Promise<MemoryEntry | null> {
         const results = await runSearch({
             query: id,
             root: this.root,
             include: ["**/memory/*.md", "**/.nooa/MEMORY.md"],
             regex: false,
-            context: 0
+            context: 0,
+            noIgnore: true
         });
 
-        const filePath = results[0]?.path;
-        if (!filePath) return null;
+        // Loop through results in case of duplicates or partial matches, though ID should be unique enough
+        for (const res of results) {
+            const filePath = res.path;
+            const fileContent = await readFile(filePath, "utf-8");
+            const blockRegex = /---\r?\n[\s\S]*?---\r?\n?[\s\S]*?(?=\r?\n---\r?\n|$)/g;
+            const blocks = fileContent.match(blockRegex) || [];
 
-        const fileContent = await readFile(filePath, "utf-8");
-        const blockRegex = /---\r?\n[\s\S]*?\r?\n---\r?\n?[\s\S]*?(?=\r?\n---\r?\n|$)/g;
-        const blocks = fileContent.match(blockRegex) || [];
-
-        for (const block of blocks) {
-            try {
-                const entry = parseMemoryFromMarkdown(block.trim());
-                if (entry.id === id) return entry;
-            } catch {
-                continue;
+            for (const block of blocks) {
+                try {
+                    const entry = parseMemoryFromMarkdown(block.trim());
+                    if (entry.id === id) return entry;
+                } catch {
+                    continue;
+                }
             }
         }
 
@@ -114,7 +198,7 @@ export class MemoryEngine {
         if (!entry) throw new Error(`Memory entry with ID ${id} not found.`);
 
         const markdown = formatMemoryAsMarkdown(entry);
-        
+
         await this.acquireLock();
         try {
             await appendFile(this.durablePath, `\n${markdown}\n`);
@@ -122,6 +206,34 @@ export class MemoryEngine {
             await summarizeMemory(this.root);
         } finally {
             await this.releaseLock();
+        }
+    }
+
+    async clearAll(): Promise<void> {
+        await this.acquireLock();
+        try {
+            await rm(this.memoryDir, { recursive: true, force: true });
+            await this.ensureDirs();
+            // Clear embeddings?
+            // const { store } = await import("../../core/db/index");
+            // await store.clear(); 
+        } finally {
+            await this.releaseLock();
+        }
+    }
+
+    async exportData(path: string): Promise<void> {
+        const entries = await this.search(""); // Get all entries
+        await writeFile(path, JSON.stringify(entries, null, 2));
+    }
+
+    async importData(path: string): Promise<void> {
+        const content = await readFile(path, "utf-8");
+        const entries = JSON.parse(content) as MemoryEntry[];
+        if (!Array.isArray(entries)) throw new Error("Invalid export format: expected array");
+
+        for (const entry of entries) {
+            await this.addEntry(entry);
         }
     }
 
@@ -138,7 +250,7 @@ export class MemoryEngine {
             ignoreCase: true,
             noIgnore: true
         });
-        
+
         const entryIds = new Set<string>();
         const entries: MemoryEntry[] = [];
 
@@ -146,7 +258,7 @@ export class MemoryEngine {
             const fileContent = await readFile(result.path, "utf-8");
             const blockRegex = /---\r?\n[\s\S]*?---\r?\n?[\s\S]*?(?=\r?\n---\r?\n|$)/g;
             const blocks = fileContent.match(blockRegex) || [];
-            
+
             for (const block of blocks) {
                 try {
                     const entry = parseMemoryFromMarkdown(block.trim());
@@ -158,11 +270,11 @@ export class MemoryEngine {
                         entry.scope
                     ].join(" ").toLowerCase();
 
-                    if (searchBatch.includes(query.toLowerCase())) {
-                         if (!entryIds.has(entry.id)) {
+                    if (query === "" || searchBatch.includes(query.toLowerCase())) {
+                        if (!entryIds.has(entry.id)) {
                             entryIds.add(entry.id);
                             entries.push(entry);
-                         }
+                        }
                     }
                 } catch {
                     continue;
@@ -176,10 +288,10 @@ export class MemoryEngine {
     async searchSemantic(query: string): Promise<MemoryEntry[]> {
         const { embedText } = await import("../embed/engine");
         const { store } = await import("../../core/db/index");
-        
+
         const { embedding } = await embedText(query, {});
         const results = await store.searchEmbeddings(embedding, 10);
-        
+
         const entries: MemoryEntry[] = [];
         for (const res of results) {
             const entry = await this.getEntryById(res.path); // res.path stores the memory ID
