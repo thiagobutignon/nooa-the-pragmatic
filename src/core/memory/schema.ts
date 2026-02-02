@@ -1,5 +1,5 @@
-export type MemoryType = "decision" | "fact" | "preference" | "rule" | "gotcha";
-export type MemoryScope = "project" | "user" | "repo" | "command";
+export type MemoryType = "decision" | "fact" | "preference" | "rule" | "gotcha" | "observation";
+export type MemoryScope = "project" | "user" | "repo" | "command" | "session";
 export type MemoryConfidence = "low" | "medium" | "high";
 
 export interface MemoryEntry {

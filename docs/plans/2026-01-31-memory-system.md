@@ -29,14 +29,14 @@ Memory is the bridge between sessions, ensuring the agent doesn't "lose its soul
 
 ## 5. Implementation Roadmap
 
-### Phase A: Soul Primitives (🚧 PENDING)
-- [ ] Implement `src/features/identity/` and `nooa init`.
-- [ ] Create high-quality templates for Soul/Identity using the "Golden Standard".
+### Phase A: Soul Primitives (✅ COMPLETED)
+- [x] Implement `src/features/identity/` and `nooa init`.
+- [x] Create high-quality templates for Soul/Identity using the "Golden Standard".
 
 ### Phase B: Memory Logistics (✅ COMPLETED)
 - [x] Implement `nooa memory add/search` with semantic search.
 - [x] Implement `nooa memory summarize` (Memory Flush logic).
-- [ ] *Pending*: Hook up "Auto-Reflection" to run automatically after commands.
+- [x] *Pending*: Hook up "Auto-Reflection" to run automatically after commands.
 
 ### Phase C: Personality Injection (✅ COMPLETED)
 - [x] Update `PromptEngine` to inject `SOUL.md` and `USER.md` as mandatory context.

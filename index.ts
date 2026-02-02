@@ -51,11 +51,7 @@ export async function main(
 		process.env.NOOA_DISABLE_REFLECTION === "1" ||
 		process.env.NODE_ENV === "test" ||
 		process.env.BUN_TEST === "1";
-	const reflector = disableReflection
-		? null
-		: new (
-				await import("./src/core/events/MemoryReflector.js")
-			).MemoryReflector(bus);
+
 
 	// Dynamic Command Registry
 	const { loadCommands } = await import("./src/core/registry.js");
@@ -71,21 +67,29 @@ export async function main(
 		const { logger, createTraceId } = await import("./src/core/logger.js");
 		const traceId = createTraceId();
 
+
 		await logger.runWithContext(
 			{ trace_id: traceId, command: subcommand },
 			async () => {
-				await registeredCmd.execute({
-					args: positionals,
-					values,
-					rawArgs: args,
-					bus,
-				});
+				let result: any;
+				try {
+					result = await registeredCmd.execute({
+						args: positionals,
+						values,
+						rawArgs: args,
+						bus,
+					});
+
+					// Auto-Reflection Hook (Lightweight Observation)
+					if (process.env.NOOA_DISABLE_REFLECTION !== "1") {
+						const { autoReflect } = await import("./src/core/reflection/hook.ts");
+						await autoReflect(subcommand!, args, result);
+					}
+				} catch (e) {
+					throw e;
+				}
 			},
 		);
-
-		if (reflector) {
-			await reflector.flush();
-		}
 		return;
 	}
 
