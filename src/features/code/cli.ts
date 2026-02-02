@@ -3,35 +3,29 @@ import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 
 const codeHelp = `
-Usage: nooa code <write|patch> <path> [flags]
+Usage: nooa code <subcommand> [args] [flags]
 
-Code operations to create, overwrite, or patch files.
+Code operations.
 
-Arguments:
-  <path>              Destination file path.
+Subcommands:
+  write <path>        Create or overwrite a file.
+  patch <path>        Apply a unified diff.
+  diff [path]         Show git diff for path or all.
+  format <path>       Format a file using biome.
+  refactor <path> "instruction"  Refactor a file using AI.
 
 Flags:
-  --from <path>       Read content from a file (otherwise stdin is used).
-  --patch             Apply a unified diff from stdin.
-  --patch-from <path> Apply a unified diff from a file.
-  --overwrite         Overwrite destination if it exists.
+  --from <path>       Read content from a file (write mode).
+  --overwrite         Overwrite destination if it exists (write mode).
   --json              Output result as JSON.
   --dry-run           Do not write the file.
   -h, --help          Show help message.
 
 Examples:
   nooa code write app.ts --from template.ts
-  nooa code patch styles.css < fix.patch
-  nooa code write config.json --overwrite --json
-
-Exit Codes:
-  0: Success
-  1: Runtime Error (failed execution)
-  2: Validation Error (invalid path or flags)
-
-Notes:
-  - --patch/--patch-from cannot be combined with --from.
-  - Subcommand 'patch' implies --patch.
+  nooa code diff src/
+  nooa code format src/index.ts
+  nooa code refactor src/utils.ts "rename process to handler"
 `;
 
 const codeCommand: Command = {
@@ -66,6 +60,43 @@ const codeCommand: Command = {
 			console.log(codeHelp);
 			return;
 		}
+
+		if (action === "diff") {
+			const { executeDiff } = await import("./diff");
+			const path = positionals[2];
+			const diff = await executeDiff(path);
+			console.log(diff);
+			return;
+		}
+
+		if (action === "format") {
+			const { executeFormat } = await import("./format");
+			const path = positionals[2];
+			if (!path) {
+				console.error("Error: Path required for format.");
+				process.exitCode = 2;
+				return;
+			}
+			const result = await executeFormat(path);
+			console.log(result);
+			return;
+		}
+
+		if (action === "refactor") {
+			const { executeRefactor } = await import("./refactor");
+			const path = positionals[2];
+			const instructions = positionals[3];
+			if (!path || !instructions) {
+				console.error("Error: Path and instructions required for refactor.");
+				process.exitCode = 2;
+				return;
+			}
+			const result = await executeRefactor(path, instructions);
+			console.log(result);
+			return;
+		}
+		// The extra `}` was here, closing the `execute` function prematurely.
+		// It has been removed.
 
 		if (action === "write" || action === "patch") {
 			const targetPath = positionals[2];
