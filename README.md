@@ -52,4 +52,4 @@ gh auth login
 
 ---
 
-**NOOA v1.2** — *Engineering with Soul.*
+**NOOA v1.3** — *Engineering with Soul.*
