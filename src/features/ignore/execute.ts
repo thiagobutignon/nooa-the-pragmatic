@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
+import picomatch from "picomatch";
 
 export async function loadIgnore(
 	cwd: string = process.cwd(),
@@ -46,4 +47,44 @@ export async function removePattern(
 		return true;
 	}
 	return false;
+}
+
+function toIgnorePath(value: string, cwd: string) {
+	const absolute = resolve(cwd, value || ".");
+	let relativePath = relative(cwd, absolute);
+	if (relativePath === "") {
+		relativePath = ".";
+	}
+	return relativePath.split(sep).join("/");
+}
+
+export async function checkPathIgnored(
+	path: string,
+	cwd: string = process.cwd(),
+) {
+	const patterns = await loadIgnore(cwd);
+	if (patterns.length === 0) {
+		return { ignored: false as const };
+	}
+
+	const normalizedPath = toIgnorePath(path, cwd);
+
+	for (const pattern of patterns) {
+		const matches = picomatch(pattern, { dot: true })(normalizedPath);
+		if (matches) {
+			return { ignored: true as const, pattern };
+		}
+	}
+
+	return { ignored: false as const };
+}
+
+export function matchesPattern(
+	pattern: string,
+	value: string,
+	cwd: string = process.cwd(),
+) {
+	const normalized = toIgnorePath(value, cwd);
+	if (!pattern.trim()) return false;
+	return picomatch(pattern, { dot: true })(normalized);
 }

@@ -30,6 +30,7 @@
 	"dependencies": {
 		"js-yaml": "^4.1.1",
 		"marked": "^17.0.1",
+		"picomatch": "^4.0.3",
 		"shell-quote": "^1.8.3"
 	}
 }

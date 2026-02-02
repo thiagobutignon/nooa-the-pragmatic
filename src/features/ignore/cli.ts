@@ -1,25 +1,35 @@
 import { parseArgs } from "node:util";
 import type { Command, CommandContext } from "../../core/command";
-import { addPattern, loadIgnore, removePattern } from "./execute";
+import {
+	addPattern,
+	checkPathIgnored,
+	loadIgnore,
+	matchesPattern,
+	removePattern,
+} from "./execute";
 
 const ignoreHelp = `
-Usage: nooa ignore <command> [pattern] [flags]
+Usage: nooa ignore <command> [pattern] [paths...] [flags]
 
 Manage .nooa-ignore patterns for policy audits.
 
 Commands:
-  add <pattern>    Add a new pattern to the ignore list.
-  remove <pattern> Remove a pattern from the ignore list.
-  list             Display all current ignore patterns.
+  add <pattern>        Add a new pattern to the ignore list.
+  remove <pattern>     Remove a pattern from the ignore list.
+  list                 Display all current ignore patterns.
+  check <path>         Check whether <path> is ignored by the current list.
+  test <pattern> [path...]
+                       Test a pattern locally against sample paths.
 
 Flags:
-  --json           Output results as JSON.
-  -h, --help       Show help message.
+  --json               Output results as JSON.
+  -h, --help           Show help message.
 
 Examples:
   nooa ignore add secret.ts
-  nooa ignore remove temp/
   nooa ignore list
+  nooa ignore check logs/app.log
+  nooa ignore test "logs/*.log" logs/app.log README.md
 `;
 
 const ignoreCommand: Command = {
@@ -44,9 +54,10 @@ const ignoreCommand: Command = {
 		// positionals[0] is 'ignore', so subcommands are at [1]
 		const cmdIndex = positionals.indexOf("ignore");
 		const subcommand = positionals[cmdIndex + 1];
-		const pattern = positionals[cmdIndex + 2];
+		const args = positionals.slice(cmdIndex + 2);
 
 		if (subcommand === "add") {
+			const [pattern] = args;
 			if (!pattern) {
 				console.error("Error: Pattern is required for 'add'.");
 				process.exitCode = 2;
@@ -65,6 +76,7 @@ const ignoreCommand: Command = {
 				);
 			}
 		} else if (subcommand === "remove") {
+			const [pattern] = args;
 			if (!pattern) {
 				console.error("Error: Pattern is required for 'remove'.");
 				process.exitCode = 2;
@@ -99,6 +111,64 @@ const ignoreCommand: Command = {
 					for (const p of patterns) console.log(`  - ${p}`);
 				}
 			}
+		} else if (subcommand === "check") {
+			const [target] = args;
+			if (!target) {
+				console.error("Error: Path is required for 'check'.");
+				process.exitCode = 2;
+				return;
+			}
+			const result = await checkPathIgnored(target);
+			if (values.json) {
+				console.log(
+					JSON.stringify({
+						ok: result.ignored,
+						action: "check",
+						path: target,
+						ignored: result.ignored,
+						pattern: result.pattern ?? null,
+					}),
+				);
+			} else if (result.ignored) {
+				console.log(`✅ ${target} is ignored by ${result.pattern}`);
+			} else {
+				console.log(`❌ ${target} is not ignored by any pattern.`);
+			}
+			process.exitCode = result.ignored ? 0 : 1;
+			return;
+		} else if (subcommand === "test") {
+			const [pattern, ...samples] = args;
+			if (!pattern) {
+				console.error("Error: Pattern is required for 'test'.");
+				process.exitCode = 2;
+				return;
+			}
+			const samplePaths = samples.length ? samples : ["."];
+			const results = samplePaths.map((sample) => ({
+				path: sample,
+				matches: matchesPattern(pattern, sample),
+			}));
+			const matched = results.some((item) => item.matches);
+			if (values.json) {
+				console.log(
+					JSON.stringify({
+						ok: matched,
+						action: "test",
+						pattern,
+						results,
+					}),
+				);
+			} else {
+				console.log(`Testing pattern: ${pattern}`);
+				for (const result of results) {
+					console.log(`${result.matches ? "✅" : "❌"} ${result.path}`);
+				}
+				if (!matched) {
+					console.log(`No matches for pattern '${pattern}'.`);
+				}
+			}
+			process.exitCode = matched ? 0 : 2;
+			return;
 		} else {
 			console.error(`Error: Unknown subcommand '${subcommand}'.`);
 			console.log(ignoreHelp);
