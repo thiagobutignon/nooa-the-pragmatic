@@ -1,10 +1,10 @@
+import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
-import { Database } from "bun:sqlite";
 import { Registry } from "../../core/mcp/Registry";
-import { createTempMcpDb, seedMockServer } from "./test-utils";
-import { enableCommand } from "./enable";
 import { disableCommand } from "./disable";
+import { enableCommand } from "./enable";
+import { createTempMcpDb, seedMockServer } from "./test-utils";
 
 async function withDbPath(fn: (dbPath: string) => Promise<void>) {
 	const { dir, dbPath } = await createTempMcpDb();

@@ -10,8 +10,8 @@ import {
 	OllamaProvider,
 	OpenAiProvider,
 } from "../ai/providers/mod";
-import { PromptEngine } from "../prompt/engine";
 import { getGoal } from "../goal/execute";
+import { PromptEngine } from "../prompt/engine";
 
 export interface ReviewFinding {
 	severity: "low" | "medium" | "high";
@@ -108,7 +108,7 @@ export async function executeReview(
 		project_conventions:
 			"- Preferred: Dynamic imports for filesystem/process heavy modules to keep startup fast.\n- Preferred: Telemetry for all user-facing command results.",
 		input: input,
-		goal: await getGoal() || "No specific goal set.",
+		goal: (await getGoal()) || "No specific goal set.",
 	});
 
 	// 3. Call AI

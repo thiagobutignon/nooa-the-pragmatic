@@ -22,11 +22,7 @@ test("nooa mcp resource reads a resource URI", async () => {
 	try {
 		await seedMockServer(dbPath);
 		const { exitCode, output } = await captureLog(() =>
-			resourceCommand([
-				"mock",
-				"file:///workspace/README.md",
-				"--json",
-			]),
+			resourceCommand(["mock", "file:///workspace/README.md", "--json"]),
 		);
 		expect(exitCode).toBe(0);
 		const result = JSON.parse(output);

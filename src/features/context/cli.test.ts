@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { describe, expect, test, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -51,13 +51,7 @@ describe("context CLI", () => {
 		const env = { ...baseEnv, NOOA_DB_PATH: mockDbPath };
 		const { stdout, exitCode } = await execa(
 			bunPath,
-			[
-				"index.ts",
-				"context",
-				"src/core/logger.ts",
-				"--json",
-				"--include-mcp",
-			],
+			["index.ts", "context", "src/core/logger.ts", "--json", "--include-mcp"],
 			{ env, cwd: repoRoot, timeout: 10000 },
 		);
 		expect(exitCode).toBe(0);

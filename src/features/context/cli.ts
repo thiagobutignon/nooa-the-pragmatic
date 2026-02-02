@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
-import { parseArgs } from "node:util";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { parseArgs } from "node:util";
 import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
 import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";

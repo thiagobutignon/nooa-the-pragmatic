@@ -1,10 +1,10 @@
+import { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
-import { Database } from "bun:sqlite";
-import { repoRoot } from "../../test-utils/cli-env";
 import { Registry } from "../../core/mcp/Registry";
+import { repoRoot } from "../../test-utils/cli-env";
 
 export async function createTempMcpDb() {
 	const dir = await mkdtemp(join(tmpdir(), "nooa-mcp-"));

@@ -17,9 +17,7 @@ async function captureJsonLog(fn: () => Promise<number>) {
 	}
 }
 
-async function withDbPath(
-	fn: (dbPath: string) => Promise<void>,
-) {
+async function withDbPath(fn: (dbPath: string) => Promise<void>) {
 	const { dir, dbPath } = await createTempMcpDb();
 	const previous = process.env.NOOA_DB_PATH;
 	process.env.NOOA_DB_PATH = dbPath;
