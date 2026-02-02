@@ -1,8 +1,10 @@
 import { parseArgs } from "node:util";
-import { executeDoctorCheck } from "./execute";
+import type { Command, CommandContext } from "../../core/command";
+import type { EventBus } from "../../core/event-bus";
 import { logger } from "../../core/logger";
+import { executeDoctorCheck } from "./execute";
 
-export async function doctorCli(args: string[], bus?: any) {
+export async function doctorCli(args: string[], bus?: EventBus) {
 	const { values } = parseArgs({
 		args,
 		options: {
@@ -89,16 +91,19 @@ Exit Codes:
 		}
 
 		process.exitCode = result.ok ? 0 : 1;
-	} catch (e) {
-		logger.error("doctor.error", e as Error);
+	} catch (error) {
+		logger.error(
+			"doctor.error",
+			error instanceof Error ? error : new Error(String(error)),
+		);
 		process.exitCode = 1;
 	}
 }
 
-const doctorCommand = {
+const doctorCommand: Command = {
 	name: "doctor",
 	description: "Check environment health",
-	async execute({ rawArgs, bus }: any) {
+	async execute({ rawArgs, bus }: CommandContext) {
 		const index = rawArgs.indexOf("doctor");
 		await doctorCli(rawArgs.slice(index + 1), bus);
 	},

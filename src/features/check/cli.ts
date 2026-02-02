@@ -2,6 +2,7 @@ import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { execa } from "execa";
+import type { Command, CommandContext } from "../../core/command";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 
 export async function checkCli(args: string[]) {
@@ -98,10 +99,10 @@ async function growFileList(path: string): Promise<string[]> {
 	return files;
 }
 
-const checkCommand = {
+const checkCommand: Command = {
 	name: "check",
 	description: "Audit code against project policies (Zero-Preguiça)",
-	async execute({ rawArgs }: any) {
+	async execute({ rawArgs }: CommandContext) {
 		const index = rawArgs.indexOf("check");
 		await checkCli(rawArgs.slice(index + 1));
 	},

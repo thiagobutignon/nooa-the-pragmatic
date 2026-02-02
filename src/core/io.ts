@@ -15,10 +15,68 @@ export async function getStdinText(): Promise<string> {
 
 	// If not in TTY, read the stream
 	if (!process.stdin.isTTY) {
+		type StdinLike = NodeJS.ReadableStream & {
+			on?: (event: string, listener: (...args: unknown[]) => void) => void;
+			off?: (event: string, listener: (...args: unknown[]) => void) => void;
+			[Symbol.asyncIterator]?: () => AsyncIterableIterator<unknown>;
+		};
+
+		const stdin = process.stdin as StdinLike;
+		if (typeof stdin.on !== "function" && stdin[Symbol.asyncIterator]) {
+			let data = "";
+			try {
+				const iterable = stdin as AsyncIterable<Uint8Array | string>;
+				for await (const chunk of iterable) {
+					data += chunk.toString();
+				}
+				const trimmed = data.trim();
+				stdinStorage.enterWith(trimmed);
+				return trimmed;
+			} catch (_e) {
+				return "";
+			}
+		}
 		try {
-			const text = await new Response(process.stdin as any).text();
-			return text.trim();
-		} catch (e) {
+			const text = await new Promise<string>((resolve) => {
+				let data = "";
+				let settled = false;
+				const timer = setTimeout(() => {
+					if (settled) return;
+					settled = true;
+					cleanup();
+					resolve("");
+				}, 200);
+
+				const onData = (chunk: Buffer | string) => {
+					data += chunk.toString();
+				};
+				const onEnd = () => {
+					if (settled) return;
+					settled = true;
+					cleanup();
+					resolve(data.trim());
+				};
+				const onError = () => {
+					if (settled) return;
+					settled = true;
+					cleanup();
+					resolve("");
+				};
+				const cleanup = () => {
+					clearTimeout(timer);
+					stdin.off?.("data", onData);
+					stdin.off?.("end", onEnd);
+					stdin.off?.("error", onError);
+				};
+
+				stdin.on?.("data", onData);
+				stdin.on?.("end", onEnd);
+				stdin.on?.("error", onError);
+			});
+
+			stdinStorage.enterWith(text);
+			return text;
+		} catch (_e) {
 			return "";
 		}
 	}

@@ -28,9 +28,9 @@ const readCommand: Command = {
 	name: "read",
 	description: "Read file contents",
 	options: {}, // No specific flags other than global help/json
-	execute: async ({ rawArgs, values: globalValues, bus }: CommandContext) => {
+	execute: async ({ rawArgs, values: _globalValues, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				...readCommand.options,
@@ -39,7 +39,9 @@ const readCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as { help?: boolean; json?: boolean };
+		const positionals = parsed.positionals as string[];
 
 		const { getStdinText } = await import("../../core/io");
 

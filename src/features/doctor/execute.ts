@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 
@@ -26,13 +27,18 @@ async function checkTool(cmd: string, args: string[]): Promise<ToolCheck> {
 		}
 
 		const { stdout } = await execa(cmd, args, { timeout: 3000 });
-		return { available: true, version: stdout.trim().split("\n")[0] || "Found" };
-	} catch (e) {
+		return {
+			available: true,
+			version: stdout.trim().split("\n")[0] || "Found",
+		};
+	} catch (_e) {
 		return { available: false };
 	}
 }
 
-export async function executeDoctorCheck(bus?: any): Promise<DoctorResult> {
+export async function executeDoctorCheck(
+	bus?: EventBus,
+): Promise<DoctorResult> {
 	const traceId = createTraceId();
 	const startTime = Date.now();
 

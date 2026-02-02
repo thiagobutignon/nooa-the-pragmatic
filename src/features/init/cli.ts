@@ -1,9 +1,11 @@
 import * as readline from "node:readline/promises";
 import { parseArgs } from "node:util";
+import type { Command, CommandContext } from "../../core/command";
+import type { EventBus } from "../../core/event-bus";
 import { logger } from "../../core/logger";
 import { executeInit } from "./execute";
 
-export async function initCli(args: string[], bus?: any) {
+export async function initCli(args: string[], bus?: EventBus) {
 	const { values } = parseArgs({
 		args,
 		options: {
@@ -113,25 +115,30 @@ Examples:
 		} else {
 			console.log(`\n✅ Init success (${traceId})`);
 			console.log(`Initialized agent: ${name} (${vibe})`);
-			results.forEach((f) => console.log(`  - ${f}`));
+			results.forEach((f) => {
+				console.log(`  - ${f}`);
+			});
 		}
-	} catch (e) {
-		const err = e as Error;
-		if (err.message.includes("already exists")) {
-			console.error(`❌ Validation Error: ${err.message}`);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		if (message.includes("already exists")) {
+			console.error(`❌ Validation Error: ${message}`);
 			process.exitCode = 2;
 		} else {
-			logger.error("init.error", err);
-			console.error(`❌ Runtime Error: ${err.message}`);
+			logger.error(
+				"init.error",
+				error instanceof Error ? error : new Error(message),
+			);
+			console.error(`❌ Runtime Error: ${message}`);
 			process.exitCode = 1;
 		}
 	}
 }
 
-const initCommand = {
+const initCommand: Command = {
 	name: "init",
 	description: "Initialize NOOA's Agentic Soul and Identity",
-	async execute({ rawArgs, bus }: any) {
+	async execute({ rawArgs, bus }: CommandContext) {
 		const index = rawArgs.indexOf("init");
 		await initCli(rawArgs.slice(index + 1), bus);
 	},

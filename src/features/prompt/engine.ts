@@ -10,7 +10,7 @@ export interface PromptMetadata {
 	description: string;
 	output?: "json" | "markdown";
 	temperature?: number;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export interface Prompt {
@@ -74,7 +74,7 @@ export class PromptEngine {
 
 	async renderPrompt(
 		prompt: Prompt,
-		vars: Record<string, any>,
+		vars: Record<string, unknown>,
 		options?: { injectedContext?: string; skipAgentContext?: boolean },
 	): Promise<string> {
 		let rendered = prompt.body;
@@ -87,7 +87,8 @@ export class PromptEngine {
 
 		// Append specifically injected context
 		if (options?.injectedContext) {
-			combinedContext += (combinedContext ? "\n\n---\n\n" : "") + options.injectedContext;
+			combinedContext +=
+				(combinedContext ? "\n\n---\n\n" : "") + options.injectedContext;
 		}
 
 		if (combinedContext) {

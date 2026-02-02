@@ -17,6 +17,9 @@ Subcommands:
 Flags:
   --from <path>       Read content from a file (write mode).
   --overwrite         Overwrite destination if it exists (write mode).
+  --patch             Read unified diff from stdin (patch mode).
+  --patch-from <path> Read unified diff from a file (patch mode).
+  --patch/--patch-from cannot be combined with --from.
   --json              Output result as JSON.
   --dry-run           Do not write the file.
   -h, --help          Show help message.
@@ -38,9 +41,9 @@ const codeCommand: Command = {
 		patch: { type: "boolean" },
 		"patch-from": { type: "string" },
 	},
-	execute: async ({ rawArgs, values: globalValues, bus }: CommandContext) => {
+	execute: async ({ rawArgs, values: _globalValues, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				...codeCommand.options,
@@ -49,7 +52,17 @@ const codeCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as {
+			from?: string;
+			overwrite?: boolean;
+			"dry-run"?: boolean;
+			patch?: boolean;
+			"patch-from"?: string;
+			json?: boolean;
+			help?: boolean;
+		};
+		const positionals = parsed.positionals as string[];
 
 		const { getStdinText } = await import("../../core/io");
 		const action = positionals[1];

@@ -39,8 +39,9 @@ async function ensureMissing(path: string) {
 	try {
 		await access(path);
 		throw new Error(`Prompt already exists: ${path}`);
-	} catch (error: any) {
-		if (error?.code !== "ENOENT") throw error;
+	} catch (error) {
+		const err = error as { code?: string };
+		if (err.code !== "ENOENT") throw error;
 	}
 }
 
@@ -49,7 +50,7 @@ export async function createPrompt(args: CreatePromptArgs) {
 	const path = promptPath(args.templatesDir, args.name);
 	await ensureMissing(path);
 
-	const metadata: Record<string, any> = {
+	const metadata: Record<string, unknown> = {
 		name: args.name,
 		version: "1.0.0",
 		description: args.description,
@@ -72,8 +73,9 @@ export async function deletePrompt(args: DeletePromptArgs) {
 	const path = promptPath(args.templatesDir, args.name);
 	try {
 		await rm(path);
-	} catch (error: any) {
-		if (error?.code === "ENOENT") {
+	} catch (error) {
+		const err = error as { code?: string };
+		if (err.code === "ENOENT") {
 			throw new Error(`Prompt not found: ${args.name}`);
 		}
 		throw error;
@@ -105,8 +107,9 @@ async function updateChangelog(args: {
 	let existing = "";
 	try {
 		existing = await readFile(args.changelogPath, "utf8");
-	} catch (error: any) {
-		if (error?.code !== "ENOENT") throw error;
+	} catch (error) {
+		const err = error as { code?: string };
+		if (err.code !== "ENOENT") throw error;
 	}
 
 	const date = new Date().toISOString().slice(0, 10);
@@ -135,9 +138,11 @@ async function updateChangelog(args: {
 	const updatedSection = sectionBody.includes(`### v${args.version}`)
 		? sectionBody
 		: `${entry}\n${sectionBody}`;
-	const finalSection = args.previousVersion && !updatedSection.includes(`### v${args.previousVersion}`)
-		? `${updatedSection.trimEnd()}\n\n${previousEntry}`
-		: updatedSection;
+	const finalSection =
+		args.previousVersion &&
+		!updatedSection.includes(`### v${args.previousVersion}`)
+			? `${updatedSection.trimEnd()}\n\n${previousEntry}`
+			: updatedSection;
 	const updated = `${before}${sectionHeader}\n${finalSection}`;
 	await writeFile(args.changelogPath, updated);
 }

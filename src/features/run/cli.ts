@@ -32,7 +32,6 @@ const runCommand: Command = {
 		// rawArgs contains the subcommand name as the first element (e.g. "run").
 		// Strip it before parsing flags and args.
 		const args = rawArgs.slice(1);
-		const { parseArgs } = await import("node:util");
 		const { randomUUID } = await import("node:crypto");
 
 		const { flags, rest } = extractFlags(args);
@@ -99,18 +98,17 @@ const runCommand: Command = {
 	},
 };
 
-function extractFlags(args: string[]): {
-	flags: {
-		help?: boolean;
-		json?: boolean;
-		captureOutput?: boolean;
-		continueOnError?: boolean;
-		allowExternal?: boolean;
-		dryRun?: boolean;
-	};
-	rest: string[];
-} {
-	const flags: any = {};
+type RunFlags = {
+	help?: boolean;
+	json?: boolean;
+	captureOutput?: boolean;
+	continueOnError?: boolean;
+	allowExternal?: boolean;
+	dryRun?: boolean;
+};
+
+function extractFlags(args: string[]): { flags: RunFlags; rest: string[] } {
+	const flags: RunFlags = {};
 	const rest: string[] = [];
 	let parsingFlags = true;
 

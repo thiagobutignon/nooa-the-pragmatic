@@ -1,9 +1,9 @@
 import type {
-    AiEmbeddingRequest,
-    AiEmbeddingResponse,
-    AiProvider,
-    AiRequest,
-    AiResponse,
+	AiEmbeddingRequest,
+	AiEmbeddingResponse,
+	AiProvider,
+	AiRequest,
+	AiResponse,
 } from "../types";
 
 export class OllamaProvider implements AiProvider {

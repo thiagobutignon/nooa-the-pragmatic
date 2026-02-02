@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { execa } from "execa";
 import { dirname, join } from "node:path";
+import { execa } from "execa";
 
 export interface ContextResult {
 	target: string;
@@ -55,7 +55,7 @@ export async function buildContext(target: string): Promise<ContextResult> {
 	// Find related files (imports) - basic heuristic
 	const importMatches = content.match(/from ["']\.\/([^"']+)["']/g) || [];
 	const related = importMatches.map((m) =>
-		join(dir, m.replace(/from ["']\.\//, "").replace(/["']/, "") + ".ts"),
+		join(dir, `${m.replace(/from ["']\.\//, "").replace(/["']/, "")}.ts`),
 	);
 
 	// Find test files
@@ -63,9 +63,13 @@ export async function buildContext(target: string): Promise<ContextResult> {
 	const tests = [testPath];
 
 	// Recent commits
-	const { stdout } = await execa("git", ["log", "--oneline", "-5", "--", filePath], {
-		reject: false,
-	});
+	const { stdout } = await execa(
+		"git",
+		["log", "--oneline", "-5", "--", filePath],
+		{
+			reject: false,
+		},
+	);
 	const recentCommits = stdout.split("\n").filter(Boolean);
 
 	// Extract symbols in the file (top-level only)

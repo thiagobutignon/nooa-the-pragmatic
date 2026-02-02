@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const run = (args: string[], input?: string) =>
-	execa("bun", ["index.ts", ...args], { reject: false, input });
+	execa(bunPath, ["index.ts", ...args], {
+		reject: false,
+		input,
+		env: baseEnv,
+		cwd: repoRoot,
+	});
 
 const OUT = "tmp-patch.txt";
 

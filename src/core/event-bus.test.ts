@@ -13,7 +13,7 @@ describe("EventBus", () => {
 	test("unsubscribes from events", () => {
 		const bus = new EventBus();
 		const events: string[] = [];
-		const handler = (payload: any) => events.push(payload.id);
+		const handler = (payload: { id: string }) => events.push(payload.id);
 
 		bus.on("test", handler);
 		bus.emit("test", { id: "1" });

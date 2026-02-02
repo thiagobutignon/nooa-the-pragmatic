@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { TelemetryEvent } from "../src/core/telemetry";
 import { executeInit } from "../src/features/init/execute";
 import { MemoryEngine } from "../src/features/memory/engine";
 import { InjectionEngine } from "../src/features/prompt/injection";
@@ -8,15 +9,30 @@ import { InjectionEngine } from "../src/features/prompt/injection";
 const TEST_ROOT = join(process.cwd(), "tmp-test-root");
 
 describe("NOOA Contract Tests", () => {
+	let originalSearchEngine: string | undefined;
+	let originalAiProvider: string | undefined;
+
 	beforeEach(async () => {
 		await rm(TEST_ROOT, { recursive: true, force: true });
 		await mkdir(TEST_ROOT, { recursive: true });
+		originalSearchEngine = process.env.NOOA_SEARCH_ENGINE;
+		originalAiProvider = process.env.NOOA_AI_PROVIDER;
 		process.env.NOOA_SEARCH_ENGINE = "native";
 		process.env.NOOA_AI_PROVIDER = "mock";
 	});
 
 	afterEach(async () => {
 		await rm(TEST_ROOT, { recursive: true, force: true });
+		if (originalSearchEngine === undefined) {
+			delete process.env.NOOA_SEARCH_ENGINE;
+		} else {
+			process.env.NOOA_SEARCH_ENGINE = originalSearchEngine;
+		}
+		if (originalAiProvider === undefined) {
+			delete process.env.NOOA_AI_PROVIDER;
+		} else {
+			process.env.NOOA_AI_PROVIDER = originalAiProvider;
+		}
 	});
 
 	describe("Init Contract", () => {
@@ -24,8 +40,7 @@ describe("NOOA Contract Tests", () => {
 			const { results } = await executeInit({
 				root: TEST_ROOT,
 				name: "TEST_BOT",
-				nonInteractive: true,
-			} as any);
+			});
 
 			expect(results.length).toBeGreaterThan(0);
 			const soulContent = await readFile(
@@ -37,7 +52,7 @@ describe("NOOA Contract Tests", () => {
 
 		it("should fail if .nooa already exists without --force", async () => {
 			await mkdir(join(TEST_ROOT, ".nooa"), { recursive: true });
-			expect(executeInit({ root: TEST_ROOT } as any)).rejects.toThrow(
+			expect(executeInit({ root: TEST_ROOT })).rejects.toThrow(
 				"already exists",
 			);
 		});
@@ -47,7 +62,7 @@ describe("NOOA Contract Tests", () => {
 			const { results } = await executeInit({
 				root: TEST_ROOT,
 				force: true,
-			} as any);
+			});
 			expect(results.length).toBeGreaterThan(0);
 		});
 	});
@@ -80,7 +95,7 @@ describe("NOOA Contract Tests", () => {
 
 			const engine = new InjectionEngine({
 				root: TEST_ROOT,
-				budgets: { constitution: 100 } as any,
+				budgets: { constitution: 100 },
 			});
 
 			const { meta } = await engine.getInjectedContext();
@@ -138,11 +153,12 @@ describe("NOOA Contract Tests", () => {
 			const reflector = new Reflector(engine);
 
 			// Non-material event
-			await reflector.reflect({
+			const event: TelemetryEvent = {
 				event: "search.query",
 				level: "info",
 				success: true,
-			} as any);
+			};
+			await reflector.reflect(event);
 
 			const results = await engine.search("Session Reflection");
 			expect(results.length).toBe(0);
@@ -153,12 +169,13 @@ describe("NOOA Contract Tests", () => {
 			const engine = new MemoryEngine(TEST_ROOT);
 			const reflector = new Reflector(engine);
 
-			await reflector.reflect({
+			const event: TelemetryEvent = {
 				event: "commit.success",
 				level: "info",
 				success: true,
 				trace_id: "t-1",
-			} as any);
+			};
+			await reflector.reflect(event);
 
 			const results = await engine.search("Session Reflection");
 			expect(results.length).toBe(1);
@@ -173,11 +190,12 @@ describe("NOOA Contract Tests", () => {
 			const reflector = new Reflector(engine);
 
 			for (let i = 0; i < 5; i++) {
-				await reflector.reflect({
+				const event: TelemetryEvent = {
 					event: "commit.success",
 					level: "info",
 					success: true,
-				} as any);
+				};
+				await reflector.reflect(event);
 			}
 
 			const results = await engine.search("Session Reflection");

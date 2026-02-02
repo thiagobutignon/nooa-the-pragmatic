@@ -1,8 +1,9 @@
-import { test, expect } from "bun:test";
-import { execa } from "execa";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { expect, test } from "bun:test";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = join(process.cwd(), "index.ts");
 
@@ -14,7 +15,11 @@ async function setupPromptRoot() {
 }
 
 test("nooa prompt --help lists new subcommands", async () => {
-	const res = await execa("bun", [binPath, "prompt", "--help"], { reject: false });
+	const res = await execa(bunPath, [binPath, "prompt", "--help"], {
+		reject: false,
+		env: baseEnv,
+		cwd: repoRoot,
+	});
 	expect(res.exitCode).toBe(0);
 	expect(res.stdout).toContain("create");
 	expect(res.stdout).toContain("edit");
@@ -26,9 +31,18 @@ test("nooa prompt create writes a new prompt", async () => {
 	const { root, templatesDir } = await setupPromptRoot();
 	try {
 		const res = await execa(
-			"bun",
-			[binPath, "prompt", "create", "alpha", "--description", "Alpha", "--body", "Hello"],
-			{ cwd: root, reject: false },
+			bunPath,
+			[
+				binPath,
+				"prompt",
+				"create",
+				"alpha",
+				"--description",
+				"Alpha",
+				"--body",
+				"Hello",
+			],
+			{ cwd: root, reject: false, env: baseEnv },
 		);
 		expect(res.exitCode).toBe(0);
 		const content = await readFile(join(templatesDir, "alpha.md"), "utf8");
@@ -58,9 +72,9 @@ test("nooa prompt edit applies patch from stdin", async () => {
 		await writeFile(join(templatesDir, "beta.md"), initial);
 		const patch = "@@ -8,1 +8,1 @@\n-Hello\n+Hello world\n";
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "prompt", "edit", "beta", "--patch"],
-			{ cwd: root, reject: false, input: patch },
+			{ cwd: root, reject: false, input: patch, env: baseEnv },
 		);
 		expect(res.exitCode).toBe(0);
 		const updated = await readFile(join(templatesDir, "beta.md"), "utf8");
@@ -76,12 +90,15 @@ test("nooa prompt delete removes prompt file", async () => {
 
 	try {
 		await writeFile(join(templatesDir, "gamma.md"), initial);
-		const res = await execa("bun", [binPath, "prompt", "delete", "gamma"], {
+		const res = await execa(bunPath, [binPath, "prompt", "delete", "gamma"], {
 			cwd: root,
 			reject: false,
+			env: baseEnv,
 		});
 		expect(res.exitCode).toBe(0);
-		await expect(readFile(join(templatesDir, "gamma.md"), "utf8")).rejects.toThrow();
+		await expect(
+			readFile(join(templatesDir, "gamma.md"), "utf8"),
+		).rejects.toThrow();
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
@@ -104,14 +121,26 @@ test("nooa prompt publish bumps version and updates changelog", async () => {
 	try {
 		await writeFile(join(templatesDir, "delta.md"), initial);
 		const res = await execa(
-			"bun",
-			[binPath, "prompt", "publish", "delta", "--level", "patch", "--note", "Initial publish"],
-			{ cwd: root, reject: false },
+			bunPath,
+			[
+				binPath,
+				"prompt",
+				"publish",
+				"delta",
+				"--level",
+				"patch",
+				"--note",
+				"Initial publish",
+			],
+			{ cwd: root, reject: false, env: baseEnv },
 		);
 		expect(res.exitCode).toBe(0);
 		const updated = await readFile(join(templatesDir, "delta.md"), "utf8");
 		expect(updated).toContain("version: 1.0.1");
-		const changelog = await readFile(join(root, "src/features/prompt/CHANGELOG.md"), "utf8");
+		const changelog = await readFile(
+			join(root, "src/features/prompt/CHANGELOG.md"),
+			"utf8",
+		);
 		expect(changelog).toContain("### v1.0.1");
 		expect(changelog).toContain("### v1.0.0");
 	} finally {

@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "./src/test-utils/cli-env";
 
 const run = (args: string[]) =>
-	execa("bun", ["index.ts", ...args], { reject: false });
+	execa(bunPath, ["index.ts", ...args], {
+		reject: false,
+		env: baseEnv,
+		cwd: repoRoot,
+	});
 
 describe("nooa root", () => {
 	test("nooa --help shows root usage and subcommands", async () => {

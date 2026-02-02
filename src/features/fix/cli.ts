@@ -1,5 +1,5 @@
-import type { Command, CommandContext } from "../../core/command";
 import { parseArgs } from "node:util";
+import type { Command, CommandContext } from "../../core/command";
 import { runFix } from "./execute";
 
 const fixHelp = `
@@ -60,10 +60,18 @@ const fixCommand: Command = {
 			console.log(JSON.stringify(result, null, 2));
 		} else {
 			const { stages } = result;
-			console.log(stages.worktree ? "✅ Worktree created" : "❌ Worktree failed");
-			console.log(stages.context ? "✅ Context built (Semantic)" : "❌ Context failed");
+			console.log(
+				stages.worktree ? "✅ Worktree created" : "❌ Worktree failed",
+			);
+			console.log(
+				stages.context ? "✅ Context built (Semantic)" : "❌ Context failed",
+			);
 			console.log(stages.patch ? "✅ Patch applied" : "❌ Patch failed");
-			console.log(stages.verify ? "✅ Verification (CI) passed" : "❌ Verification failed");
+			console.log(
+				stages.verify
+					? "✅ Verification (CI) passed"
+					: "❌ Verification failed",
+			);
 			console.log(stages.commit ? "✅ Changes committed" : "❌ Commit skipped");
 
 			if (result.ok) {

@@ -1,17 +1,19 @@
 import { join } from "node:path";
 import { execa } from "execa";
+import type { Command } from "../../core/command";
+import type { EventBus } from "../../core/event-bus";
 import { loadCommands } from "../../core/registry";
 import type {
-    PipelineResult,
-    PipelineStep,
-    RunOptions,
-    StepResult,
+	PipelineResult,
+	PipelineStep,
+	RunOptions,
+	StepResult,
 } from "./types";
 
 export async function executePipeline(
 	steps: PipelineStep[],
 	options: RunOptions,
-	bus: any, // EventBus
+	bus?: EventBus,
 ): Promise<PipelineResult> {
 	const results: StepResult[] = [];
 	let failedStepIndex: number | undefined;
@@ -68,14 +70,19 @@ export async function executePipeline(
 					}
 				}
 			}
-		} catch (error: any) {
-			const exitCode = error.exitCode ?? 1;
+		} catch (error) {
+			const err = error as {
+				exitCode?: number;
+				message?: string;
+				stderr?: string;
+			};
+			const exitCode = err.exitCode ?? 1;
 			results.push({
 				step,
 				exitCode,
 				durationMs: Date.now() - startTime,
-				error: error.message,
-				stderr: error.stderr,
+				error: err.message ?? String(error),
+				stderr: err.stderr,
 			});
 
 			if (!options.continueOnError) {
@@ -94,8 +101,8 @@ export async function executePipeline(
 
 async function executeInternal(
 	step: PipelineStep,
-	command: any, // Command type
-	bus: any,
+	command: Command,
+	bus?: EventBus,
 ) {
 	await command.execute({
 		rawArgs: step.argv, // Include command name to match main() behavior
@@ -109,7 +116,7 @@ async function executeExternal(step: PipelineStep, options: RunOptions) {
 		throw new Error(`Empty external command in step: ${step.original}`);
 	}
 
-	const execOptions: any = {
+	const execOptions: Parameters<typeof execa>[2] = {
 		cwd: options.cwd || process.cwd(),
 		reject: true, // throw on error
 	};

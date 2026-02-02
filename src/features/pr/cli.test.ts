@@ -1,20 +1,29 @@
-import { expect, test, describe, spyOn } from "bun:test";
-import { execa } from "execa";
+import { describe, expect, spyOn, test } from "bun:test";
 import { fileURLToPath } from "node:url";
+import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
 describe("nooa pr", () => {
 	test("pr --help shows usage", async () => {
-		const { stdout } = await execa("bun", [binPath, "pr", "--help"], { reject: false });
+		const { stdout } = await execa(bunPath, [binPath, "pr", "--help"], {
+			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
+		});
 		expect(stdout).toContain("Usage: nooa pr");
 	});
 
 	test("merge requires pr number", async () => {
 		const { stderr, exitCode } = await execa(
-			"bun",
+			bunPath,
 			[binPath, "pr", "merge"],
-			{ reject: false, env: { ...process.env, GITHUB_TOKEN: "test" } },
+			{
+				reject: false,
+				env: { ...baseEnv, GITHUB_TOKEN: "test" },
+				cwd: repoRoot,
+			},
 		);
 		expect(exitCode).toBe(1);
 		expect(stderr).toContain("PR number");
@@ -22,9 +31,13 @@ describe("nooa pr", () => {
 
 	test("close requires pr number", async () => {
 		const { stderr, exitCode } = await execa(
-			"bun",
+			bunPath,
 			[binPath, "pr", "close"],
-			{ reject: false, env: { ...process.env, GITHUB_TOKEN: "test" } },
+			{
+				reject: false,
+				env: { ...baseEnv, GITHUB_TOKEN: "test" },
+				cwd: repoRoot,
+			},
 		);
 		expect(exitCode).toBe(1);
 		expect(stderr).toContain("PR number");
@@ -32,9 +45,13 @@ describe("nooa pr", () => {
 
 	test("comment requires pr number", async () => {
 		const { stderr, exitCode } = await execa(
-			"bun",
+			bunPath,
 			[binPath, "pr", "comment"],
-			{ reject: false, env: { ...process.env, GITHUB_TOKEN: "test" } },
+			{
+				reject: false,
+				env: { ...baseEnv, GITHUB_TOKEN: "test" },
+				cwd: repoRoot,
+			},
 		);
 		expect(exitCode).toBe(1);
 		expect(stderr).toContain("PR number");
@@ -42,9 +59,13 @@ describe("nooa pr", () => {
 
 	test("status requires pr number", async () => {
 		const { stderr, exitCode } = await execa(
-			"bun",
+			bunPath,
 			[binPath, "pr", "status"],
-			{ reject: false, env: { ...process.env, GITHUB_TOKEN: "test" } },
+			{
+				reject: false,
+				env: { ...baseEnv, GITHUB_TOKEN: "test" },
+				cwd: repoRoot,
+			},
 		);
 		expect(exitCode).toBe(1);
 		expect(stderr).toContain("PR number");
@@ -55,9 +76,9 @@ describe("nooa pr", () => {
 		const mergeSpy = spyOn({ ghMergePr }, "ghMergePr");
 
 		const { stderr, exitCode } = await execa(
-			"bun",
+			bunPath,
 			[binPath, "pr", "merge"],
-			{ reject: false },
+			{ reject: false, env: baseEnv, cwd: repoRoot },
 		);
 
 		expect(exitCode).toBe(1);
@@ -70,9 +91,9 @@ describe("nooa pr", () => {
 		const statusSpy = spyOn({ ghStatusPr }, "ghStatusPr");
 
 		const { stderr, exitCode } = await execa(
-			"bun",
+			bunPath,
 			[binPath, "pr", "status"],
-			{ reject: false },
+			{ reject: false, env: baseEnv, cwd: repoRoot },
 		);
 
 		expect(exitCode).toBe(1);

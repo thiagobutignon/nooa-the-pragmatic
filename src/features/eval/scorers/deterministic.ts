@@ -9,7 +9,7 @@ export interface Assertion {
 	property?: string;
 	allowed?: string[];
 	limit?: number;
-	value?: any;
+	value?: unknown;
 }
 
 export interface AssertionResult {
@@ -23,14 +23,18 @@ export class DeterministicScorer {
 		assertions: Assertion[],
 	): { passed: number; total: number; results: AssertionResult[] } {
 		const results: AssertionResult[] = [];
-		let parsedJson: any = null;
+		let parsedJson: Record<string, unknown> | null = null;
 
 		for (const assertion of assertions) {
 			try {
 				if (assertion.type === "is_valid_json") {
 					try {
 						const jsonMatch = output.match(/\{[\s\S]*\}/);
-						parsedJson = JSON.parse(jsonMatch ? jsonMatch[0] : output);
+						const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : output);
+						parsedJson =
+							parsed && typeof parsed === "object"
+								? (parsed as Record<string, unknown>)
+								: null;
 						results.push({ passed: true, message: "Valid JSON" });
 					} catch (e) {
 						results.push({
@@ -50,13 +54,20 @@ export class DeterministicScorer {
 				}
 
 				// Property Access Helper (simple version for findings[].category)
-				const getValues = (obj: any, path?: string): any[] => {
+				const getValues = (
+					obj: Record<string, unknown>,
+					path?: string,
+				): unknown[] => {
 					if (!path) return [obj];
 					if (path.includes("[].")) {
 						const [arrayKey, propKey] = path.split("[].") as [string, string];
 						const arr = obj[arrayKey];
 						if (Array.isArray(arr)) {
-							return arr.map((item) => item[propKey]);
+							return arr.map((item) =>
+								typeof item === "object" && item !== null
+									? (item as Record<string, unknown>)[propKey]
+									: undefined,
+							);
 						}
 						return [];
 					}
@@ -64,17 +75,20 @@ export class DeterministicScorer {
 				};
 
 				switch (assertion.type) {
-					case "has_property":
+					case "has_property": {
+						const hasProperty =
+							Boolean(assertion.property) && assertion.property in parsedJson;
 						results.push({
-							passed: assertion.property! in parsedJson,
-							message: `Property ${assertion.property} exists`,
+							passed: hasProperty,
+							message: `Property ${assertion.property ?? "unknown"} exists`,
 						});
 						break;
+					}
 
 					case "enum_check": {
 						const values = getValues(parsedJson, assertion.property);
 						const invalid = values.filter(
-							(v) => !assertion.allowed?.includes(v),
+							(v) => !assertion.allowed?.includes(String(v)),
 						);
 						results.push({
 							passed: invalid.length === 0,
@@ -104,18 +118,32 @@ export class DeterministicScorer {
 					}
 
 					case "max_count": {
-						const val = parsedJson[assertion.property!];
+						if (!assertion.property || assertion.limit === undefined) {
+							results.push({
+								passed: false,
+								message: "Missing property or limit for max_count",
+							});
+							break;
+						}
+						const val = parsedJson[assertion.property];
 						const count = Array.isArray(val) ? val.length : 0;
 						results.push({
-							passed: count <= assertion.limit!,
+							passed: count <= assertion.limit,
 							message: `Count of ${assertion.property} is ${count} (limit: ${assertion.limit})`,
 						});
 						break;
 					}
 
 					case "property_equals": {
+						if (!assertion.property) {
+							results.push({
+								passed: false,
+								message: "Missing property for property_equals",
+							});
+							break;
+						}
 						results.push({
-							passed: parsedJson[assertion.property!] === assertion.value,
+							passed: parsedJson[assertion.property] === assertion.value,
 							message: `Property ${assertion.property} equals expected value`,
 						});
 						break;

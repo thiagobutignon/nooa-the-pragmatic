@@ -1,8 +1,13 @@
-import { test, expect } from "bun:test";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { expect, test } from "bun:test";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { createPrompt, editPrompt, deletePrompt, publishPrompt } from "./service";
+import { join } from "node:path";
+import {
+	createPrompt,
+	deletePrompt,
+	editPrompt,
+	publishPrompt,
+} from "./service";
 
 test("createPrompt writes a new prompt file with frontmatter and body", async () => {
 	const root = await mkdtemp(join(tmpdir(), "nooa-prompt-"));
@@ -44,7 +49,7 @@ test("editPrompt applies a unified diff patch to a prompt file", async () => {
 		"",
 		"Hello",
 		"",
-		].join("\n");
+	].join("\n");
 
 	try {
 		await writeFile(join(templatesDir, "beta.md"), initial);
@@ -82,7 +87,9 @@ test("deletePrompt removes a prompt file", async () => {
 	try {
 		await writeFile(join(templatesDir, "gamma.md"), initial);
 		await deletePrompt({ templatesDir, name: "gamma" });
-		await expect(readFile(join(templatesDir, "gamma.md"), "utf8")).rejects.toThrow();
+		await expect(
+			readFile(join(templatesDir, "gamma.md"), "utf8"),
+		).rejects.toThrow();
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}

@@ -26,7 +26,7 @@ const embedCommand: Command = {
 		const { parseArgs } = await import("node:util");
 		const { readFile, writeFile } = await import("node:fs/promises");
 		const { randomUUID } = await import("node:crypto");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				model: { type: "string" },
@@ -38,7 +38,16 @@ const embedCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as {
+			model?: string;
+			provider?: string;
+			"include-embedding"?: boolean;
+			out?: string;
+			json?: boolean;
+			help?: boolean;
+		};
+		const positionals = parsed.positionals as string[];
 
 		if (values.help) {
 			console.log(embedHelp);

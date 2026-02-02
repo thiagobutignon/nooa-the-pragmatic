@@ -6,6 +6,7 @@ export interface RenderContext {
 	Command: string;
 	repo_root: string;
 	year: string;
+	camelName?: string;
 }
 
 export class ScaffoldEngine {
@@ -45,7 +46,7 @@ export class ScaffoldEngine {
 		content = content.replace(/{{name}}/g, context.name);
 		content = content.replace(
 			/{{camelName}}/g,
-			(context as any).camelName || context.name,
+			context.camelName || context.name,
 		);
 		content = content.replace(/{{Command}}/g, context.Command);
 		content = content.replace(/{{repo_root}}/g, context.repo_root);

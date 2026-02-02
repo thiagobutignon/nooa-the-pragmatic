@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
@@ -18,7 +19,7 @@ export interface CiResult {
 
 export async function executeCi(
 	_options: CiOptions,
-	bus?: any,
+	bus?: EventBus,
 ): Promise<CiResult> {
 	const traceId = createTraceId();
 	const startTime = Date.now();
@@ -37,7 +38,10 @@ export async function executeCi(
 
 	// 1. Run Tests
 	let testPassed = true;
-	let testResult = { exitCode: 0, stdout: "Skipped via NOOA_SKIP_TEST" } as any;
+	let testResult: { exitCode?: number | null; stdout?: string } = {
+		exitCode: 0,
+		stdout: "Skipped via NOOA_SKIP_TEST",
+	};
 
 	if (!process.env.NOOA_SKIP_TEST) {
 		testResult = await execa("bun", ["test"], {

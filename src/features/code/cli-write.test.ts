@@ -2,9 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const run = (args: string[]) =>
-	execa("bun", ["index.ts", ...args], { reject: false });
+	execa(bunPath, ["index.ts", ...args], {
+		reject: false,
+		env: baseEnv,
+		cwd: repoRoot,
+	});
 
 const OUT = "tmp-cli-write.txt";
 const SRC = "tmp-cli-src.txt";
@@ -18,7 +23,9 @@ describe("nooa code write", () => {
 	test("nooa code write --help shows usage", async () => {
 		const res = await run(["code", "write", "--help"]);
 		expect(res.exitCode).toBe(0);
-		expect(res.stdout).toContain("Usage: nooa code <subcommand> [args] [flags]");
+		expect(res.stdout).toContain(
+			"Usage: nooa code <subcommand> [args] [flags]",
+		);
 		expect(res.stdout).toContain("--from <path>");
 		expect(res.stdout).toContain("--overwrite");
 		expect(res.stdout).toContain("--json");
@@ -49,9 +56,11 @@ describe("nooa code write", () => {
 	});
 
 	test("writes from stdin", async () => {
-		const res = await execa("bun", ["index.ts", "code", "write", OUT], {
+		const res = await execa(bunPath, ["index.ts", "code", "write", OUT], {
 			input: "from-stdin",
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		const text = await readFile(OUT, "utf-8");

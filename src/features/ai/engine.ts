@@ -1,11 +1,11 @@
 import { logger } from "../../core/logger";
 import type {
-    AiEngineOptions,
-    AiProvider,
-    AiRequest,
-    AiResponse,
-    AiEmbeddingRequest,
-    AiEmbeddingResponse,
+	AiEmbeddingRequest,
+	AiEmbeddingResponse,
+	AiEngineOptions,
+	AiProvider,
+	AiRequest,
+	AiResponse,
 } from "./types";
 
 export class AiEngine {
@@ -73,10 +73,7 @@ export class AiEngine {
 				);
 				const fallback = this.providers.get(options.fallbackProvider);
 				if (fallback) {
-					return await this.withRetry(
-						() => fallback.embed(request),
-						options,
-					);
+					return await this.withRetry(() => fallback.embed(request), options);
 				}
 			}
 			throw error;

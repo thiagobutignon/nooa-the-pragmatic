@@ -67,9 +67,9 @@ const searchCommand: Command = {
 		count: { type: "boolean", short: "c" },
 		hidden: { type: "boolean" },
 	},
-	execute: async ({ rawArgs, values: globalValues, bus }: CommandContext) => {
+	execute: async ({ rawArgs, values: _globalValues, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				...searchCommand.options,
@@ -78,7 +78,24 @@ const searchCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as {
+			regex?: boolean;
+			"case-sensitive"?: boolean;
+			"files-only"?: boolean;
+			"max-results"?: string;
+			include?: string[];
+			exclude?: string[];
+			plain?: boolean;
+			"no-color"?: boolean;
+			context?: string;
+			"ignore-case"?: boolean;
+			count?: boolean;
+			hidden?: boolean;
+			json?: boolean;
+			help?: boolean;
+		};
+		const positionals = parsed.positionals as string[];
 
 		if (values.help) {
 			console.log(searchHelp);

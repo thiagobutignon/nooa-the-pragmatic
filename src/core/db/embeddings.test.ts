@@ -1,5 +1,5 @@
-import { expect, test, describe } from "bun:test";
 import { Database } from "bun:sqlite";
+import { describe, expect, test } from "bun:test";
 import { setupEmbeddingsTable } from "./schema/embeddings";
 
 describe("Embeddings Schema", () => {
@@ -18,7 +18,9 @@ describe("Embeddings Schema", () => {
 		expect(result?.name).toBe("embeddings");
 
 		// Check columns
-		const info = db.query("PRAGMA table_info(embeddings)").all() as any[];
+		const info = db.query("PRAGMA table_info(embeddings)").all() as Array<{
+			name: string;
+		}>;
 		const names = info.map((i) => i.name);
 		expect(names).toContain("id");
 		expect(names).toContain("path");

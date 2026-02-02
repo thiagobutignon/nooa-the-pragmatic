@@ -5,13 +5,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
 describe("nooa worktree", () => {
 	it("shows help", async () => {
-		const res = await execa("bun", [binPath, "worktree", "--help"], {
+		const res = await execa(bunPath, [binPath, "worktree", "--help"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa worktree");
@@ -41,10 +44,10 @@ describe("nooa worktree", () => {
 				{ cwd: root },
 			);
 
-			const res = await execa("bun", [binPath, "worktree", "feat/test"], {
+			const res = await execa(bunPath, [binPath, "worktree", "feat/test"], {
 				cwd: root,
 				reject: false,
-				env: { ...process.env, NOOA_SKIP_INSTALL: "1", NOOA_SKIP_TEST: "1" },
+				env: { ...baseEnv, NOOA_SKIP_INSTALL: "1", NOOA_SKIP_TEST: "1" },
 			});
 
 			expect(res.exitCode).toBe(0);
@@ -83,9 +86,9 @@ describe("nooa worktree", () => {
 			);
 
 			const res = await execa(
-				"bun",
+				bunPath,
 				[binPath, "worktree", "feat/skip", "--no-install", "--no-test"],
-				{ cwd: root, reject: false },
+				{ cwd: root, reject: false, env: baseEnv },
 			);
 
 			expect(res.exitCode).toBe(0);
@@ -133,9 +136,10 @@ test("marker", () => {
 				{ cwd: root },
 			);
 
-			const res = await execa("bun", [binPath, "worktree", "feat/defaults"], {
+			const res = await execa(bunPath, [binPath, "worktree", "feat/defaults"], {
 				cwd: root,
 				reject: false,
+				env: baseEnv,
 			});
 
 			expect(res.exitCode).toBe(0);

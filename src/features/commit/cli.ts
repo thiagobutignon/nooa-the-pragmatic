@@ -4,10 +4,10 @@ import { createTraceId, logger } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
 import {
-    ensureGitRepo,
-    git,
-    hasPendingChanges,
-    hasStagedChanges,
+	ensureGitRepo,
+	git,
+	hasPendingChanges,
+	hasStagedChanges,
 } from "./guards";
 
 const commitHelp = `

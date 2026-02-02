@@ -1,7 +1,7 @@
-import type { Command, CommandContext } from "../../core/command";
 import { parseArgs } from "node:util";
-import { buildContext } from "./execute";
+import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
+import { buildContext } from "./execute";
 
 const contextHelp = `
 Usage: nooa context <file|symbol> [flags]
@@ -56,7 +56,11 @@ const contextCommand: Command = {
 			const result = await buildContext(target);
 			if (values.json) {
 				console.log(
-					JSON.stringify({ ok: true, ...result, timestamp: Date.now() }, null, 2),
+					JSON.stringify(
+						{ ok: true, ...result, timestamp: Date.now() },
+						null,
+						2,
+					),
 				);
 			} else {
 				console.log(`Target: ${result.target}`);
@@ -65,8 +69,9 @@ const contextCommand: Command = {
 				console.log(`Symbols: ${result.symbols.join(", ") || "none"}`);
 				console.log(`Recent Commits: ${result.recentCommits.length}`);
 			}
-		} catch (e: any) {
-			const msg = `Error building context: ${e.message}`;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			const msg = `Error building context: ${message}`;
 			if (values.json) {
 				console.log(
 					JSON.stringify({

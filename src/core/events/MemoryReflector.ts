@@ -4,7 +4,7 @@ import type { TelemetryEvent } from "../telemetry";
 
 export class MemoryReflector {
 	private reflector: Reflector;
-	private pending: Promise<any>[] = [];
+	private pending: Promise<unknown>[] = [];
 
 	constructor(bus: EventBus, reflector?: Reflector) {
 		this.reflector = reflector || new Reflector();

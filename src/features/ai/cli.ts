@@ -29,7 +29,7 @@ const aiCommand: Command = {
 	description: "Query the AI engine",
 	execute: async ({ rawArgs, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				provider: { type: "string" },
@@ -39,7 +39,14 @@ const aiCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as {
+			provider?: string;
+			model?: string;
+			json?: boolean;
+			help?: boolean;
+		};
+		const positionals = parsed.positionals as string[];
 
 		if (values.help) {
 			console.log(aiHelp);
@@ -94,7 +101,7 @@ const aiCommand: Command = {
 			} else {
 				console.log(response.content);
 			}
-		} catch (error: any) {
+		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 			telemetry.track(

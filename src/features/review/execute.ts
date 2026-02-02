@@ -1,13 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import { AiEngine } from "../ai/engine";
 import {
-    MockProvider,
-    OllamaProvider,
-    OpenAiProvider,
+	MockProvider,
+	OllamaProvider,
+	OpenAiProvider,
 } from "../ai/providers/mod";
 import { PromptEngine } from "../prompt/engine";
 
@@ -45,7 +46,7 @@ export interface ReviewOptions {
 
 export async function executeReview(
 	options: ReviewOptions,
-	bus?: any,
+	bus?: EventBus,
 ): Promise<{ content: string; result?: ReviewResult; traceId: string }> {
 	const traceId = options.traceId || createTraceId();
 	const startTime = Date.now();

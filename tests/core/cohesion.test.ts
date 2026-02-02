@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../src/test-utils/cli-env";
 
 const run = (args: string[]) =>
-	execa("bun", ["index.ts", ...args], {
+	execa(bunPath, ["index.ts", ...args], {
 		reject: false,
-		env: { ...process.env, NOOA_AI_PROVIDER: "mock" },
+		env: { ...baseEnv, NOOA_AI_PROVIDER: "mock" },
+		cwd: repoRoot,
 	});
 
 describe("Command Cohesion Contract", () => {

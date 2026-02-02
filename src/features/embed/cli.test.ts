@@ -3,6 +3,7 @@ import { existsSync, unlinkSync } from "node:fs";
 import { rm, writeFile } from "node:fs/promises";
 import { execa } from "execa";
 import { EventBus } from "../../core/event-bus";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = "./index.ts";
 const TEST_DB = "telemetry-embed-test.db";
@@ -39,8 +40,10 @@ afterEach(async () => {
 
 describe("nooa embed", () => {
 	it("shows help", async () => {
-		const res = await execa("bun", [binPath, "embed", "--help"], {
+		const res = await execa(bunPath, [binPath, "embed", "--help"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa embed <text|file>");
@@ -49,9 +52,10 @@ describe("nooa embed", () => {
 	});
 
 	it("embeds text and omits vector by default", async () => {
-		const res = await execa("bun", [binPath, "embed", "text", "hello"], {
+		const res = await execa(bunPath, [binPath, "embed", "text", "hello"], {
 			reject: false,
-			env: { ...process.env, NOOA_EMBED_PROVIDER: "mock" },
+			env: { ...baseEnv, NOOA_EMBED_PROVIDER: "mock" },
+			cwd: repoRoot,
 		});
 		const json = JSON.parse(res.stdout);
 		expect(json.model).toBeDefined();
@@ -61,11 +65,12 @@ describe("nooa embed", () => {
 	it("embeds file and includes vector when flag set", async () => {
 		await writeFile("tmp-embed.txt", "hello");
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "embed", "file", "tmp-embed.txt", "--include-embedding"],
 			{
 				reject: false,
-				env: { ...process.env, NOOA_EMBED_PROVIDER: "mock" },
+				env: { ...baseEnv, NOOA_EMBED_PROVIDER: "mock" },
+				cwd: repoRoot,
 			},
 		);
 		const json = JSON.parse(res.stdout);

@@ -5,6 +5,7 @@ import { EventBus } from "../../core/event-bus";
 import readCommand from "./cli";
 
 const TEST_DIR = join(import.meta.dir, "tmp-test-read");
+type ReadValues = { help?: boolean; json?: boolean };
 
 describe("read command", () => {
 	let bus: EventBus;
@@ -27,7 +28,7 @@ describe("read command", () => {
 		await readCommand.execute({
 			args: ["read"],
 			rawArgs: ["read", "--help"],
-			values: { help: true } as any,
+			values: { help: true } as ReadValues,
 			bus,
 		});
 		expect(output).toContain("Usage: nooa read");
@@ -40,17 +41,18 @@ describe("read command", () => {
 		});
 
 		// Mock TTY
-		const originalTTY = process.stdin.isTTY;
-		(process.stdin as any).isTTY = true;
+		const stdin = process.stdin as NodeJS.ReadStream & { isTTY: boolean };
+		const originalTTY = stdin.isTTY;
+		stdin.isTTY = true;
 
 		await readCommand.execute({
 			args: ["read"],
 			rawArgs: ["read"],
-			values: {} as any,
+			values: {} as ReadValues,
 			bus,
 		});
 
-		(process.stdin as any).isTTY = originalTTY;
+		stdin.isTTY = originalTTY;
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(2);
 		process.exitCode = 0;
@@ -63,16 +65,18 @@ describe("read command", () => {
 		const { runWithStdin } = await import("../../core/io");
 
 		let output = "";
-		spyOn(process.stdout, "write").mockImplementation((data: any) => {
-			output += data.toString();
-			return true;
-		});
+		spyOn(process.stdout, "write").mockImplementation(
+			(data: string | Uint8Array) => {
+				output += data.toString();
+				return true;
+			},
+		);
 
 		await runWithStdin(filePath, () =>
 			readCommand.execute({
 				args: ["read"],
 				rawArgs: ["read"],
-				values: {} as any,
+				values: {} as ReadValues,
 				bus,
 			}),
 		);
@@ -92,7 +96,7 @@ describe("read command", () => {
 		await readCommand.execute({
 			args: ["read", filePath],
 			rawArgs: ["read", filePath, "--json"],
-			values: { json: true } as any,
+			values: { json: true } as ReadValues,
 			bus,
 		});
 
@@ -111,7 +115,7 @@ describe("read command", () => {
 		await readCommand.execute({
 			args: ["read", "nonexistent.txt"],
 			rawArgs: ["read", "nonexistent.txt"],
-			values: {} as any,
+			values: {} as ReadValues,
 			bus,
 		});
 		expect(errorLogged).toBe(true);
@@ -129,7 +133,7 @@ describe("read command", () => {
 		await readCommand.execute({
 			args: ["read", TEST_DIR],
 			rawArgs: ["read", TEST_DIR],
-			values: {} as any,
+			values: {} as ReadValues,
 			bus,
 		});
 		expect(errorLogged).toBe(true);

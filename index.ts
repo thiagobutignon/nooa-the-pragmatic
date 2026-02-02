@@ -47,10 +47,15 @@ export async function main(
 	});
 
 	// Initialize Reflection Engine (Background)
-	const { MemoryReflector } = await import(
-		"./src/core/events/MemoryReflector.js"
-	);
-	const reflector = new MemoryReflector(bus);
+	const disableReflection =
+		process.env.NOOA_DISABLE_REFLECTION === "1" ||
+		process.env.NODE_ENV === "test" ||
+		process.env.BUN_TEST === "1";
+	const reflector = disableReflection
+		? null
+		: new (
+				await import("./src/core/events/MemoryReflector.js")
+			).MemoryReflector(bus);
 
 	// Dynamic Command Registry
 	const { loadCommands } = await import("./src/core/registry.js");
@@ -65,17 +70,22 @@ export async function main(
 	if (registeredCmd) {
 		const { logger, createTraceId } = await import("./src/core/logger.js");
 		const traceId = createTraceId();
-		
-		await logger.runWithContext({ trace_id: traceId, command: subcommand }, async () => {
-			await registeredCmd.execute({
-				args: positionals,
-				values,
-				rawArgs: args,
-				bus,
-			});
-		});
 
-		await reflector.flush();
+		await logger.runWithContext(
+			{ trace_id: traceId, command: subcommand },
+			async () => {
+				await registeredCmd.execute({
+					args: positionals,
+					values,
+					rawArgs: args,
+					bus,
+				});
+			},
+		);
+
+		if (reflector) {
+			await reflector.flush();
+		}
 		return;
 	}
 

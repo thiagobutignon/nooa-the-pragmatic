@@ -5,6 +5,14 @@ import { EventBus } from "../../core/event-bus";
 import codeCommand from "./cli";
 
 const TEST_DIR = join(import.meta.dir, "tmp-test-code");
+type CodeValues = {
+	from?: string;
+	"dry-run"?: boolean;
+	json?: boolean;
+	patch?: boolean;
+	"patch-from"?: string;
+	help?: boolean;
+};
 
 describe("code command execute", () => {
 	let bus: EventBus;
@@ -22,7 +30,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write"],
 			rawArgs: ["code", "write"],
-			values: {} as any,
+			values: {} as CodeValues,
 			bus,
 		};
 
@@ -49,7 +57,7 @@ describe("code command execute", () => {
 				"--from",
 				join(TEST_DIR, "input.txt"),
 			],
-			values: { from: join(TEST_DIR, "input.txt") } as any,
+			values: { from: join(TEST_DIR, "input.txt") } as CodeValues,
 			bus,
 		};
 
@@ -65,7 +73,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", filePath],
 			rawArgs: ["code", "write", filePath],
-			values: {} as any, // no --from, and stdin is TTY in tests usually
+			values: {} as CodeValues, // no --from, and stdin is TTY in tests usually
 			bus,
 		};
 
@@ -92,7 +100,7 @@ describe("code command execute", () => {
 				join(TEST_DIR, "in.txt"),
 				"--dry-run",
 			],
-			values: { from: join(TEST_DIR, "in.txt"), "dry-run": true } as any,
+			values: { from: join(TEST_DIR, "in.txt"), "dry-run": true } as CodeValues,
 			bus,
 		};
 
@@ -117,7 +125,7 @@ describe("code command execute", () => {
 				join(TEST_DIR, "in.txt"),
 				"--json",
 			],
-			values: { from: join(TEST_DIR, "in.txt"), json: true } as any,
+			values: { from: join(TEST_DIR, "in.txt"), json: true } as CodeValues,
 			bus,
 		};
 
@@ -147,7 +155,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", filePath], // code write <path> --patch-from <path>
 			rawArgs: ["code", "write", filePath, "--patch-from", patchPath],
-			values: { "patch-from": patchPath } as any,
+			values: { "patch-from": patchPath } as CodeValues,
 			bus,
 		};
 
@@ -169,7 +177,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "patch", filePath],
 			rawArgs: ["code", "patch", filePath, "--patch-from", patchPath],
-			values: { "patch-from": patchPath } as any,
+			values: { "patch-from": patchPath } as CodeValues,
 			bus,
 		};
 
@@ -183,7 +191,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code"],
 			rawArgs: ["code", "--help"],
-			values: { help: true } as any,
+			values: { help: true } as CodeValues,
 			bus,
 		};
 
@@ -200,7 +208,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", "any.txt"],
 			rawArgs: ["code", "write", "any.txt", "--patch", "--from", "some.txt"],
-			values: { patch: true, from: "some.txt" } as any,
+			values: { patch: true, from: "some.txt" } as CodeValues,
 			bus,
 		};
 
@@ -219,7 +227,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", "target.txt"],
 			rawArgs: ["code", "write", "target.txt", "--patch"],
-			values: { patch: true } as any, // no --patch-from, and stdin is TTY
+			values: { patch: true } as CodeValues, // no --patch-from, and stdin is TTY
 			bus,
 		};
 
@@ -246,7 +254,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", filePath],
 			rawArgs: ["code", "write", filePath, "--patch-from", patchPath, "--json"],
-			values: { "patch-from": patchPath, json: true } as any,
+			values: { "patch-from": patchPath, json: true } as CodeValues,
 			bus,
 		};
 
@@ -267,18 +275,22 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", filePath],
 			rawArgs: ["code", "write", filePath],
-			values: {} as any,
+			values: {} as CodeValues,
 			bus,
 		};
 
 		// Mock stdin
 		const originalStdin = process.stdin;
-		const mockStdin = {
+		type MockStdin = NodeJS.ReadableStream & {
+			isTTY: boolean;
+			[Symbol.asyncIterator]: () => AsyncIterableIterator<Buffer>;
+		};
+		const mockStdin: MockStdin = {
 			isTTY: false,
 			[Symbol.asyncIterator]: async function* () {
 				yield Buffer.from("stdin content");
 			},
-		} as any;
+		};
 		Object.defineProperty(process, "stdin", {
 			value: mockStdin,
 			configurable: true,
@@ -299,7 +311,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", TEST_DIR], // Writing to a directory should fail
 			rawArgs: ["code", "write", TEST_DIR, "--from", join(TEST_DIR, "any.txt")],
-			values: { from: join(TEST_DIR, "any.txt") } as any,
+			values: { from: join(TEST_DIR, "any.txt") } as CodeValues,
 			bus,
 		};
 		await writeFile(join(TEST_DIR, "any.txt"), "x");
@@ -319,7 +331,7 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "unknown"],
 			rawArgs: ["code", "unknown"],
-			values: {} as any,
+			values: {} as CodeValues,
 			bus,
 		};
 

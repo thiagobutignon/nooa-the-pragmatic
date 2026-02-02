@@ -1,12 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = "./index.ts";
 
 describe("nooa message", () => {
 	it("shows help", async () => {
-		const res = await execa("bun", [binPath, "message", "--help"], {
+		const res = await execa(bunPath, [binPath, "message", "--help"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa message <text> [flags]");
@@ -19,16 +22,20 @@ describe("nooa message", () => {
 
 describe("nooa message validation", () => {
 	it("requires message text", async () => {
-		const res = await execa("bun", [binPath, "message"], { reject: false });
+		const res = await execa(bunPath, [binPath, "message"], {
+			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
+		});
 		expect(res.exitCode).toBe(2);
 		expect(res.stderr).toContain("Error: Message text is required");
 	});
 
 	it("validates role values", async () => {
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "message", "test", "--role", "invalid"],
-			{ reject: false },
+			{ reject: false, env: baseEnv, cwd: repoRoot },
 		);
 		expect(res.exitCode).toBe(2);
 		expect(res.stderr).toContain("Invalid role");
@@ -38,9 +45,9 @@ describe("nooa message validation", () => {
 		const roles = ["user", "system", "assistant"];
 		for (const role of roles) {
 			const res = await execa(
-				"bun",
+				bunPath,
 				[binPath, "message", "test", "--role", role],
-				{ reject: false },
+				{ reject: false, env: baseEnv, cwd: repoRoot },
 			);
 			expect(res.exitCode).toBe(0);
 		}
@@ -49,16 +56,20 @@ describe("nooa message validation", () => {
 
 describe("nooa message integration", () => {
 	it("outputs plain text by default", async () => {
-		const res = await execa("bun", [binPath, "message", "Hello world"], {
+		const res = await execa(bunPath, [binPath, "message", "Hello world"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("[user] Hello world");
 	});
 
 	it("outputs JSON when --json flag is used", async () => {
-		const res = await execa("bun", [binPath, "message", "Test", "--json"], {
+		const res = await execa(bunPath, [binPath, "message", "Test", "--json"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 
@@ -70,9 +81,9 @@ describe("nooa message integration", () => {
 
 	it("respects role flag", async () => {
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "message", "Init", "--role", "system"],
-			{ reject: false },
+			{ reject: false, env: baseEnv, cwd: repoRoot },
 		);
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("[system] Init");

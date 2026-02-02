@@ -1,8 +1,10 @@
 import { parseArgs } from "node:util";
+import type { Command, CommandContext } from "../../core/command";
+import type { EventBus } from "../../core/event-bus";
 import { logger } from "../../core/logger";
 import { executeScaffold } from "./execute";
 
-export async function scaffoldCli(args: string[], bus?: any) {
+export async function scaffoldCli(args: string[], bus?: EventBus) {
 	const { values, positionals } = parseArgs({
 		args,
 		options: {
@@ -91,7 +93,9 @@ Examples:
 			if (values["dry-run"])
 				console.log("[DRY RUN CALLBACK] No files were actually written.");
 			console.log(`Created ${type}: ${name}`);
-			results.forEach((f) => console.log(`  - ${f}`));
+			results.forEach((f) => {
+				console.log(`  - ${f}`);
+			});
 
 			if (!values["dry-run"]) {
 				console.log("\nNext Steps:");
@@ -105,8 +109,8 @@ Examples:
 				}
 			}
 		}
-	} catch (e) {
-		const err = e as Error;
+	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
 		const { trace_id: traceId } = logger.getContext();
 		if (values.json) {
 			console.log(
@@ -133,14 +137,18 @@ Examples:
 				console.error(`❌ Runtime Error: ${err.message}`);
 			}
 		}
-		process.exitCode = (err.message.includes("Invalid name") || err.message.includes("already exists")) ? 2 : 1;
+		process.exitCode =
+			err.message.includes("Invalid name") ||
+			err.message.includes("already exists")
+				? 2
+				: 1;
 	}
 }
 
-const scaffoldCommand = {
+const scaffoldCommand: Command = {
 	name: "scaffold",
 	description: "Standardize creation of new features and prompts",
-	async execute({ rawArgs, bus }: any) {
+	async execute({ rawArgs, bus }: CommandContext) {
 		const index = rawArgs.indexOf("scaffold");
 		await scaffoldCli(rawArgs.slice(index + 1), bus);
 	},

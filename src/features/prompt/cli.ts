@@ -1,10 +1,15 @@
 import { join } from "node:path";
 import type { Command, CommandContext } from "../../core/command";
+import { getStdinText } from "../../core/io";
 import { logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
-import { getStdinText } from "../../core/io";
 import { PromptEngine } from "./engine";
-import { createPrompt, editPrompt, deletePrompt, publishPrompt } from "./service";
+import {
+	createPrompt,
+	deletePrompt,
+	editPrompt,
+	publishPrompt,
+} from "./service";
 
 const promptHelp = `
 Usage: nooa prompt <list|view|validate|render|create|edit|delete|publish> [name] [flags]
@@ -47,7 +52,7 @@ const promptCommand: Command = {
 	description: "Manage and render AI prompts",
 	execute: async ({ rawArgs, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				var: { type: "string", multiple: true },
@@ -64,7 +69,21 @@ const promptCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as {
+			var?: string[];
+			json?: boolean;
+			all?: boolean;
+			body?: string;
+			description?: string;
+			output?: string;
+			patch?: boolean;
+			level?: string;
+			note?: string;
+			help?: boolean;
+			"debug-injection"?: boolean;
+		};
+		const positionals = parsed.positionals as string[];
 
 		if (values.help) {
 			console.log(promptHelp);
@@ -240,7 +259,8 @@ const promptCommand: Command = {
 						console.log("All prompts are valid.");
 					}
 				} else {
-					const prompt = await engine.loadPrompt(name!);
+					if (!name) throw new Error("Prompt name is required.");
+					const prompt = await engine.loadPrompt(name);
 					if (action === "view") {
 						if (values.json) {
 							console.log(
@@ -341,8 +361,8 @@ const promptCommand: Command = {
 				},
 				bus,
 			);
-		} catch (error: any) {
-			const message = error.message;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			const { trace_id: traceId } = logger.getContext();
 			if (values.json) {
 				console.log(

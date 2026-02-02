@@ -1,8 +1,10 @@
 import { parseArgs } from "node:util";
+import type { Command, CommandContext } from "../../core/command";
+import type { EventBus } from "../../core/event-bus";
 import { logger } from "../../core/logger";
 import { executeCi } from "./execute";
 
-export async function ciCli(args: string[], bus?: any) {
+export async function ciCli(args: string[], bus?: EventBus) {
 	const { values } = parseArgs({
 		args,
 		options: {
@@ -95,10 +97,10 @@ Examples:
 	}
 }
 
-const ciCommand = {
+const ciCommand: Command = {
 	name: "ci",
 	description: "Run local CI pipeline (test + lint + check)",
-	async execute({ rawArgs, bus }: any) {
+	async execute({ rawArgs, bus }: CommandContext) {
 		const index = rawArgs.indexOf("ci");
 		await ciCli(rawArgs.slice(index + 1), bus);
 	},

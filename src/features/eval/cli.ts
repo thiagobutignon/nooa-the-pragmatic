@@ -1,9 +1,11 @@
 import { parseArgs } from "node:util";
+import type { Command, CommandContext } from "../../core/command";
+import type { EventBus } from "../../core/event-bus";
 import { logger } from "../../core/logger";
 import { EvalEngine } from "./engine";
 
-export async function evalCli(args: string[], _bus?: any) {
-	const { values, positionals } = parseArgs({
+export async function evalCli(args: string[], _bus?: EventBus) {
+	const parsed = parseArgs({
 		args,
 		options: {
 			suite: { type: "string", short: "s" },
@@ -17,6 +19,16 @@ export async function evalCli(args: string[], _bus?: any) {
 		allowPositionals: true,
 		strict: false,
 	});
+	const values = parsed.values as {
+		suite?: string;
+		json?: boolean;
+		baseline?: string;
+		"fail-on-regression"?: boolean;
+		bump?: string;
+		judge?: string;
+		help?: boolean;
+	};
+	const positionals = parsed.positionals as string[];
 
 	const evalHelp = `
 Usage: nooa eval <command> <prompt_name> --suite <name> [flags]
@@ -64,8 +76,10 @@ Examples:
 			const suite = await engine.loadSuite(suiteName);
 			console.log(`Running suite: ${suite.name} on prompt: ${promptName}...`);
 
+			const judge =
+				(values.judge as "deterministic" | "llm") ?? "deterministic";
 			const result = await engine.runSuite(suite, {
-				judge: values.judge as any,
+				judge,
 			});
 
 			if (values.json) {
@@ -110,8 +124,10 @@ Examples:
 			const level = (values.bump as "patch" | "minor" | "major") || "patch";
 
 			console.log(`Evaluating ${promptName} before bump...`);
+			const judge =
+				(values.judge as "deterministic" | "llm") ?? "deterministic";
 			const result = await engine.runSuite(suite, {
-				judge: values.judge as any,
+				judge,
 			});
 
 			if (result.totalScore < 1.0 && values["fail-on-regression"]) {
@@ -133,8 +149,10 @@ Examples:
 		} else if (command === "suggest") {
 			const suite = await engine.loadSuite(suiteName);
 			console.log(`Evaluating ${promptName} for improvement suggestions...`);
+			const judge =
+				(values.judge as "deterministic" | "llm") ?? "deterministic";
 			const result = await engine.runSuite(suite, {
-				judge: values.judge as any,
+				judge,
 			});
 
 			const failures = result.results.filter((r) => !r.passed);
@@ -156,16 +174,19 @@ Examples:
 			console.error(`Error: Command '${command}' not yet fully implemented.`);
 			process.exitCode = 1;
 		}
-	} catch (e) {
-		logger.error("eval.error", e as Error);
+	} catch (error) {
+		logger.error(
+			"eval.error",
+			error instanceof Error ? error : new Error(String(error)),
+		);
 		process.exitCode = 1;
 	}
 }
 
-const evalCommand = {
+const evalCommand: Command = {
 	name: "eval",
 	description: "Systematic evaluation of AI prompts and outputs",
-	async execute({ rawArgs, bus }: any) {
+	async execute({ rawArgs, bus }: CommandContext) {
 		// rawArgs starts with 'eval', so we want what's after it
 		const evalIndex = rawArgs.indexOf("eval");
 		await evalCli(rawArgs.slice(evalIndex + 1), bus);

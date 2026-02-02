@@ -1,9 +1,9 @@
 import type {
-    AiEmbeddingRequest,
-    AiEmbeddingResponse,
-    AiProvider,
-    AiRequest,
-    AiResponse,
+	AiEmbeddingRequest,
+	AiEmbeddingResponse,
+	AiProvider,
+	AiRequest,
+	AiResponse,
 } from "../types";
 
 export class MockProvider implements AiProvider {
@@ -58,7 +58,9 @@ export class MockProvider implements AiProvider {
 	}
 
 	async embed(request: AiEmbeddingRequest): Promise<AiEmbeddingResponse> {
-		const inputs = Array.isArray(request.input) ? request.input : [request.input];
+		const inputs = Array.isArray(request.input)
+			? request.input
+			: [request.input];
 		const embeddings = inputs.map(() =>
 			Array.from({ length: 1536 }, () => Math.random()),
 		);

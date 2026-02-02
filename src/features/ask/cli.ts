@@ -1,7 +1,7 @@
-import type { Command, CommandContext } from "../../core/command";
 import { parseArgs } from "node:util";
-import { executeSearch } from "../index/execute";
+import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
+import { executeSearch } from "../index/execute";
 
 const askHelp = `
 Usage: nooa ask <query> [flags]
@@ -52,7 +52,9 @@ const askCommand: Command = {
 				console.log(`\n🔍 Results for: "${query}"\n`);
 				for (const res of results) {
 					console.log(`📄 ${res.path} (score: ${res.score.toFixed(4)})`);
-					console.log(`   ${res.chunk.substring(0, 200).replace(/\n/g, " ")}...`);
+					console.log(
+						`   ${res.chunk.substring(0, 200).replace(/\n/g, " ")}...`,
+					);
 					console.log("");
 				}
 			}

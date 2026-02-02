@@ -2,17 +2,19 @@ import { describe, expect, it } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execa } from "execa";
 import { TelemetryStore } from "../../core/telemetry";
-
-import { fileURLToPath } from "node:url";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
 describe("nooa search", () => {
 	it("shows help", async () => {
-		const res = await execa("bun", [binPath, "search", "--help"], {
+		const res = await execa(bunPath, [binPath, "search", "--help"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa search");
@@ -24,9 +26,13 @@ describe("nooa search", () => {
 		const root = await mkdtemp(join(tmpdir(), "nooa-search-"));
 		await writeFile(join(root, "example.txt"), "TODO: find me\n");
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "search", "TODO", root, "--json"],
-			{ reject: false, env: { ...process.env, NOOA_SEARCH_ENGINE: "native" } },
+			{
+				reject: false,
+				env: { ...baseEnv, NOOA_SEARCH_ENGINE: "native" },
+				cwd: repoRoot,
+			},
 		);
 		await rm(root, { recursive: true, force: true });
 		expect(res.exitCode).toBe(0);
@@ -38,9 +44,13 @@ describe("nooa search", () => {
 		const root = await mkdtemp(join(tmpdir(), "nooa-search-"));
 		await writeFile(join(root, "example.txt"), "TODO: find me\n");
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "search", "TODO", root, "--plain"],
-			{ reject: false, env: { ...process.env, NOOA_SEARCH_ENGINE: "native" } },
+			{
+				reject: false,
+				env: { ...baseEnv, NOOA_SEARCH_ENGINE: "native" },
+				cwd: repoRoot,
+			},
 		);
 		await rm(root, { recursive: true, force: true });
 		expect(res.exitCode).toBe(0);
@@ -51,9 +61,13 @@ describe("nooa search", () => {
 		const root = await mkdtemp(join(tmpdir(), "nooa-search-"));
 		await writeFile(join(root, "example.txt"), "TODO: find me\n");
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "search", "TODO", root, "--files-only"],
-			{ reject: false, env: { ...process.env, NOOA_SEARCH_ENGINE: "native" } },
+			{
+				reject: false,
+				env: { ...baseEnv, NOOA_SEARCH_ENGINE: "native" },
+				cwd: repoRoot,
+			},
 		);
 		await rm(root, { recursive: true, force: true });
 		expect(res.exitCode).toBe(0);
@@ -69,15 +83,16 @@ describe("nooa search", () => {
 		await writeFile(join(root, "example.txt"), "TODO: find me\n");
 
 		const res = await execa(
-			"bun",
+			bunPath,
 			[binPath, "search", "TODO", root, "--plain"],
 			{
 				reject: false,
 				env: {
-					...process.env,
+					...baseEnv,
 					NOOA_SEARCH_ENGINE: "native",
 					NOOA_DB_PATH: dbPath,
 				},
+				cwd: repoRoot,
 			},
 		);
 

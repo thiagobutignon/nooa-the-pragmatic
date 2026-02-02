@@ -29,7 +29,7 @@ const reviewCommand: Command = {
 	description: "Perform a code review",
 	execute: async ({ rawArgs, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				prompt: { type: "string" },
@@ -40,7 +40,15 @@ const reviewCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as {
+			prompt?: string;
+			json?: boolean;
+			out?: string;
+			"fail-on"?: string;
+			help?: boolean;
+		};
+		const positionals = parsed.positionals as string[];
 
 		if (values.help) {
 			console.log(reviewHelp);
@@ -113,8 +121,8 @@ const reviewCommand: Command = {
 					return;
 				}
 			}
-		} catch (error: any) {
-			const message = error.message;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			const isValidationError =
 				message.includes("No input source") || message.includes("not found");
 			if (values.json) {

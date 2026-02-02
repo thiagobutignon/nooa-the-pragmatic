@@ -36,7 +36,7 @@ const messageCommand: Command = {
 	},
 	execute: async ({ rawArgs, bus }: CommandContext) => {
 		const { parseArgs } = await import("node:util");
-		const { values, positionals } = parseArgs({
+		const parsed = parseArgs({
 			args: rawArgs,
 			options: {
 				...messageCommand.options,
@@ -44,7 +44,13 @@ const messageCommand: Command = {
 			},
 			strict: true,
 			allowPositionals: true,
-		}) as any;
+		});
+		const values = parsed.values as {
+			role?: string;
+			json?: boolean;
+			help?: boolean;
+		};
+		const positionals = parsed.positionals as string[];
 
 		if (values.help) {
 			console.log(messageHelp);

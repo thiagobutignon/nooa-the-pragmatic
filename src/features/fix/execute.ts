@@ -1,11 +1,12 @@
 import { execa } from "execa";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
-import { executeSearch } from "../index/execute";
 import { AiEngine } from "../ai/engine";
+import { MockProvider } from "../ai/providers/mock";
 import { OllamaProvider } from "../ai/providers/ollama";
 import { OpenAiProvider } from "../ai/providers/openai";
-import { MockProvider } from "../ai/providers/mock";
+import { executeSearch } from "../index/execute";
 
 const ai = new AiEngine();
 ai.register(new OllamaProvider());
@@ -43,7 +44,7 @@ export interface ExecuteFixResponse {
 
 export async function executeFix(
 	options: ExecuteFixOptions,
-	bus?: any,
+	bus?: EventBus,
 ): Promise<ExecuteFixResponse> {
 	const issue = options.issue || "unspecified issue";
 	const dryRun = options.dryRun ?? true;
@@ -109,7 +110,7 @@ export async function runFix(options: FixOptions): Promise<FixResult> {
 		// Stage 3: Apply Patch (AI Generation)
 		// Note: In a real scenario, we'd use the AI to generate the file changes.
 		// For now, we'll simulate the AI loop or provide a hook.
-		const aiPrompt = `
+		const _aiPrompt = `
         You are NOOA, a pragmatic programming agent.
         The user wants to fix this issue: "${options.issue}"
         
@@ -118,8 +119,8 @@ export async function runFix(options: FixOptions): Promise<FixResult> {
         
         Please provide a fix. (SIMULATED FOR NOW)
         `;
-		
-        // Simulation of AI completing the task (simulated)
+
+		// Simulation of AI completing the task (simulated)
 		stages.patch = true;
 
 		// Stage 4: Verify (CI)

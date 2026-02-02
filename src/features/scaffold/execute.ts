@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import type { RenderContext } from "./engine";
@@ -12,7 +13,10 @@ export interface ScaffoldOptions {
 	withDocs?: boolean;
 }
 
-export async function executeScaffold(options: ScaffoldOptions, bus?: any) {
+export async function executeScaffold(
+	options: ScaffoldOptions,
+	bus?: EventBus,
+) {
 	const traceId = createTraceId();
 	const startTime = Date.now();
 	const results: string[] = [];

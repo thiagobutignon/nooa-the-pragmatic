@@ -1,95 +1,115 @@
-import { mkdir, writeFile, rm, readdir, stat, readFile } from "node:fs/promises";
+import {
+	mkdir,
+	readdir,
+	readFile,
+	rm,
+	stat,
+	writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { skillTemplate } from "./templates";
 
 export interface Skill {
-    name: string;
-    description: string;
-    enabled: boolean;
-    path: string;
+	name: string;
+	description: string;
+	enabled: boolean;
+	path: string;
 }
 
 export class SkillManager {
-    constructor(private skillsRootDir: string) { }
+	constructor(private skillsRootDir: string) {}
 
-    async createSkill(name: string, description: string): Promise<void> {
-        const skillDir = join(this.skillsRootDir, name);
-        await mkdir(skillDir, { recursive: true });
-        await writeFile(join(skillDir, "SKILL.md"), skillTemplate(name, description));
-    }
+	async createSkill(name: string, description: string): Promise<void> {
+		const skillDir = join(this.skillsRootDir, name);
+		await mkdir(skillDir, { recursive: true });
+		await writeFile(
+			join(skillDir, "SKILL.md"),
+			skillTemplate(name, description),
+		);
+	}
 
-    async deleteSkill(name: string): Promise<void> {
-        const skillDir = join(this.skillsRootDir, name);
-        await rm(skillDir, { recursive: true, force: true });
-    }
+	async deleteSkill(name: string): Promise<void> {
+		const skillDir = join(this.skillsRootDir, name);
+		await rm(skillDir, { recursive: true, force: true });
+	}
 
-    async enableSkill(name: string): Promise<void> {
-        const disabledFile = join(this.skillsRootDir, name, ".disabled");
-        await rm(disabledFile, { force: true });
-    }
+	async enableSkill(name: string): Promise<void> {
+		const disabledFile = join(this.skillsRootDir, name, ".disabled");
+		await rm(disabledFile, { force: true });
+	}
 
-    async disableSkill(name: string): Promise<void> {
-        const disabledFile = join(this.skillsRootDir, name, ".disabled");
-        await writeFile(disabledFile, "");
-    }
+	async disableSkill(name: string): Promise<void> {
+		const disabledFile = join(this.skillsRootDir, name, ".disabled");
+		await writeFile(disabledFile, "");
+	}
 
-    async updateSkill(name: string): Promise<void> {
-        // Placeholder for future implementation
-        // For now, we verify the skill exists
-        const skillDir = join(this.skillsRootDir, name);
-        await stat(skillDir);
-    }
+	async updateSkill(name: string): Promise<void> {
+		// Placeholder for future implementation
+		// For now, we verify the skill exists
+		const skillDir = join(this.skillsRootDir, name);
+		await stat(skillDir);
+	}
 
-    async showSkill(name: string): Promise<{ name: string; description: string; content: string }> {
-        const skillDir = join(this.skillsRootDir, name);
-        const content = await readFile(join(skillDir, "SKILL.md"), "utf-8");
-        const { name: skillName, description } = this.parseFrontmatter(content);
-        return { name: skillName, description, content };
-    }
+	async showSkill(
+		name: string,
+	): Promise<{ name: string; description: string; content: string }> {
+		const skillDir = join(this.skillsRootDir, name);
+		const content = await readFile(join(skillDir, "SKILL.md"), "utf-8");
+		const { name: skillName, description } = this.parseFrontmatter(content);
+		return { name: skillName, description, content };
+	}
 
-    async listSkills(): Promise<Skill[]> {
-        try {
-            const entries = await readdir(this.skillsRootDir);
-            const skills: Skill[] = [];
+	async listSkills(): Promise<Skill[]> {
+		try {
+			const entries = await readdir(this.skillsRootDir);
+			const skills: Skill[] = [];
 
-            for (const entry of entries) {
-                const skillDir = join(this.skillsRootDir, entry);
-                try {
-                    const stats = await stat(skillDir);
-                    if (stats.isDirectory()) {
-                        const content = await readFile(join(skillDir, "SKILL.md"), "utf-8").catch(() => null);
-                        if (content) {
-                            const { name, description } = this.parseFrontmatter(content);
-                            const disabled = await stat(join(skillDir, ".disabled")).then(() => true).catch(() => false);
-                            skills.push({
-                                name: name || entry,
-                                description: description || "",
-                                enabled: !disabled,
-                                path: skillDir
-                            });
-                        }
-                    }
-                } catch {
-                    // Ignore invalid entries
-                }
-            }
-            return skills;
-        } catch {
-            return [];
-        }
-    }
+			for (const entry of entries) {
+				const skillDir = join(this.skillsRootDir, entry);
+				try {
+					const stats = await stat(skillDir);
+					if (stats.isDirectory()) {
+						const content = await readFile(
+							join(skillDir, "SKILL.md"),
+							"utf-8",
+						).catch(() => null);
+						if (content) {
+							const { name, description } = this.parseFrontmatter(content);
+							const disabled = await stat(join(skillDir, ".disabled"))
+								.then(() => true)
+								.catch(() => false);
+							skills.push({
+								name: name || entry,
+								description: description || "",
+								enabled: !disabled,
+								path: skillDir,
+							});
+						}
+					}
+				} catch {
+					// Ignore invalid entries
+				}
+			}
+			return skills;
+		} catch {
+			return [];
+		}
+	}
 
-    private parseFrontmatter(content: string): { name: string; description: string } {
-        const match = content.match(/^---\n([\s\S]*?)\n---/);
-        if (match) {
-            const frontmatter = match[1];
-            const nameMatch = frontmatter.match(/name:\s*(.*)/);
-            const descMatch = frontmatter.match(/description:\s*(.*)/);
-            return {
-                name: nameMatch ? nameMatch[1].trim() : "",
-                description: descMatch ? descMatch[1].trim() : ""
-            };
-        }
-        return { name: "", description: "" };
-    }
+	private parseFrontmatter(content: string): {
+		name: string;
+		description: string;
+	} {
+		const match = content.match(/^---\n([\s\S]*?)\n---/);
+		if (match) {
+			const frontmatter = match[1];
+			const nameMatch = frontmatter.match(/name:\s*(.*)/);
+			const descMatch = frontmatter.match(/description:\s*(.*)/);
+			return {
+				name: nameMatch ? nameMatch[1].trim() : "",
+				description: descMatch ? descMatch[1].trim() : "",
+			};
+		}
+		return { name: "", description: "" };
+	}
 }

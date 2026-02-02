@@ -10,7 +10,18 @@ export async function ghPrCreate(args: {
 }) {
 	const { stdout, stderr, exitCode } = await execa(
 		"gh",
-		["pr", "create", "--base", args.base, "--head", args.head, "--title", args.title, "--body", args.body],
+		[
+			"pr",
+			"create",
+			"--base",
+			args.base,
+			"--head",
+			args.head,
+			"--title",
+			args.title,
+			"--body",
+			args.body,
+		],
 		{ reject: false },
 	);
 	if (exitCode !== 0) {
@@ -42,8 +53,20 @@ export async function ghMergePr(args: {
 	title?: string;
 	message?: string;
 }) {
-	const methodFlag = args.method === "squash" ? "--squash" : args.method === "rebase" ? "--rebase" : "--merge";
-	const cmd = ["pr", "merge", String(args.number), methodFlag, "--json", "merged,mergeCommit" as const];
+	const methodFlag =
+		args.method === "squash"
+			? "--squash"
+			: args.method === "rebase"
+				? "--rebase"
+				: "--merge";
+	const cmd = [
+		"pr",
+		"merge",
+		String(args.number),
+		methodFlag,
+		"--json",
+		"merged,mergeCommit" as const,
+	];
 	if (args.title) cmd.push("--subject", args.title);
 	if (args.message) cmd.push("--body", args.message);
 	const { stdout } = await execa("gh", cmd, { reject: false });
@@ -51,16 +74,32 @@ export async function ghMergePr(args: {
 }
 
 export async function ghClosePr(number: number) {
-	const { stdout } = await execa("gh", ["pr", "close", String(number), "--comment", "--delete-branch", "--json", "state"], {
-		reject: false,
-	});
+	const { stdout } = await execa(
+		"gh",
+		[
+			"pr",
+			"close",
+			String(number),
+			"--comment",
+			"--delete-branch",
+			"--json",
+			"state",
+		],
+		{
+			reject: false,
+		},
+	);
 	return JSON.parse(stdout || "{}");
 }
 
 export async function ghCommentPr(number: number, body: string) {
-	const { stdout } = await execa("gh", ["pr", "comment", String(number), "--body", body, "--json", "id"], {
-		reject: false,
-	});
+	const { stdout } = await execa(
+		"gh",
+		["pr", "comment", String(number), "--body", body, "--json", "id"],
+		{
+			reject: false,
+		},
+	);
 	return JSON.parse(stdout || "{}");
 }
 

@@ -1,10 +1,11 @@
+import type { EventBus } from "../../core/event-bus";
 import { telemetry } from "../../core/telemetry";
 import type { Message, MessageOptions } from "./types";
 
 export async function executeMessage(
 	content: string,
 	options: MessageOptions,
-	bus?: any,
+	bus?: EventBus,
 ): Promise<Message> {
 	const message: Message = {
 		role: options.role,

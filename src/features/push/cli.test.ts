@@ -4,13 +4,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
 describe("nooa push", () => {
 	it("shows help", async () => {
-		const res = await execa("bun", [binPath, "push", "--help"], {
+		const res = await execa(bunPath, [binPath, "push", "--help"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa push [remote] [branch]");
@@ -25,10 +28,10 @@ describe("nooa push", () => {
 			await execa("git", ["init"], { cwd: root });
 			await execa("git", ["branch", "-m", "main"], { cwd: root });
 			await writeFile(join(root, "file.txt"), "dirty\n");
-			const res = await execa("bun", [binPath, "push"], {
+			const res = await execa(bunPath, [binPath, "push"], {
 				cwd: root,
 				reject: false,
-				env: { ...process.env, PWD: root, NOOA_CWD: root },
+				env: { ...baseEnv, PWD: root, NOOA_CWD: root },
 			});
 			expect(res.exitCode).toBe(2);
 			expect(res.stderr).toContain("Uncommitted changes");
@@ -62,12 +65,12 @@ describe("nooa push", () => {
 			);
 
 			const res = await execa(
-				"bun",
+				bunPath,
 				[binPath, "push", "origin", "main", "--no-test"],
 				{
 					cwd: root,
 					reject: false,
-					env: { ...process.env, PWD: root, NOOA_CWD: root },
+					env: { ...baseEnv, PWD: root, NOOA_CWD: root },
 				},
 			);
 

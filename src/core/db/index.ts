@@ -37,7 +37,16 @@ export class Store {
 	}
 
 	async searchEmbeddings(vector: number[], limit = 5) {
-		const all = this.db.query("SELECT id, path, chunk, vector FROM embeddings").all() as any[];
+		type EmbeddingRow = {
+			id: string;
+			path: string;
+			chunk: string;
+			vector: Uint8Array;
+		};
+
+		const all = this.db
+			.query("SELECT id, path, chunk, vector FROM embeddings")
+			.all() as EmbeddingRow[];
 
 		const queryVector = new Float32Array(vector);
 
@@ -70,7 +79,6 @@ export class Store {
 		const denom = Math.sqrt(mA) * Math.sqrt(mB);
 		return denom === 0 ? 0 : dotProduct / denom;
 	}
-
 
 	async stats() {
 		const docCount = this.db

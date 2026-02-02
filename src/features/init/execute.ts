@@ -1,5 +1,6 @@
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 
@@ -13,7 +14,7 @@ export interface InitOptions {
 	dryRun?: boolean;
 }
 
-export async function executeInit(options: InitOptions, bus?: any) {
+export async function executeInit(options: InitOptions, bus?: EventBus) {
 	const traceId = createTraceId();
 	const startTime = Date.now();
 	const results: string[] = [];
@@ -49,11 +50,12 @@ export async function executeInit(options: InitOptions, bus?: any) {
 					".nooa directory already exists. Use --force to re-initialize.",
 				);
 			}
-		} catch (e: any) {
-			if (e.code === "ENOENT") {
+		} catch (error) {
+			const err = error as { code?: string };
+			if (err.code === "ENOENT") {
 				await mkdir(nooaDir, { recursive: true });
 			} else {
-				throw e;
+				throw error;
 			}
 		}
 	}

@@ -1,15 +1,17 @@
-import { test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, writeFile, chmod } from "node:fs/promises";
-import { join } from "node:path";
+import { afterEach, beforeEach, expect, test } from "bun:test";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { baseEnv } from "../../test-utils/cli-env";
 
-const ORIGINAL_PATH = process.env.PATH || "";
+const DEFAULT_PATH = "/usr/bin:/bin:/usr/sbin:/sbin";
+const ORIGINAL_PATH = baseEnv.PATH ?? DEFAULT_PATH;
 
 async function setupGhStub(script: string) {
 	const dir = await mkdtemp(join(tmpdir(), "nooa-gh-"));
 	const ghPath = join(dir, "gh");
 	await writeFile(ghPath, script, { encoding: "utf8", mode: 0o755 });
-	process.env.PATH = `${dir}:${ORIGINAL_PATH}`;
+	process.env.PATH = ORIGINAL_PATH ? `${dir}:${ORIGINAL_PATH}` : dir;
 	return { dir, ghPath };
 }
 

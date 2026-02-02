@@ -2,20 +2,20 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AiEngine } from "../ai/engine";
 import {
-    MockProvider,
-    OllamaProvider,
-    OpenAiProvider,
+	MockProvider,
+	OllamaProvider,
+	OpenAiProvider,
 } from "../ai/providers/mod";
 import { PromptEngine } from "../prompt/engine";
-import type { AssertionResult } from "./scorers/deterministic";
+import type { Assertion, AssertionResult } from "./scorers/deterministic";
 import { DeterministicScorer } from "./scorers/deterministic";
 
 export interface EvalCase {
 	id: string;
-	vars: Record<string, any>;
+	vars: Record<string, unknown>;
 	input?: string; // Path relative to repo root
 	input_text?: string;
-	assertions: any[];
+	assertions: Assertion[];
 }
 
 export interface EvalSuite {

@@ -4,13 +4,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execa } from "execa";
+import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
 describe("nooa commit", () => {
 	it("shows help", async () => {
-		const res = await execa("bun", [binPath, "commit", "--help"], {
+		const res = await execa(bunPath, [binPath, "commit", "--help"], {
 			reject: false,
+			env: baseEnv,
+			cwd: repoRoot,
 		});
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa commit -m");
@@ -41,10 +44,15 @@ describe("nooa commit", () => {
 			await writeFile(join(root, "todo.ts"), "TO" + "DO: fix me again\n");
 			await execa("git", ["add", "."], { cwd: root });
 
-			const res = await execa("bun", [binPath, "commit", "-m", "test commit"], {
-				cwd: root,
-				reject: false,
-			});
+			const res = await execa(
+				bunPath,
+				[binPath, "commit", "-m", "test commit"],
+				{
+					cwd: root,
+					reject: false,
+					env: baseEnv,
+				},
+			);
 
 			expect(res.exitCode).toBe(2);
 			expect(res.stderr).toContain("violation found");
@@ -94,9 +102,9 @@ test("marker", () => {
 			await execa("git", ["add", "."], { cwd: root });
 
 			const res = await execa(
-				"bun",
+				bunPath,
 				[binPath, "commit", "-m", "commit with tests"],
-				{ cwd: root, reject: false },
+				{ cwd: root, reject: false, env: baseEnv },
 			);
 
 			expect(res.exitCode).toBe(0);

@@ -1,8 +1,14 @@
-import type { Command, CommandContext } from "../../core/command";
+import { relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { resolve, relative } from "node:path";
-import { indexRepo, indexFile, clearIndex, getIndexStats, rebuildIndex } from "./execute";
+import type { Command, CommandContext } from "../../core/command";
 import { logger } from "../../core/logger";
+import {
+	clearIndex,
+	getIndexStats,
+	indexFile,
+	indexRepo,
+	rebuildIndex,
+} from "./execute";
 
 const indexHelp = `
 Usage: nooa index [subcommand] [flags]
@@ -86,7 +92,11 @@ const indexCommand: Command = {
 			}
 		} else if (sub === "clear") {
 			await clearIndex();
-			console.log(values.json ? JSON.stringify({ status: "cleared" }) : "✅ Index cleared.");
+			console.log(
+				values.json
+					? JSON.stringify({ status: "cleared" })
+					: "✅ Index cleared.",
+			);
 		} else if (sub === "stats") {
 			const stats = await getIndexStats();
 			if (values.json) {
