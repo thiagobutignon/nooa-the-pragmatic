@@ -30,14 +30,19 @@ describe("Goal CLI", () => {
     test("goal status --json outputs structured data", async () => {
         await setGoal("Test goal", testDir);
 
-        // We run index.ts from repoRoot but set cwd to testDir so prompt command picks up local .nooa
-        // Note: we need to point to index.ts absolutely
+        const env = {
+            ...baseEnv,
+            NOOA_PROJECT_ROOT: testDir,
+        };
+
         const { stdout } = await execa(bunPath, [join(repoRoot, "index.ts"), "goal", "status", "--json"], {
-            cwd: testDir,
-            env: baseEnv,
+            cwd: repoRoot,
+            env,
+            timeout: 5000,
         });
 
         const result = JSON.parse(stdout);
+        expect(result.goal).not.toBeNull();
         expect(result.goal).toContain("Test goal");
     });
 });

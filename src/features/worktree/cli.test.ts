@@ -162,7 +162,7 @@ test("marker", () => {
 			const res = await execa(bunPath, [binPath, "worktree", "feat/defaults"], {
 				cwd: root,
 				reject: false,
-				env: baseEnv,
+				env: { ...baseEnv, NOOA_SKIP_INSTALL: "0", NOOA_SKIP_TEST: "0" },
 			});
 
 			expect(res.exitCode).toBe(0);
