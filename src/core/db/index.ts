@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
-import { setupEmbeddingsTable } from "./schema/embeddings";
 import { setupCronTable } from "./schema/cron";
+import { setupEmbeddingsTable } from "./schema/embeddings";
 
 const DEFAULT_DB_PATH = process.env.NOOA_DB_PATH || "nooa.db";
 
