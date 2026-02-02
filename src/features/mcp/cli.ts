@@ -14,13 +14,17 @@ export async function mcpCommand(rawArgs: string[]): Promise<number> {
 		console.log(`Usage: nooa mcp <subcommand> [options]
 
 Subcommands:
+  init         Onboard recommended MCPs
   list         List installed/enabled/available MCPs
   install      Install an MCP server
   enable       Enable an MCP server
   disable      Disable an MCP server  
   call         Execute an MCP tool
+  resource     Read an MCP resource URI
   info         Show MCP server information
   configure    Configure MCP server settings
+  uninstall    Remove an MCP configuration
+  test         Ping an MCP server
 
 Options:
   -h, --help   Show this help message
@@ -76,6 +80,16 @@ Examples:
 		case "configure": {
 			const { configureCommand } = await import("./configure");
 			return await configureCommand(rawArgs.slice(1));
+		}
+
+		case "uninstall": {
+			const { uninstallCommand } = await import("./uninstall");
+			return await uninstallCommand(rawArgs.slice(1));
+		}
+
+		case "test": {
+			const { testCommand } = await import("./test");
+			return await testCommand(rawArgs.slice(1));
 		}
 
 		default:
