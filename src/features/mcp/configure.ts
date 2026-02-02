@@ -1,7 +1,15 @@
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { openMcpDatabase } from "../../core/mcp/db";
 import { Registry } from "../../core/mcp/Registry";
-import { parseEnvEntries } from "./helpers";
+import {
+	expandHomePath,
+	fileExists,
+	findProjectRoot,
+	loadEnvFile,
+	parseEnvEntries,
+	resolveEnvPath,
+} from "./helpers";
 
 export async function configureCommand(rawArgs: string[]): Promise<number> {
 	const { values, positionals } = parseArgs({
@@ -11,6 +19,7 @@ export async function configureCommand(rawArgs: string[]): Promise<number> {
 			command: { type: "string" },
 			args: { type: "string", multiple: true },
 			env: { type: "string", multiple: true },
+			"env-file": { type: "string", multiple: true },
 			enable: { type: "boolean" },
 			disable: { type: "boolean" },
 		},
@@ -55,6 +64,45 @@ Flags:
 			return 1;
 		}
 
+		const globalEnvLookup =
+			process.env.NOOA_MCP_GLOBAL_ENV_FILE ||
+			join(process.env.HOME ?? "", ".nooa", "mcp.env");
+		const repoRoot = (await findProjectRoot(process.cwd())) ?? process.cwd();
+		const defaultEnvFiles: string[] = [];
+
+		if (globalEnvLookup) {
+			const expanded = expandHomePath(globalEnvLookup);
+			if (await fileExists(expanded)) {
+				defaultEnvFiles.push(expanded);
+			}
+		}
+
+		const rootEnvFile = resolve(repoRoot, ".mcp.env");
+		if (await fileExists(rootEnvFile)) {
+			defaultEnvFiles.push(rootEnvFile);
+		}
+
+		const rawEnvFiles = values["env-file"];
+		const explicitEnvFiles =
+			typeof rawEnvFiles === "string"
+				? [rawEnvFiles]
+				: Array.isArray(rawEnvFiles)
+					? rawEnvFiles
+					: [];
+		const resolvedExplicitEnvFiles = explicitEnvFiles.map((value) =>
+			resolveEnvPath(value, repoRoot),
+		);
+
+		const envFiles = [...defaultEnvFiles, ...resolvedExplicitEnvFiles];
+		const fileEnv: Record<string, string> = {};
+		for (const envPath of envFiles) {
+			if (!(await fileExists(envPath))) {
+				continue;
+			}
+			const parsed = await loadEnvFile(envPath);
+			Object.assign(fileEnv, parsed);
+		}
+
 		const updated = {
 			...server,
 			command: (values.command as string | undefined) ?? server.command,
@@ -63,6 +111,7 @@ Flags:
 				: server.args,
 			env: {
 				...(server.env ?? {}),
+				...fileEnv,
 				...parseEnvEntries(values.env as string[] | undefined),
 			},
 			enabled: values.enable ?? (!values.disable ? server.enabled : false),

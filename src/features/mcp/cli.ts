@@ -78,6 +78,11 @@ Examples:
 			return await healthCommand(rawArgs.slice(1));
 		}
 
+		case "marketplace": {
+			const { marketplaceCommand } = await import("./marketplace");
+			return await marketplaceCommand(rawArgs.slice(1));
+		}
+
 		case "info": {
 			const { infoCommand } = await import("./info");
 			return await infoCommand(rawArgs.slice(1));

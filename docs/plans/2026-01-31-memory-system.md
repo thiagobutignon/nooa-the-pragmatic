@@ -36,7 +36,7 @@ Memory is the bridge between sessions, ensuring the agent doesn't "lose its soul
 ### Phase B: Memory Logistics (✅ COMPLETED)
 - [x] Implement `nooa memory add/search` with semantic search.
 - [x] Implement `nooa memory summarize` (Memory Flush logic).
-- [x] *Pending*: Hook up "Auto-Reflection" to run automatically after commands.
+- [x] Hook up "Auto-Reflection" to run automatically after commands.
 
 ### Phase C: Personality Injection (✅ COMPLETED)
 - [x] Update `PromptEngine` to inject `SOUL.md` and `USER.md` as mandatory context.

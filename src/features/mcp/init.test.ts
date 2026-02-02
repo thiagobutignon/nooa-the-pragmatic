@@ -2,7 +2,13 @@ import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import { Registry } from "../../core/mcp/Registry";
-import { initCommand } from "./init";
+import {
+	initCommand,
+	resetInitInteractive,
+	resetInitPromptFactory,
+	setInitInteractive,
+	setInitPromptFactory,
+} from "./init";
 import { createTempMcpDb } from "./test-utils";
 
 async function withDb(fn: (dbPath: string) => Promise<void>) {
@@ -16,6 +22,13 @@ async function withDb(fn: (dbPath: string) => Promise<void>) {
 		await rm(dir, { recursive: true, force: true });
 	}
 }
+
+import { beforeEach } from "bun:test";
+
+beforeEach(() => {
+	resetInitInteractive();
+	resetInitPromptFactory();
+});
 
 async function captureLog(fn: () => Promise<number>) {
 	const logs: string[] = [];
@@ -63,5 +76,26 @@ test("nooa mcp init --github-token configures GitHub env", async () => {
 		const registry = new Registry(new Database(dbPath));
 		const gh = await registry.get("github");
 		expect(gh?.env?.GITHUB_TOKEN).toBe(token);
+	});
+});
+
+test("interactive wizard prompts for GitHub token", async () => {
+	await withDb(async (dbPath) => {
+		const answers = ["y", "y", "y", "ghp_interactive"];
+		setInitInteractive(true);
+		setInitPromptFactory(() => ({
+			question: async () => answers.shift() ?? "",
+			close: () => {},
+		}));
+		try {
+			const { exitCode } = await captureLog(() => initCommand([]));
+			expect(exitCode).toBe(0);
+			const registry = new Registry(new Database(dbPath));
+			const gh = await registry.get("github");
+			expect(gh?.env?.GITHUB_TOKEN).toBe("ghp_interactive");
+		} finally {
+			resetInitPromptFactory();
+			resetInitInteractive();
+		}
 	});
 });
