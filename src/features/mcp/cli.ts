@@ -63,13 +63,15 @@ Examples:
 			return await callCommand(rawArgs.slice(1));
 		}
 
-		case "info":
-			console.log("MCP info command not yet implemented");
-			return 1;
+		case "info": {
+			const { infoCommand } = await import("./info");
+			return await infoCommand(rawArgs.slice(1));
+		}
 
-		case "configure":
-			console.log("MCP configure command not yet implemented");
-			return 1;
+		case "configure": {
+			const { configureCommand } = await import("./configure");
+			return await configureCommand(rawArgs.slice(1));
+		}
 
 		default:
 			console.error(`Unknown subcommand: ${subcommand}`);
@@ -77,3 +79,13 @@ Examples:
 			return 1;
 	}
 }
+
+const mcpCommandObject: any = {
+	name: "mcp",
+	description: "Manage MCP integrations (list, install, enable, disable, call)",
+	execute: async ({ rawArgs }: any) => {
+		return await mcpCommand(rawArgs);
+	},
+};
+
+export default mcpCommandObject;

@@ -18,10 +18,15 @@ export type CronLogEntry = {
 };
 
 class CronService {
-	private store: CronStore;
+	private _store: CronStore | undefined;
 
-	constructor(path: string = DEFAULT_DB_PATH) {
-		this.store = new CronStore(new Database(path));
+	constructor(private dbPath: string = DEFAULT_DB_PATH) { }
+
+	private get store(): CronStore {
+		if (!this._store) {
+			this._store = new CronStore(new Database(this.dbPath));
+		}
+		return this._store;
 	}
 
 	addJob(spec: CronJobSpec) {
