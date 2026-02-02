@@ -33,6 +33,7 @@ export class Client {
 	private pendingRequests = new Map<
 		number,
 		{
+			// biome-ignore lint/suspicious/noExplicitAny: JSON-RPC responses are dynamic
 			resolve: (value: any) => void;
 			reject: (error: Error) => void;
 		}
@@ -103,11 +104,13 @@ export class Client {
 		return !!this.process && !this.process.killed;
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: MCP tools have dynamic schemas
 	async listTools(): Promise<any[]> {
 		const result = await this.sendRequest("tools/list", {});
 		return result.tools || [];
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: Tool args and results are dynamic
 	async callTool(name: string, args: any): Promise<any> {
 		return await this.sendRequest("tools/call", {
 			name,
@@ -115,11 +118,13 @@ export class Client {
 		});
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: MCP resources have dynamic schemas
 	async listResources(): Promise<any[]> {
 		const result = await this.sendRequest("resources/list", {});
 		return result.resources || [];
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: Resource content is dynamic
 	async readResource(uri: string): Promise<any> {
 		return await this.sendRequest("resources/read", { uri });
 	}
@@ -133,6 +138,7 @@ export class Client {
 		}
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: JSON-RPC is fully dynamic
 	private async sendRequest(method: string, params: any): Promise<any> {
 		if (!this.process?.stdin) {
 			throw new Error("Client not started");

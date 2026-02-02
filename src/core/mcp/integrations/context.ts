@@ -2,20 +2,22 @@
 // This would be integrated into src/features/context/execute.ts
 
 import type { Database } from "bun:sqlite";
-import { Registry } from "../../core/mcp/Registry";
-import { ServerManager } from "../../core/mcp/ServerManager";
+import { Registry } from "../Registry";
+import { ServerManager } from "../ServerManager";
+import type { McpResource } from "../types";
 
 /**
  * Integration point for Context command
  * Call this to get MCP resources available for context gathering
  */
-export async function getMcpResourcesForContext(db: Database): Promise<any[]> {
+export async function getMcpResourcesForContext(
+	db: Database,
+): Promise<McpResource[]> {
 	const registry = new Registry(db);
-	const configStore = registry.configStore;
-	const serverManager = new ServerManager(configStore);
+	const serverManager = new ServerManager();
 
 	const enabledServers = await registry.listEnabled();
-	const allResources: any[] = [];
+	const allResources: McpResource[] = [];
 
 	for (const server of enabledServers) {
 		try {
@@ -26,6 +28,7 @@ export async function getMcpResourcesForContext(db: Database): Promise<any[]> {
 
 			const resources = await client.listResources();
 			allResources.push(
+				// biome-ignore lint/suspicious/noExplicitAny: Dynamic resource mapping
 				...resources.map((r: any) => ({ ...r, source: server.name })),
 			);
 		} catch (error) {
@@ -43,10 +46,10 @@ export async function readMcpResourceFromContext(
 	db: Database,
 	mcpSource: string,
 	uri: string,
+	// biome-ignore lint/suspicious/noExplicitAny: Resource content is dynamic JSON-RPC response
 ): Promise<any> {
 	const registry = new Registry(db);
-	const configStore = registry.configStore;
-	const serverManager = new ServerManager(configStore);
+	const serverManager = new ServerManager();
 
 	const server = await registry.get(mcpSource);
 	if (!server) {
