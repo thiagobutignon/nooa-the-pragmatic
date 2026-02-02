@@ -189,7 +189,7 @@ describe("code command execute", () => {
 
 		let helpCalled = false;
 		spyOn(console, "log").mockImplementation((msg: string) => {
-			if (msg.includes("Usage: nooa code <write|patch>")) helpCalled = true;
+			if (msg.includes("Usage: nooa code <subcommand>")) helpCalled = true;
 		});
 
 		await codeCommand.execute(context);
@@ -325,7 +325,7 @@ describe("code command execute", () => {
 
 		let helpCalled = false;
 		spyOn(console, "log").mockImplementation((msg: string) => {
-			if (msg.includes("Usage: nooa code <write|patch>")) helpCalled = true;
+			if (msg.includes("Usage: nooa code <subcommand>")) helpCalled = true;
 		});
 
 		await codeCommand.execute(context);

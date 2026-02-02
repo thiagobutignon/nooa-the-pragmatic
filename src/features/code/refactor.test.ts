@@ -1,18 +1,7 @@
-import { describe, test, expect, mock, spyOn } from "bun:test";
-import { describe, test, expect, mock } from "bun:test";
-// import { executeRefactor } from "./refactor"; // using dynamic import
-
-// Mock dependencies
-mock.module("node:fs/promises", () => ({
-    readFile: async () => "original code",
-    writeFile: async () => undefined,
-}));
-
-// Mock AiEngine if complex, or just mock the instance?
-// executeRefactor presumably imports a global instance or creates one.
-// Let's assume it imports 'ai' from somewhere or we can mock the module that exports it.
-// Assuming we use src/features/ai/engine.ts
-// We'll mock the module.
+import { describe, test, expect, mock, beforeEach, afterEach } from "bun:test";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const mockComplete = mock(async () => ({ content: "refactored code" }));
 
@@ -24,11 +13,27 @@ mock.module("../ai/engine", () => ({
 }));
 
 describe("Code Refactor Feature", () => {
-    test("executeRefactor reads, prompts AI, and writes back", async () => {
-        const { executeRefactor } = await import("./refactor");
-        const result = await executeRefactor("src/file.ts", "rename vars");
+    let root = "";
 
-        expect(result).toBe("Refactored src/file.ts");
+    beforeEach(async () => {
+        root = await mkdtemp(join(tmpdir(), "nooa-refactor-"));
+    });
+
+    afterEach(async () => {
+        await rm(root, { recursive: true, force: true });
+    });
+
+    test("executeRefactor reads, prompts AI, and writes back", async () => {
+        const filePath = join(root, "file.ts");
+        await writeFile(filePath, "original code");
+
+        const { executeRefactor } = await import("./refactor");
+        const result = await executeRefactor(filePath, "rename vars");
+
+        expect(result).toBe(`Refactored ${filePath}`);
         expect(mockComplete).toHaveBeenCalled();
+
+        const content = await readFile(filePath, "utf-8");
+        expect(content).toBe("refactored code");
     });
 });

@@ -8,8 +8,7 @@ const ORIGINAL_PATH = process.env.PATH || "";
 async function setupGhStub(script: string) {
 	const dir = await mkdtemp(join(tmpdir(), "nooa-gh-"));
 	const ghPath = join(dir, "gh");
-	await writeFile(ghPath, script, { encoding: "utf8" });
-	await chmod(ghPath, 0o755);
+	await writeFile(ghPath, script, { encoding: "utf8", mode: 0o755 });
 	process.env.PATH = `${dir}:${ORIGINAL_PATH}`;
 	return { dir, ghPath };
 }

@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { execa } from "execa";
 import { TelemetryStore } from "../../core/telemetry";
 
-const binPath = "./index.ts";
+import { fileURLToPath } from "node:url";
+
+const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
 describe("nooa search", () => {
 	it("shows help", async () => {

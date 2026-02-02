@@ -33,7 +33,7 @@ describe("runSearch engine", () => {
 	});
 
 	it("returns matches with metadata", async () => {
-		const results = await runSearch({ query: "TODO", root, maxResults: 5 });
+		const results = await runSearch({ query: "TODO", root, maxResults: 5, noIgnore: true });
 		expect(Array.isArray(results)).toBe(true);
 		expect(results.length).toBeGreaterThan(0);
 		expect(results[0]?.path).toContain(root);
