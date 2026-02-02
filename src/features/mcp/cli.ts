@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { dropSubcommandPositionals } from "./helpers";
 
 export async function mcpCommand(rawArgs: string[]): Promise<number> {
 	const { values, positionals } = parseArgs({
@@ -10,7 +11,9 @@ export async function mcpCommand(rawArgs: string[]): Promise<number> {
 		strict: false,
 	});
 
-	if (values.help || positionals.length === 0) {
+	const normalized = dropSubcommandPositionals(positionals, "mcp");
+
+	if (values.help || normalized.length === 0) {
 		console.log(`Usage: nooa mcp <subcommand> [options]
 
 Subcommands:
@@ -39,8 +42,8 @@ Examples:
 		return 0;
 	}
 
-	const subcommand = positionals[0];
-	const _subArgs = positionals.slice(1);
+	const subcommand = normalized[0];
+	const _subArgs = normalized.slice(1);
 
 	// Import subcommands dynamically
 	switch (subcommand) {

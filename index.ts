@@ -62,10 +62,14 @@ export async function main(
 	const aliasRegistry = new McpRegistry(aliasDb);
 
 	const subcommand = positionals[0];
-	const registeredCmd = subcommand ? commandRegistry.get(subcommand) : undefined;
+	const registeredCmd = subcommand
+		? commandRegistry.get(subcommand)
+		: undefined;
 
 	try {
-		const aliasEntry = subcommand ? await aliasRegistry.aliasGet(subcommand) : undefined;
+		const aliasEntry = subcommand
+			? await aliasRegistry.aliasGet(subcommand)
+			: undefined;
 		if (aliasEntry) {
 			const aliasArgs = [
 				aliasEntry.command,
@@ -79,35 +83,35 @@ export async function main(
 			const { logger, createTraceId } = await import("./src/core/logger.js");
 			const traceId = createTraceId();
 
-		await logger.runWithContext(
-			{ trace_id: traceId, command: subcommand },
-			async () => {
-				const result: unknown = await registeredCmd.execute({
-					args: positionals,
-					values,
-					rawArgs: args,
-					bus,
-				});
+			await logger.runWithContext(
+				{ trace_id: traceId, command: subcommand },
+				async () => {
+					const result: unknown = await registeredCmd.execute({
+						args: positionals,
+						values,
+						rawArgs: args,
+						bus,
+					});
 
-				// Auto-Reflection Hook (Lightweight Observation)
-				if (process.env.NOOA_DISABLE_REFLECTION !== "1") {
-					const { autoReflect } = await import("./src/core/reflection/hook.ts");
-					await autoReflect(subcommand, args, result);
-				}
-			},
-		);
-		return;
-	} finally {
-		aliasDb.close();
-	}
+					// Auto-Reflection Hook (Lightweight Observation)
+					if (process.env.NOOA_DISABLE_REFLECTION !== "1") {
+						const { autoReflect } = await import(
+							"./src/core/reflection/hook.ts"
+						);
+						await autoReflect(subcommand, args, result);
+					}
+				},
+			);
+			return;
+		}
 
-	if (values.help || !subcommand) {
-		const commands = registry.list();
-		const subcommandHelp = commands
-			.map((cmd) => `  ${cmd.name.padEnd(25)} ${cmd.description || ""}`)
-			.join("\n");
+		if (values.help || !subcommand) {
+			const commands = commandRegistry.list();
+			const subcommandHelp = commands
+				.map((cmd) => `  ${cmd.name.padEnd(25)} ${cmd.description || ""}`)
+				.join("\n");
 
-		console.log(`
+			console.log(`
 Usage: nooa [flags] <subcommand> [args]
 
 Subcommands:
@@ -118,16 +122,19 @@ Flags:
   -v, --version          Show version.
   -h, --help             Show help.
 `);
-		return;
-	}
+			return;
+		}
 
-	if (values.version) {
-		console.log("nooa v0.0.1");
-		return;
-	}
+		if (values.version) {
+			console.log("nooa v0.0.1");
+			return;
+		}
 
-	console.error(`Error: Unknown subcommand '${subcommand}'`);
-	process.exitCode = 1;
+		console.error(`Error: Unknown subcommand '${subcommand}'`);
+		process.exitCode = 1;
+	} finally {
+		aliasDb.close();
+	}
 }
 
 // Run if this is the main entry point
