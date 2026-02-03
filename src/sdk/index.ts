@@ -1,12 +1,13 @@
 import { ai } from "./ai";
 import { ask } from "./ask";
 import { check } from "./check";
+import { ci } from "./ci";
 
 export const sdk = {
 	ai,
 	ask,
 	check,
-	ci: {},
+	ci,
 	code: {},
 	commit: {},
 	context: {},
