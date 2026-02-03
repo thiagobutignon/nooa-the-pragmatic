@@ -71,4 +71,4 @@ gh auth login
 
 ---
 
-**NOOA v1.5.0** — *Engineering with Soul.*
+**NOOA v1.6.0** — *Engineering with Soul.*
