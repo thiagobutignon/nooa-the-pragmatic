@@ -10,6 +10,7 @@ import { doctor } from "./doctor";
 import { embed } from "./embed";
 import { evalSdk } from "./eval";
 import { fix } from "./fix";
+import { goal } from "./goal";
 
 export const sdk = {
 	ai,
@@ -24,7 +25,7 @@ export const sdk = {
 	embed,
 	eval: evalSdk,
 	fix,
-	goal: {},
+	goal,
 	guardrail: {},
 	ignore: {},
 	index: {},
