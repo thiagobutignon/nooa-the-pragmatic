@@ -16,6 +16,7 @@ import { ignore } from "./ignore";
 import { indexSdk } from "./indexing";
 import { init } from "./init";
 import { mcp } from "./mcp";
+import { memory } from "./memory";
 import { message } from "./message";
 import { pr } from "./pr";
 import { prompt } from "./prompt";
@@ -47,6 +48,7 @@ export const sdk = {
 	index: indexSdk,
 	init,
 	mcp,
+	memory,
 	message,
 	pr,
 	prompt,

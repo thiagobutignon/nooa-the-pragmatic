@@ -22,6 +22,7 @@ describe("SDK surface", () => {
 			"index",
 			"init",
 			"mcp",
+			"memory",
 			"message",
 			"pr",
 			"prompt",
