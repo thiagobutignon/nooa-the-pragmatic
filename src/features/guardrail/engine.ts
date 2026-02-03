@@ -263,7 +263,7 @@ export class GuardrailEngine {
 			for (const entry of entries) {
 				if (entry === ".git" || entry === "node_modules") continue;
 				const fullPath = join(current, entry);
-				let stat;
+				let stat: ReturnType<typeof statSync>;
 				try {
 					stat = statSync(fullPath);
 				} catch {

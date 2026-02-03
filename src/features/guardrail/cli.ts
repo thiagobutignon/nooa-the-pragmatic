@@ -9,11 +9,12 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { stringify as stringifyYaml } from "yaml";
 import type { Command, CommandContext } from "../../core/command";
+import { getBuiltinProfilesDir, loadBuiltinProfile } from "./builtin";
 import type { Finding, GuardrailReport } from "./contracts";
 import { ExitCode } from "./contracts";
-import { getBuiltinProfilesDir, loadBuiltinProfile } from "./builtin";
 import { GuardrailEngine } from "./engine";
 import { loadProfile, validateProfile } from "./profiles";
+import type { RefactorProfile } from "./schemas";
 import { buildProfileFromSpec, parseGuardrailSpec } from "./spec";
 
 const HELP_TEXT = `
@@ -122,7 +123,7 @@ async function handleCheck(values: {
 	}
 
 	try {
-		let profile;
+		let profile: RefactorProfile;
 		let profileName: string;
 		let thresholds:
 			| { critical: number; high: number; medium: number; low: number }
@@ -142,8 +143,18 @@ async function handleCheck(values: {
 			};
 			exclusions = spec.exclusions;
 		} else {
-			const rawPath = values.profile!;
-			const builtinProfiles = ["zero-preguica", "security", "dangerous-patterns", "default"];
+			if (!values.profile) {
+				console.error("Error: --profile is required for check");
+				process.exitCode = ExitCode.VALIDATION_ERROR;
+				return;
+			}
+			const rawPath = values.profile;
+			const builtinProfiles = [
+				"zero-preguica",
+				"security",
+				"dangerous-patterns",
+				"default",
+			];
 
 			let profilePath = rawPath;
 			if (builtinProfiles.includes(rawPath)) {
@@ -411,7 +422,7 @@ async function handleAdd(name?: string) {
 	try {
 		await writeFile(
 			profilePath,
-			`# NOOA Guardrail Profile\nrefactor_name: ${name}\ndescription: ${name} profile\nversion: \"1.0.0\"\n\nrules:\n  - id: example-rule\n    description: Example rule\n    severity: low\n    match:\n      anyOf:\n        - type: literal\n          value: \"TODO\"\n`,
+			`# NOOA Guardrail Profile\nrefactor_name: ${name}\ndescription: ${name} profile\nversion: "1.0.0"\n\nrules:\n  - id: example-rule\n    description: Example rule\n    severity: low\n    match:\n      anyOf:\n        - type: literal\n          value: "TODO"\n`,
 		);
 		console.log(`✅ Created profile: ${profilePath}`);
 	} catch (error) {

@@ -137,7 +137,7 @@ rules:
 
 		it("does not rely on require() for yaml parsing", async () => {
 			const content = await Bun.file(join(import.meta.dir, "spec.ts")).text();
-			expect(content.includes("require(\"yaml\")")).toBe(false);
+			expect(content.includes('require("yaml")')).toBe(false);
 			expect(content.includes("require('yaml')")).toBe(false);
 		});
 	});
