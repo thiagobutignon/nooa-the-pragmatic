@@ -4,6 +4,7 @@ import { check } from "./check";
 import { ci } from "./ci";
 import { code } from "./code";
 import { commit } from "./commit";
+import { context } from "./context";
 
 export const sdk = {
 	ai,
@@ -12,7 +13,7 @@ export const sdk = {
 	ci,
 	code,
 	commit,
-	context: {},
+	context,
 	cron: {},
 	doctor: {},
 	embed: {},
