@@ -18,6 +18,7 @@ import { init } from "./init";
 import { mcp } from "./mcp";
 import { message } from "./message";
 import { pr } from "./pr";
+import { prompt } from "./prompt";
 
 export const sdk = {
 	ai,
@@ -40,7 +41,7 @@ export const sdk = {
 	mcp,
 	message,
 	pr,
-	prompt: {},
+	prompt,
 	push: {},
 	read: {},
 	review: {},
