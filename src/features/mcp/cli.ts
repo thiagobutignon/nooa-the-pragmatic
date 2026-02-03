@@ -46,82 +46,17 @@ Examples:
 	const _subArgs = normalized.slice(1);
 
 	// Import subcommands dynamically
-	switch (subcommand) {
-		case "init": {
-			const { initCommand } = await import("./init");
-			return await initCommand(rawArgs.slice(1));
-		}
+	// Import subcommands dynamically using loader
+	const { loadCommand } = await import("./loader");
+	const cmdFn = await loadCommand(subcommand);
 
-		case "alias": {
-			const { aliasCommand } = await import("./alias");
-			return await aliasCommand(rawArgs.slice(1));
-		}
-
-		case "list": {
-			const { listCommand } = await import("./list");
-			return await listCommand(rawArgs.slice(1));
-		}
-
-		case "install": {
-			const { installCommand } = await import("./install");
-			return await installCommand(rawArgs.slice(1));
-		}
-
-		case "enable": {
-			const { enableCommand } = await import("./enable");
-			return await enableCommand(rawArgs.slice(1));
-		}
-
-		case "disable": {
-			const { disableCommand } = await import("./disable");
-			return await disableCommand(rawArgs.slice(1));
-		}
-
-		case "call": {
-			const { callCommand } = await import("./call");
-			return await callCommand(rawArgs.slice(1));
-		}
-
-		case "resource": {
-			const { resourceCommand } = await import("./resource");
-			return await resourceCommand(rawArgs.slice(1));
-		}
-
-		case "health": {
-			const { healthCommand } = await import("./health");
-			return await healthCommand(rawArgs.slice(1));
-		}
-
-		case "marketplace": {
-			const { marketplaceCommand } = await import("./marketplace");
-			return await marketplaceCommand(rawArgs.slice(1));
-		}
-
-		case "info": {
-			const { infoCommand } = await import("./info");
-			return await infoCommand(rawArgs.slice(1));
-		}
-
-		case "configure": {
-			const { configureCommand } = await import("./configure");
-			return await configureCommand(rawArgs.slice(1));
-		}
-
-		case "uninstall": {
-			const { uninstallCommand } = await import("./uninstall");
-			return await uninstallCommand(rawArgs.slice(1));
-		}
-
-		case "test": {
-			const { testCommand } = await import("./test");
-			return await testCommand(rawArgs.slice(1));
-		}
-
-		default:
-			console.error(`Unknown subcommand: ${subcommand}`);
-			console.error('Run "nooa mcp --help" for usage');
-			return 1;
+	if (cmdFn) {
+		return await cmdFn(rawArgs.slice(1));
 	}
+
+	console.error(`Unknown subcommand: ${subcommand}`);
+	console.error('Run "nooa mcp --help" for usage');
+	return 1;
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: Dynamic command registration

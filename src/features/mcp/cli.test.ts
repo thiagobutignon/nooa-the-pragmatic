@@ -1,68 +1,59 @@
-import { describe, expect, test, spyOn, mock, afterEach } from "bun:test";
+import { describe, expect, test, spyOn, mock, afterEach, beforeEach } from "bun:test";
 import { mcpCommand } from "./cli";
 
 describe("MCP CLI Dispatcher", () => {
-	const logSpy = spyOn(console, "log").mockImplementation(() => { });
-	const errorSpy = spyOn(console, "error").mockImplementation(() => { });
+    let logSpy: any;
+    let errorSpy: any;
 
-	afterEach(() => {
-		logSpy.mockClear();
-		errorSpy.mockClear();
-	});
+    beforeEach(() => {
+        logSpy = spyOn(console, "log").mockImplementation(() => { });
+        errorSpy = spyOn(console, "error").mockImplementation(() => { });
+    });
 
-	// Helper to mock submodule import
-	const mockAction = mock(async () => 0);
+    afterEach(() => {
+        logSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
 
-	test("shows help with no args", async () => {
-		const code = await mcpCommand([]);
-		expect(code).toBe(0);
-		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: nooa mcp"));
-	});
+    // We can now safely mock the loader without affecting other files
+    // because other files don't import the loader.
+    // However, we must ensure we mock it BEFORE mcpCommand imports it dynamically? 
+    // mcpCommand imports it dynamically. We can use mock.module to replace it.
 
-	test("shows help with --help", async () => {
-		const code = await mcpCommand(["--help"]);
-		expect(code).toBe(0);
-		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: nooa mcp"));
-	});
+    test("shows help with no args", async () => {
+        const code = await mcpCommand([]);
+        expect(code).toBe(0);
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: nooa mcp"));
+    });
 
-	test("handles unknown subcommand", async () => {
-		const code = await mcpCommand(["unknown"]);
-		expect(code).toBe(1);
-		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown subcommand: unknown"));
-	});
+    test("shows help with --help", async () => {
+        const code = await mcpCommand(["--help"]);
+        expect(code).toBe(0);
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: nooa mcp"));
+    });
 
-	const subcommands = [
-		["init", "./init", "initCommand"],
-		["alias", "./alias", "aliasCommand"],
-		["list", "./list", "listCommand"],
-		["install", "./install", "installCommand"],
-		["enable", "./enable", "enableCommand"],
-		["disable", "./disable", "disableCommand"],
-		["call", "./call", "callCommand"],
-		["resource", "./resource", "resourceCommand"],
-		["health", "./health", "healthCommand"],
-		["marketplace", "./marketplace", "marketplaceCommand"],
-		["info", "./info", "infoCommand"],
-		["configure", "./configure", "configureCommand"],
-		["uninstall", "./uninstall", "uninstallCommand"],
-		["test", "./test", "testCommand"],
-	];
+    test("handles unknown subcommand", async () => {
+        // We need to ensure loadCommand returns null for "unknown"
+        // Since we are mocking the module for dispatches, we need to handle "unknown" too if we mock broadly.
+        // But if we don't mock loader here, it will use real loader which returns null for unknown.
+        const code = await mcpCommand(["unknown"]);
+        expect(code).toBe(1);
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown subcommand: unknown"));
+    });
 
-	for (const [cmd, module, exportName] of subcommands) {
-		test(`dispatches ${cmd}`, async () => {
-			const spy = mock(async () => 42); // Distinct return code
+    test("dispatches subcommands", async () => {
+        const spy = mock(async () => 42);
 
-			mock.module(module, () => ({
-				[exportName]: spy
-			}));
+        // Mock the loader module
+        mock.module("./loader", () => ({
+            loadCommand: async (name: string) => {
+                if (name === "test_cmd") return spy;
+                return null;
+            }
+        }));
 
-			// Re-import to ensure mocks are applied? 
-			// In Bun, mock.module applies to subsequent imports.
-			// But mcpCommand uses dynamic import(), so it should pick it up.
-
-			const code = await mcpCommand([cmd, "arg"]);
-			expect(code).toBe(42);
-			expect(spy).toHaveBeenCalled();
-		});
-	}
+        const code = await mcpCommand(["test_cmd", "arg"]);
+        expect(code).toBe(42);
+        expect(spy).toHaveBeenCalledWith(["arg"]);
+    });
 });
