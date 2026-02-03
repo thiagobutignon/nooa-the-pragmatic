@@ -19,6 +19,15 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 - **`nooa check`**: Policy-driven auditor.
 - **`nooa ci`**: Local pipeline (test + lint + check) for unbreakable contracts.
 
+### 4. Self-Evolving Architecture (Drift-Proof)
+Feature modules are **Self-Describing**. They define their own schema, which automatically generates:
+- CLI Help & Usage
+- Agent Tool Definitions (for autonomous operation)
+- SDK Type Definitions
+- Documentation
+
+**Rule**: Code is the Single Source of Truth. Documentation is a derived artifact.
+
 ## 🚀 Commands
 
 | Command | Purpose |
