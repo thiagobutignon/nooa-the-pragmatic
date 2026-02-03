@@ -11,6 +11,8 @@ import { embed } from "./embed";
 import { evalSdk } from "./eval";
 import { fix } from "./fix";
 import { goal } from "./goal";
+import { guardrail } from "./guardrail";
+import { ignore } from "./ignore";
 
 export const sdk = {
 	ai,
@@ -26,8 +28,8 @@ export const sdk = {
 	eval: evalSdk,
 	fix,
 	goal,
-	guardrail: {},
-	ignore: {},
+	guardrail,
+	ignore,
 	index: {},
 	init: {},
 	mcp: {},
