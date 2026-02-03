@@ -87,6 +87,8 @@ rules:
             expect(output).toContain("list");
             expect(output).toContain("show");
             expect(output).toContain("spec");
+            expect(output).toContain("add");
+            expect(output).toContain("remove");
         });
     });
 
@@ -293,6 +295,23 @@ rules:
             expect(output).toContain("type:");
             expect(output).toContain("literal");
         });
+
+        it("adds and removes a profile", async () => {
+            consoleLogSpy.mockClear();
+            process.chdir(tempDir);
+
+            await guardrailCli(["add", "my-profile"]);
+            const added = await Bun.file(
+                join(tempDir, ".nooa/guardrails/profiles/my-profile.yaml"),
+            ).text();
+            expect(added).toContain("refactor_name: my-profile");
+
+            await guardrailCli(["remove", "my-profile", "--force"]);
+            const exists = await Bun.file(
+                join(tempDir, ".nooa/guardrails/profiles/my-profile.yaml"),
+            ).exists();
+            expect(exists).toBe(false);
+        });
     });
 
     describe("spec commands", () => {
@@ -316,6 +335,46 @@ rules:
 
             const output = consoleLogSpy.mock.calls.map((c) => c[0]).join("\n");
             expect(output.toLowerCase()).toContain("valid");
+        });
+
+        it("shows spec summary", async () => {
+            consoleLogSpy.mockClear();
+            process.chdir(tempDir);
+
+            const guardrailMd = `
+# GUARDRAIL.md
+
+## Enabled Profiles
+
+- zero-preguica
+- security
+`;
+            await writeFile(
+                join(tempDir, ".nooa/guardrails/GUARDRAIL.md"),
+                guardrailMd,
+            );
+
+            await guardrailCli(["spec", "show"]);
+
+            const output = consoleLogSpy.mock.calls.map((c) => c[0]).join("\n");
+            expect(output).toContain("zero-preguica");
+            expect(output).toContain("security");
+        });
+
+        it("initializes GUARDRAIL.md when missing", async () => {
+            consoleLogSpy.mockClear();
+            process.chdir(tempDir);
+
+            const specPath = join(tempDir, ".nooa/guardrails/GUARDRAIL.md");
+            await rm(specPath, { force: true });
+
+            await guardrailCli(["spec", "init"]);
+
+            const content = await Bun.file(
+                specPath,
+            ).text();
+            expect(content).toContain("Enabled Profiles");
+            expect(content).toContain("zero-preguica");
         });
     });
 });

@@ -4,7 +4,7 @@
  * Subcommands: check, validate, init
  */
 
-import { access, mkdir, readdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { stringify as stringifyYaml } from "yaml";
@@ -26,6 +26,8 @@ Subcommands:
   list       List available guardrail profiles
   show       Show a normalized guardrail profile
   spec       Operate on GUARDRAIL.md (spec validate)
+  add        Add a new guardrail profile
+  remove     Remove a guardrail profile
 
 Check Options:
   --profile, -p <path>   Path to YAML profile
@@ -47,6 +49,10 @@ Examples:
   nooa guardrail list
   nooa guardrail show security
   nooa guardrail spec validate
+  nooa guardrail spec show
+  nooa guardrail spec init
+  nooa guardrail add my-profile
+  nooa guardrail remove my-profile --force
 `;
 
 export async function guardrailCli(args: string[]) {
@@ -58,6 +64,7 @@ export async function guardrailCli(args: string[]) {
 			watch: { type: "boolean", short: "w" },
 			json: { type: "boolean" },
 			deterministic: { type: "boolean" },
+			force: { type: "boolean" },
 			help: { type: "boolean", short: "h" },
 		},
 		allowPositionals: true,
@@ -88,6 +95,12 @@ export async function guardrailCli(args: string[]) {
 			break;
 		case "spec":
 			await handleSpec(positionals.slice(1));
+			break;
+		case "add":
+			await handleAdd(positionals[1]);
+			break;
+		case "remove":
+			await handleRemove(positionals[1], values.force);
 			break;
 		default:
 			console.error(`Unknown subcommand: ${subcommand}`);
@@ -278,6 +291,61 @@ async function handleShow(input?: string) {
 async function handleSpec(args: string[]) {
 	const subcommand = args[0];
 
+	if (subcommand === "show") {
+		try {
+			const spec = await parseGuardrailSpec();
+			console.log("Enabled profiles:");
+			for (const profileName of spec.profiles) {
+				console.log(`- ${profileName}`);
+			}
+		} catch (error) {
+			console.error(`Error showing GUARDRAIL.md: ${error}`);
+			process.exitCode = ExitCode.RUNTIME_ERROR;
+		}
+		return;
+	}
+
+	if (subcommand === "init") {
+		const guardrailsDir = join(process.cwd(), ".nooa", "guardrails");
+		try {
+			await mkdir(guardrailsDir, { recursive: true });
+			const specPath = join(guardrailsDir, "GUARDRAIL.md");
+			try {
+				await access(specPath);
+			} catch {
+				await writeFile(
+					specPath,
+					`# GUARDRAIL.md
+
+## Enabled Profiles
+
+- zero-preguica
+
+## Thresholds
+
+| Severity | Threshold |
+|----------|-----------|
+| critical | 0         |
+| high     | 0         |
+| medium   | 10        |
+| low      | 50        |
+
+## Exclusions
+
+\`\`\`
+**/node_modules/**
+\`\`\`
+`,
+				);
+			}
+			console.log("✅ Initialized GUARDRAIL.md");
+		} catch (error) {
+			console.error(`Error initializing GUARDRAIL.md: ${error}`);
+			process.exitCode = ExitCode.RUNTIME_ERROR;
+		}
+		return;
+	}
+
 	if (subcommand !== "validate") {
 		console.error("Error: spec subcommand is required (validate)");
 		process.exitCode = ExitCode.VALIDATION_ERROR;
@@ -307,6 +375,60 @@ async function handleSpec(args: string[]) {
 		console.log("✅ GUARDRAIL.md is valid");
 	} catch (error) {
 		console.error(`Error validating GUARDRAIL.md: ${error}`);
+		process.exitCode = ExitCode.RUNTIME_ERROR;
+	}
+}
+
+async function handleAdd(name?: string) {
+	if (!name) {
+		console.error("Error: profile name is required for add");
+		process.exitCode = ExitCode.VALIDATION_ERROR;
+		return;
+	}
+
+	const profilesDir = getBuiltinProfilesDir();
+	const profilePath = join(profilesDir, `${name}.yaml`);
+
+	try {
+		await mkdir(profilesDir, { recursive: true });
+		await access(profilePath);
+		console.error(`Error: profile "${name}" already exists`);
+		process.exitCode = ExitCode.VALIDATION_ERROR;
+		return;
+	} catch {
+		// File doesn't exist, continue.
+	}
+
+	try {
+		await writeFile(
+			profilePath,
+			`# NOOA Guardrail Profile\nrefactor_name: ${name}\ndescription: ${name} profile\nversion: \"1.0.0\"\n\nrules:\n  - id: example-rule\n    description: Example rule\n    severity: low\n    match:\n      anyOf:\n        - type: literal\n          value: \"TODO\"\n`,
+		);
+		console.log(`✅ Created profile: ${profilePath}`);
+	} catch (error) {
+		console.error(`Error creating profile: ${error}`);
+		process.exitCode = ExitCode.RUNTIME_ERROR;
+	}
+}
+
+async function handleRemove(name?: string, force?: boolean) {
+	if (!name) {
+		console.error("Error: profile name is required for remove");
+		process.exitCode = ExitCode.VALIDATION_ERROR;
+		return;
+	}
+	if (!force) {
+		console.error("Error: --force is required to remove profiles");
+		process.exitCode = ExitCode.VALIDATION_ERROR;
+		return;
+	}
+
+	const profilePath = join(getBuiltinProfilesDir(), `${name}.yaml`);
+	try {
+		await rm(profilePath);
+		console.log(`✅ Removed profile: ${profilePath}`);
+	} catch (error) {
+		console.error(`Error removing profile: ${error}`);
 		process.exitCode = ExitCode.RUNTIME_ERROR;
 	}
 }
