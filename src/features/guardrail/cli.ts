@@ -4,12 +4,14 @@
  * Subcommands: check, validate, init
  */
 
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { stringify as stringifyYaml } from "yaml";
 import type { Command, CommandContext } from "../../core/command";
 import type { Finding, GuardrailReport } from "./contracts";
 import { ExitCode } from "./contracts";
+import { getBuiltinProfilesDir, loadBuiltinProfile } from "./builtin";
 import { GuardrailEngine } from "./engine";
 import { loadProfile, validateProfile } from "./profiles";
 import { buildProfileFromSpec, parseGuardrailSpec } from "./spec";
@@ -21,6 +23,9 @@ Subcommands:
   check      Run guardrail checks against code
   validate   Validate a YAML profile schema
   init       Initialize .nooa/guardrails directory
+  list       List available guardrail profiles
+  show       Show a normalized guardrail profile
+  spec       Operate on GUARDRAIL.md (spec validate)
 
 Check Options:
   --profile, -p <path>   Path to YAML profile
@@ -39,6 +44,9 @@ Examples:
   nooa guardrail check -p audit.yaml --json
   nooa guardrail validate --profile my-profile.yaml
   nooa guardrail init
+  nooa guardrail list
+  nooa guardrail show security
+  nooa guardrail spec validate
 `;
 
 export async function guardrailCli(args: string[]) {
@@ -72,6 +80,15 @@ export async function guardrailCli(args: string[]) {
 		case "init":
 			await handleInit();
 			break;
+		case "list":
+			await handleList();
+			break;
+		case "show":
+			await handleShow(positionals[1]);
+			break;
+		case "spec":
+			await handleSpec(positionals.slice(1));
+			break;
 		default:
 			console.error(`Unknown subcommand: ${subcommand}`);
 			console.log(HELP_TEXT);
@@ -94,12 +111,23 @@ async function handleCheck(values: {
 	try {
 		let profile;
 		let profileName: string;
+		let thresholds:
+			| { critical: number; high: number; medium: number; low: number }
+			| undefined;
+		let exclusions: string[] | undefined;
 
 		if (values.spec) {
 			// Load from GUARDRAIL.md spec
 			const spec = await parseGuardrailSpec();
 			profile = await buildProfileFromSpec(spec);
 			profileName = "GUARDRAIL.md (spec)";
+			thresholds = spec.thresholds as {
+				critical: number;
+				high: number;
+				medium: number;
+				low: number;
+			};
+			exclusions = spec.exclusions;
 		} else {
 			profile = await loadProfile(values.profile!);
 			profileName = values.profile!;
@@ -107,10 +135,10 @@ async function handleCheck(values: {
 
 		const engine = new GuardrailEngine(process.cwd());
 		const startTime = Date.now();
-		const findings = await engine.evaluate(profile);
+		const findings = await engine.evaluate(profile, { exclude: exclusions });
 		const executionMs = Date.now() - startTime;
 
-		const report = buildReport(findings, profileName, executionMs);
+		const report = buildReport(findings, profileName, executionMs, thresholds);
 
 		if (values.json) {
 			console.log(JSON.stringify(report, null, 2));
@@ -209,10 +237,85 @@ rules:
 	}
 }
 
+async function handleList() {
+	const profilesDir = getBuiltinProfilesDir();
+	try {
+		const entries = await readdir(profilesDir, { withFileTypes: true });
+		const names = entries
+			.filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
+			.map((entry) => entry.name.replace(/\.yaml$/, ""))
+			.sort();
+
+		for (const name of names) {
+			console.log(name);
+		}
+	} catch (error) {
+		console.error(`Error listing profiles: ${error}`);
+		process.exitCode = ExitCode.RUNTIME_ERROR;
+	}
+}
+
+async function handleShow(input?: string) {
+	if (!input) {
+		console.error("Error: profile name or path is required for show");
+		process.exitCode = ExitCode.VALIDATION_ERROR;
+		return;
+	}
+
+	try {
+		let profilePath = input;
+		if (!input.endsWith(".yaml")) {
+			profilePath = join(getBuiltinProfilesDir(), `${input}.yaml`);
+		}
+		const profile = await loadProfile(profilePath);
+		console.log(stringifyYaml(profile));
+	} catch (error) {
+		console.error(`Error showing profile: ${error}`);
+		process.exitCode = ExitCode.RUNTIME_ERROR;
+	}
+}
+
+async function handleSpec(args: string[]) {
+	const subcommand = args[0];
+
+	if (subcommand !== "validate") {
+		console.error("Error: spec subcommand is required (validate)");
+		process.exitCode = ExitCode.VALIDATION_ERROR;
+		return;
+	}
+
+	try {
+		const spec = await parseGuardrailSpec();
+		const invalidProfiles: string[] = [];
+
+		for (const profileName of spec.profiles) {
+			try {
+				await loadBuiltinProfile(profileName);
+			} catch {
+				invalidProfiles.push(profileName);
+			}
+		}
+
+		if (invalidProfiles.length > 0) {
+			console.error(
+				`❌ GUARDRAIL.md references missing profiles: ${invalidProfiles.join(", ")}`,
+			);
+			process.exitCode = ExitCode.VALIDATION_ERROR;
+			return;
+		}
+
+		console.log("✅ GUARDRAIL.md is valid");
+	} catch (error) {
+		console.error(`Error validating GUARDRAIL.md: ${error}`);
+		process.exitCode = ExitCode.RUNTIME_ERROR;
+	}
+}
+
 function buildReport(
 	findings: Finding[],
 	profilePath: string,
 	executionMs: number,
+	thresholds?: { critical: number; high: number; medium: number; low: number },
 ): GuardrailReport {
 	const severityCounts = {
 		critical: 0,
@@ -226,12 +329,24 @@ function buildReport(
 		severityCounts[f.severity]++;
 	}
 
-	const hasBlocking = severityCounts.critical > 0 || severityCounts.high > 0;
-	const hasWarnings = severityCounts.medium > 0 || severityCounts.low > 0;
-
 	let status: "pass" | "warning" | "fail" = "pass";
-	if (hasBlocking) status = "fail";
-	else if (hasWarnings) status = "warning";
+	if (thresholds) {
+		const hasBlocking =
+			severityCounts.critical > thresholds.critical ||
+			severityCounts.high > thresholds.high;
+		const hasWarnings =
+			severityCounts.medium > thresholds.medium ||
+			severityCounts.low > thresholds.low;
+
+		if (hasBlocking) status = "fail";
+		else if (hasWarnings) status = "warning";
+	} else {
+		const hasBlocking = severityCounts.critical > 0 || severityCounts.high > 0;
+		const hasWarnings = severityCounts.medium > 0 || severityCounts.low > 0;
+
+		if (hasBlocking) status = "fail";
+		else if (hasWarnings) status = "warning";
+	}
 
 	return {
 		status,

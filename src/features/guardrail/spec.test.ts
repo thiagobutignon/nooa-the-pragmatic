@@ -107,6 +107,39 @@ rules:
 			expect(spec.exclusions).toContain("**/*.test.ts");
 			expect(spec.exclusions).toContain("**/node_modules/**");
 		});
+
+		it("parses custom rules without require()", async () => {
+			const specContent = `
+## Custom Rules
+
+\`\`\`yaml
+rules:
+  - id: custom-rule
+    description: Custom test rule
+    severity: high
+    match:
+      anyOf:
+        - type: literal
+          value: "DEPRECATED"
+\`\`\`
+`;
+			await writeFile(join(tempDir, "custom-esm.md"), specContent);
+
+			const originalRequire = (globalThis as { require?: unknown }).require;
+			(globalThis as { require?: unknown }).require = undefined;
+			try {
+				const spec = await parseGuardrailSpec(join(tempDir, "custom-esm.md"));
+				expect(spec.customRules.length).toBe(1);
+			} finally {
+				(globalThis as { require?: unknown }).require = originalRequire;
+			}
+		});
+
+		it("does not rely on require() for yaml parsing", async () => {
+			const content = await Bun.file(join(import.meta.dir, "spec.ts")).text();
+			expect(content.includes("require(\"yaml\")")).toBe(false);
+			expect(content.includes("require('yaml')")).toBe(false);
+		});
 	});
 
 	describe("buildProfileFromSpec", () => {
