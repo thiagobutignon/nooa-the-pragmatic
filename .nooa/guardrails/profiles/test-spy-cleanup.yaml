@@ -1,0 +1,100 @@
+---
+name: test-spy-cleanup
+description: Ensures all spyOn calls have corresponding mockRestore() to prevent test pollution
+severity: error
+enabled: true
+---
+
+# Test Spy Cleanup Guardrail
+
+## Purpose
+Prevents test pollution by ensuring all `spyOn()` calls have corresponding `mockRestore()` cleanup.
+
+## Rules
+
+1. **Every `spyOn()` must be cleaned up**
+   - If you call `spyOn(...)` as a standalone statement, you MUST call `mockRestore()` on it
+   - If you call `spyOn(...)` and assign to a variable (e.g., `const spy = spyOn(...)`), that variable MUST have `.mockRestore()` called somewhere
+
+2. **Acceptable patterns:**
+   ```typescript
+   // Pattern 1: Immediate cleanup in same test
+   test("example", () => {
+     const spy = spyOn(console, "log").mockImplementation(() => {});
+     // ... test code ...
+     spy.mockRestore(); // ✅ GOOD
+   });
+
+   // Pattern 2: Cleanup in afterEach
+   let spy: any;
+   beforeEach(() => {
+     spy = spyOn(console, "log").mockImplementation(() => {});
+   });
+   afterEach(() => {
+     spy.mockRestore(); // ✅ GOOD
+   });
+   ```
+
+3. **Forbidden patterns:**
+   ```typescript
+   // ❌ BAD: No cleanup
+   test("example", () => {
+     spyOn(console, "log").mockImplementation(() => {});
+     // ... test code ...
+     // Missing mockRestore()!
+   });
+
+   // ❌ BAD: Variable assigned but never restored
+   test("example", () => {
+     const spy = spyOn(console, "log").mockImplementation(() => {});
+     // ... test code ...
+     // Missing spy.mockRestore()!
+   });
+   ```
+
+## Detection Logic
+
+For each test file (`*.test.ts`):
+
+1. Find all `spyOn(` calls
+2. For each `spyOn`:
+   - Check if it's assigned to a variable
+   - If assigned, ensure that variable has `.mockRestore()` called within:
+     - The same test function
+     - An `afterEach` block
+     - A cleanup function
+   - If NOT assigned, it's automatically a violation (should always be assigned)
+
+3. Report any `spyOn` calls without corresponding `mockRestore()` as errors
+
+## Why This Matters
+
+**Test pollution** occurs when mocks from one test leak into another, causing:
+- Flaky tests that pass/fail based on execution order
+- Timeouts in unrelated tests (especially EventBus-style tests)
+- False positives/negatives
+- Degraded CI/CD performance
+
+## Examples of Impact
+
+Before this guardrail, we had:
+- EventBus tests timing out globally (but passing isolated)
+- 11 test failures due to spy pollution
+- Unpredictable test suite behavior
+
+After cleanup:
+- Only 5 failures (unrelated EventBus issue)
+- Predictable, reliable test execution
+
+## Auto-fix Suggestion
+
+When detected, suggest:
+```typescript
+// Before:
+spyOn(console, "log").mockImplementation(() => {});
+
+// After:
+const logSpy = spyOn(console, "log").mockImplementation(() => {});
+// ... test code ...
+logSpy.mockRestore();
+```

@@ -25,11 +25,16 @@ describe("EventBus", () => {
 
 	test("handles off with non-existent event", () => {
 		const bus = new EventBus();
-		bus.off("missing", () => {}); // Should not throw
+		bus.off("missing", () => { }); // Should not throw
 	});
 
 	test("handles emit with no subscribers", () => {
 		const bus = new EventBus();
 		bus.emit("missing", {}); // Should not throw
+	});
+
+	test("creates EventBus instance", () => {
+		const bus = new EventBus();  // cobre constructor
+		expect(bus).toBeDefined();
 	});
 });

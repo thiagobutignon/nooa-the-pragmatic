@@ -35,7 +35,7 @@ describe("code command execute", () => {
 		};
 
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation(() => {
+		const errSpy = spyOn(console, "error").mockImplementation(() => {
 			errorLogged = true;
 		});
 
@@ -43,7 +43,8 @@ describe("code command execute", () => {
 
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(2);
-		process.exitCode = 0; // reset for Bun (undefined keeps previous exitCode)
+		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 
 	test("write: success - basic write", async () => {
@@ -73,12 +74,12 @@ describe("code command execute", () => {
 		const context = {
 			args: ["code", "write", filePath],
 			rawArgs: ["code", "write", filePath],
-			values: {} as CodeValues, // no --from, and stdin is TTY in tests usually
+			values: {} as CodeValues,
 			bus,
 		};
 
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation((msg: string) => {
+		const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
 			if (msg.includes("Missing input")) errorLogged = true;
 		});
 
@@ -86,6 +87,7 @@ describe("code command execute", () => {
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(2);
 		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 
 	test("write: dry-run", async () => {
@@ -132,7 +134,7 @@ describe("code command execute", () => {
 		await writeFile(join(TEST_DIR, "in.txt"), "json content");
 
 		let output = "";
-		spyOn(console, "log").mockImplementation((msg: string) => {
+		const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
 			output = msg;
 		});
 
@@ -141,6 +143,7 @@ describe("code command execute", () => {
 		const parsed = JSON.parse(output);
 		expect(parsed.path).toContain("test.json");
 		expect(parsed.mode).toBe("write");
+		logSpy.mockRestore();
 	});
 
 	test("patch: basic success", async () => {
@@ -196,12 +199,13 @@ describe("code command execute", () => {
 		};
 
 		let helpCalled = false;
-		spyOn(console, "log").mockImplementation((msg: string) => {
+		const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
 			if (msg.includes("Usage: nooa code <subcommand>")) helpCalled = true;
 		});
 
 		await codeCommand.execute(context);
 		expect(helpCalled).toBe(true);
+		logSpy.mockRestore();
 	});
 
 	test("error handling: patch exclusive with from", async () => {
@@ -213,7 +217,7 @@ describe("code command execute", () => {
 		};
 
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation((msg: string) => {
+		const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
 			if (msg.includes("mutually exclusive")) errorLogged = true;
 		});
 
@@ -221,18 +225,19 @@ describe("code command execute", () => {
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(2);
 		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 
 	test("patch: missing input error", async () => {
 		const context = {
 			args: ["code", "write", "target.txt"],
 			rawArgs: ["code", "write", "target.txt", "--patch"],
-			values: { patch: true } as CodeValues, // no --patch-from, and stdin is TTY
+			values: { patch: true } as CodeValues,
 			bus,
 		};
 
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation((msg: string) => {
+		const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
 			if (msg.includes("Missing patch input")) errorLogged = true;
 		});
 
@@ -240,6 +245,7 @@ describe("code command execute", () => {
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(2);
 		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 
 	test("patch: json output", async () => {
@@ -259,7 +265,7 @@ describe("code command execute", () => {
 		};
 
 		let output = "";
-		spyOn(console, "log").mockImplementation((msg: string) => {
+		const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
 			output = msg;
 		});
 
@@ -268,6 +274,7 @@ describe("code command execute", () => {
 		const parsed = JSON.parse(output);
 		expect(parsed.mode).toBe("patch");
 		expect(parsed.patched).toBe(true);
+		logSpy.mockRestore();
 	});
 
 	test("write: from stdin", async () => {
@@ -309,7 +316,7 @@ describe("code command execute", () => {
 
 	test("error handling: unexpected error", async () => {
 		const context = {
-			args: ["code", "write", TEST_DIR], // Writing to a directory should fail
+			args: ["code", "write", TEST_DIR],
 			rawArgs: ["code", "write", TEST_DIR, "--from", join(TEST_DIR, "any.txt")],
 			values: { from: join(TEST_DIR, "any.txt") } as CodeValues,
 			bus,
@@ -317,7 +324,7 @@ describe("code command execute", () => {
 		await writeFile(join(TEST_DIR, "any.txt"), "x");
 
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation((msg: string) => {
+		const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
 			if (msg.includes("Error:")) errorLogged = true;
 		});
 
@@ -325,6 +332,7 @@ describe("code command execute", () => {
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(1);
 		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 
 	test("unknown action: displays help", async () => {
@@ -336,11 +344,12 @@ describe("code command execute", () => {
 		};
 
 		let helpCalled = false;
-		spyOn(console, "log").mockImplementation((msg: string) => {
+		const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
 			if (msg.includes("Usage: nooa code <subcommand>")) helpCalled = true;
 		});
 
 		await codeCommand.execute(context);
 		expect(helpCalled).toBe(true);
+		logSpy.mockRestore();
 	});
 });

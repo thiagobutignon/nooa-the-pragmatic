@@ -21,7 +21,7 @@ describe("read command", () => {
 
 	test("help: displays help", async () => {
 		let output = "";
-		spyOn(console, "log").mockImplementation((msg: string) => {
+		const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
 			output = msg;
 		});
 
@@ -32,11 +32,12 @@ describe("read command", () => {
 			bus,
 		});
 		expect(output).toContain("Usage: nooa read");
+		logSpy.mockRestore();
 	});
 
 	test("failure: missing path and TTY", async () => {
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation((msg: string) => {
+		const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
 			if (msg.includes("Path is required")) errorLogged = true;
 		});
 
@@ -56,6 +57,7 @@ describe("read command", () => {
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(2);
 		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 
 	test("success: read path from stdin", async () => {
@@ -65,7 +67,7 @@ describe("read command", () => {
 		const { runWithStdin } = await import("../../core/io");
 
 		let output = "";
-		spyOn(process.stdout, "write").mockImplementation(
+		const writeSpy = spyOn(process.stdout, "write").mockImplementation(
 			(data: string | Uint8Array) => {
 				output += data.toString();
 				return true;
@@ -82,6 +84,7 @@ describe("read command", () => {
 		);
 
 		expect(output).toBe("stdin content");
+		writeSpy.mockRestore();
 	});
 
 	test("success: json output", async () => {
@@ -89,7 +92,7 @@ describe("read command", () => {
 		await writeFile(filePath, "test content");
 
 		let output = "";
-		spyOn(console, "log").mockImplementation((msg: string) => {
+		const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
 			output = msg;
 		});
 
@@ -104,11 +107,12 @@ describe("read command", () => {
 		expect(parsed.path).toBe(filePath);
 		expect(parsed.content).toBe("test content");
 		expect(parsed.bytes).toBe(12);
+		logSpy.mockRestore();
 	});
 
 	test("error handling: file not found", async () => {
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation((msg: string) => {
+		const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
 			if (msg.includes("File not found")) errorLogged = true;
 		});
 
@@ -121,11 +125,12 @@ describe("read command", () => {
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(1);
 		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 
 	test("error handling: other error", async () => {
 		let errorLogged = false;
-		spyOn(console, "error").mockImplementation((msg: string) => {
+		const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
 			if (msg.includes("Error: ")) errorLogged = true;
 		});
 
@@ -139,5 +144,6 @@ describe("read command", () => {
 		expect(errorLogged).toBe(true);
 		expect(process.exitCode).toBe(1);
 		process.exitCode = 0;
+		errSpy.mockRestore();
 	});
 });

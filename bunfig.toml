@@ -1,0 +1,4 @@
+[test]
+coverage = true
+[test]
+coverageThreshold = 1.0
