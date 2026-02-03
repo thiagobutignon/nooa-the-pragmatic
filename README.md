@@ -36,6 +36,7 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 | `eval` | Compare/evaluate prompt outputs (`report`, `history`, `compare`). |
 | `fix` | Drive autonomous fix loop (with telemetry, JSON output). |
 | `goal` | Create and track agent goals + status. |
+| `guardrail` | Audit code against project policies (Anarchy/Zero-Preguiça). |
 | `ignore` | Manage `.nooa-ignore` patterns and run match tests. |
 | `index` | Build/query semantic indexes across workspace/memory. |
 | `init` | Seed Agentic Soul (identity, templates, configuration). |
@@ -56,6 +57,7 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 ## 📖 Documentation
 
 - [Commands Documentation](docs/commands/)
+- [Guardrail Command](docs/commands/guardrail.md)
 - [Project Policy](.nooa/POLICY.md)
 - [Constitution](.nooa/CONSTITUTION.md)
 
@@ -69,4 +71,4 @@ gh auth login
 
 ---
 
-**NOOA v1.3** — *Engineering with Soul.*
+**NOOA v1.5.0** — *Engineering with Soul.*
