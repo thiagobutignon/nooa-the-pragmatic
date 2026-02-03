@@ -101,8 +101,17 @@ async function handleCheck(values: {
 			profile = await buildProfileFromSpec(spec);
 			profileName = "GUARDRAIL.md (spec)";
 		} else {
-			profile = await loadProfile(values.profile!);
-			profileName = values.profile!;
+			const rawPath = values.profile!;
+			const builtinProfiles = ["zero-preguica", "security", "dangerous-patterns", "default"];
+
+			let profilePath = rawPath;
+			if (builtinProfiles.includes(rawPath)) {
+				const { getBuiltinProfilesDir } = await import("./builtin");
+				profilePath = join(getBuiltinProfilesDir(), `${rawPath}.yaml`);
+			}
+
+			profile = await loadProfile(profilePath);
+			profileName = rawPath;
 		}
 
 		const engine = new GuardrailEngine(process.cwd());
