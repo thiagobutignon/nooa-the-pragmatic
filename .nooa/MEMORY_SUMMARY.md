@@ -2,8 +2,6 @@
 > Context curated for high-integrity results. Precedence: Constitution.
 
 ### Recent Observations
-- [2026-02-03] Ran command: ci ci
-Outcome: Failure
 - [2026-02-03] Ran command: cron cron status cleanup
 Outcome: Failure
 - [2026-02-03] Ran command: cron cron remove cleanup --force
@@ -41,4 +39,6 @@ Outcome: Failure
 - [2026-02-03] Ran command: eval eval compare review --suite standard
 Outcome: Failure
 - [2026-02-03] Ran command: eval eval report review --suite standard
+Outcome: Failure
+- [2026-02-03] Ran command: eval eval history review --suite standard
 Outcome: Failure

@@ -104,9 +104,13 @@ Flags:
 	const registry = new Registry(db);
 	const summary: Array<{ name: string; installed: boolean }> = [];
 	const interactive = shouldRunInteractive(values);
-	const prompt = interactive ? promptFactory() : undefined;
+	let prompt: PromptInterface | undefined;
 
 	try {
+		if (interactive) {
+			prompt = promptFactory();
+		}
+
 		for (const candidate of RECOMMENDED) {
 			if (candidate.name === "github" && values["skip-github"]) {
 				summary.push({ name: candidate.name, installed: false });

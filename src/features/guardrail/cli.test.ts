@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test, mock } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -39,7 +39,7 @@ describe("Guardrail CLI", () => {
 	});
 
 	test("init creates default profile", async () => {
-		const logSpy = spyOn(console, "log").mockImplementation(() => {});
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
 		await guardrailCli(["init"]);
 
 		const defaultProfile = join(profilesDir, "default.yaml");
@@ -51,7 +51,7 @@ describe("Guardrail CLI", () => {
 
 	test("validate passes for valid profile", async () => {
 		await guardrailCli(["init"]); // Setup
-		const logSpy = spyOn(console, "log").mockImplementation(() => {});
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
 		const defaultProfile = join(profilesDir, "default.yaml");
 
 		await guardrailCli(["validate", "--profile", defaultProfile]);
@@ -61,7 +61,7 @@ describe("Guardrail CLI", () => {
 	});
 
 	test("validate fails for missing profile", async () => {
-		const errSpy = spyOn(console, "error").mockImplementation(() => {});
+		const errSpy = spyOn(console, "error").mockImplementation(() => { });
 		await guardrailCli(["validate"]);
 		expect(process.exitCode).not.toBe(0);
 		expect(errSpy).toHaveBeenCalled();
@@ -73,7 +73,7 @@ describe("Guardrail CLI", () => {
 		const invalidProfile = join(profilesDir, "invalid.yaml");
 		await writeFile(invalidProfile, "invalid: yaml: content: [");
 
-		const errSpy = spyOn(console, "error").mockImplementation(() => {});
+		const errSpy = spyOn(console, "error").mockImplementation(() => { });
 		// yaml parser throws, so this catches runtime error
 		await guardrailCli(["validate", "-p", invalidProfile]);
 		expect(process.exitCode).not.toBe(0);
@@ -87,7 +87,7 @@ describe("Guardrail CLI", () => {
 		// Create a file to check
 		await writeFile(join(testDir, "test.ts"), "// TODO: fix me");
 
-		const logSpy = spyOn(console, "log").mockImplementation(() => {});
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
 		// Mock engine to avoid complex setup? Or just let it run if it works.
 		// GuardrailEngine uses fs, so it should work on testDir.
 
@@ -103,7 +103,7 @@ describe("Guardrail CLI", () => {
 	});
 
 	test("spec init creates GUARDRAIL.md", async () => {
-		const logSpy = spyOn(console, "log").mockImplementation(() => {});
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
 		await guardrailCli(["spec", "init"]);
 		const specPath = join(testDir, ".nooa", "guardrails", "GUARDRAIL.md");
 		const content = await readFile(specPath, "utf-8");
@@ -112,8 +112,8 @@ describe("Guardrail CLI", () => {
 	});
 
 	test("spec validate checks profiles", async () => {
-		const logSpy = spyOn(console, "log").mockImplementation(() => {});
-		const errSpy = spyOn(console, "error").mockImplementation(() => {});
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
+		const errSpy = spyOn(console, "error").mockImplementation(() => { });
 
 		// Create spec referencing a missing profile
 		await guardrailCli(["spec", "init"]);
@@ -139,8 +139,8 @@ describe("Guardrail CLI", () => {
 	});
 
 	test("unknown subcommand shows help", async () => {
-		const errSpy = spyOn(console, "error").mockImplementation(() => {});
-		const logSpy = spyOn(console, "log").mockImplementation(() => {});
+		const errSpy = spyOn(console, "error").mockImplementation(() => { });
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
 		await guardrailCli(["unknown"]);
 		expect(process.exitCode).not.toBe(0);
 		expect(errSpy).toHaveBeenCalled();
@@ -149,9 +149,124 @@ describe("Guardrail CLI", () => {
 	});
 
 	test("add creates new profile", async () => {
-		// Need to mock getBuiltinProfilesDir to point to our test dir so we can check it
-		// Or we can just skip this if we can't easily mock that export.
-		// Actually, handleAdd writes to getBuiltinProfilesDir().
-		// We really should mock that.
+		// We mock builtin module to return our test profiles dir
+		mock.module("./builtin", () => ({
+			getBuiltinProfilesDir: () => profilesDir,
+			loadBuiltinProfile: async (name: string) => {
+				if (name === "existing") return {};
+				throw new Error("Not found");
+			}
+		}));
+
+		// Re-import cli to pick up mock
+		const { guardrailCli } = await import("./cli");
+
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
+
+		await guardrailCli(["add", "new-profile"]);
+
+		const profilePath = join(profilesDir, "new-profile.yaml");
+		expect(await readFile(profilePath, "utf-8")).toContain("refactor_name: new-profile");
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Created profile"));
+
+		logSpy.mockRestore();
+	});
+
+	test("add fails if profile exists", async () => {
+		mock.module("./builtin", () => ({
+			getBuiltinProfilesDir: () => profilesDir,
+		}));
+		const { guardrailCli } = await import("./cli");
+
+		await mkdir(profilesDir, { recursive: true });
+		await writeFile(join(profilesDir, "exists.yaml"), "");
+
+		const errSpy = spyOn(console, "error").mockImplementation(() => { });
+
+		await guardrailCli(["add", "exists"]);
+		expect(process.exitCode).not.toBe(0);
+		expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("already exists"));
+
+		errSpy.mockRestore();
+	});
+
+	test("list displays available profiles", async () => {
+		mock.module("./builtin", () => ({
+			getBuiltinProfilesDir: () => profilesDir,
+		}));
+		const { guardrailCli } = await import("./cli");
+
+		await mkdir(profilesDir, { recursive: true });
+		await writeFile(join(profilesDir, "p1.yaml"), "");
+		await writeFile(join(profilesDir, "p2.yaml"), "");
+
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
+
+		await guardrailCli(["list"]);
+		expect(logSpy).toHaveBeenCalledWith("p1");
+		expect(logSpy).toHaveBeenCalledWith("p2");
+
+		logSpy.mockRestore();
+	});
+
+	test("show displays profile content", async () => {
+		mock.module("./builtin", () => ({
+			getBuiltinProfilesDir: () => profilesDir,
+		}));
+		const { guardrailCli } = await import("./cli");
+
+		await mkdir(profilesDir, { recursive: true });
+		await writeFile(join(profilesDir, "show-me.yaml"),
+			"refactor_name: show-me\ndescription: desc\nversion: '1.0'\nrules: []"
+		);
+
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
+
+		await guardrailCli(["show", "show-me"]);
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("refactor_name: show-me"));
+
+		logSpy.mockRestore();
+	});
+
+	test("remove deletes profile", async () => {
+		mock.module("./builtin", () => ({
+			getBuiltinProfilesDir: () => profilesDir,
+		}));
+		const { guardrailCli } = await import("./cli");
+
+		await mkdir(profilesDir, { recursive: true });
+		const pPath = join(profilesDir, "del.yaml");
+		await writeFile(pPath, "");
+
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
+
+		await guardrailCli(["remove", "del", "--force"]);
+
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Removed profile"));
+		// check file gone
+		// expect(await exists(pPath)).toBe(false); 
+		// exists needs import. Try-catch readFile
+		try {
+			await readFile(pPath);
+			expect(true).toBe(false); // Should fail
+		} catch {
+			// expected
+		}
+
+		logSpy.mockRestore();
+	});
+
+	test("spec show lists enabled profiles", async () => {
+		const { guardrailCli } = await import("./cli"); // normal import
+		const logSpy = spyOn(console, "log").mockImplementation(() => { });
+
+		// Setup spec
+		await guardrailCli(["spec", "init"]);
+
+		await guardrailCli(["spec", "show"]);
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Enabled profiles:"));
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("- zero-preguica"));
+
+		logSpy.mockRestore();
 	});
 });

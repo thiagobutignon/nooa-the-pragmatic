@@ -85,7 +85,7 @@ test("interactive wizard prompts for GitHub token", async () => {
 		setInitInteractive(true);
 		setInitPromptFactory(() => ({
 			question: async () => answers.shift() ?? "",
-			close: () => {},
+			close: () => { },
 		}));
 		try {
 			const { exitCode } = await captureLog(() => initCommand([]));
@@ -97,5 +97,128 @@ test("interactive wizard prompts for GitHub token", async () => {
 			resetInitPromptFactory();
 			resetInitInteractive();
 		}
+	});
+});
+
+test("nooa mcp init shows help", async () => {
+	const { exitCode, output } = await captureLog(() => initCommand(["--help"]));
+	expect(exitCode).toBe(0);
+	expect(output).toContain("Usage: nooa mcp init");
+});
+
+test("nooa mcp init skips existing if not forced", async () => {
+	await withDb(async (dbPath) => {
+		// First run install
+		await initCommand([]);
+
+		// Second run without force
+		const { exitCode, output } = await captureLog(() => initCommand([]));
+		expect(exitCode).toBe(0);
+		expect(output).toContain("filesystem: installed"); // Wait, if specific installed is true what prevents duplicate?
+		// Ah, registry.get(candidate.name) returns truthy if installed.
+		// init.ts:168: if (existing && !values.force) { summary.push({..., installed: true}); continue; }
+		// So it reports "installed: true" even if it skipped RE-installing.
+		// That explains why output says "installed".
+		// But code is covered?
+		// let's check coverage report: 126-127 is uncovered.
+		// 126: summary.push({ name: candidate.name, installed: false });
+		// That happens if `shouldInstall` is false (interactive "No").
+
+		// The path 169 is "existing && !force" -> installed: true (SKIP re-install).
+		// So output expectation was wrong about "skipped" text for existing items.
+		// It says "installed" because it IS installed (conceptually).
+
+		// To cover 126-127, we need an interactive "No".
+	});
+});
+
+test("interactive 'no' skips installation", async () => {
+	await withDb(async (dbPath) => {
+		// Answers: No to first (filesystem), No to second (github)
+		const answers = ["n", "n"];
+		setInitInteractive(true);
+		setInitPromptFactory(() => ({
+			question: async () => answers.shift() ?? "",
+			close: () => { },
+		}));
+
+		const { exitCode, output } = await captureLog(() => initCommand([]));
+		expect(exitCode).toBe(0);
+		expect(output).toContain("filesystem: skipped");
+	});
+});
+
+test("force reinstall removes existing", async () => {
+	await withDb(async (dbPath) => {
+		// First install
+		await initCommand([]);
+
+		// Second install WITH force
+		// We need to verify registry.remove was called? 
+		// Or just that it succeeds and reports installed.
+		// coverage for 174: await registry.remove(candidate.name);
+
+		const { exitCode } = await captureLog(() => initCommand(["--force"]));
+		expect(exitCode).toBe(0);
+	});
+});
+
+test("init honors env var NOOA_NON_INTERACTIVE", async () => {
+	const original = process.env.NOOA_NON_INTERACTIVE;
+	process.env.NOOA_NON_INTERACTIVE = "1";
+	try {
+		await withDb(async () => {
+			// We want to ensure prompt is NOT called
+			const promptFactorySpy = (): any => { throw new Error("Should not be called"); };
+			setInitPromptFactory(promptFactorySpy);
+
+			// We need resetInitInteractive() to ensure it checks env vars
+			resetInitInteractive();
+
+			const { exitCode } = await captureLog(() => initCommand([]));
+			expect(exitCode).toBe(0);
+		});
+	} finally {
+		process.env.NOOA_NON_INTERACTIVE = original;
+	}
+});
+
+test("prompt handles defaults for empty inputs", async () => {
+	await withDb(async (dbPath) => {
+		// [Install FS (default Y), Install GH (default Y), Config Token (default Y), Empty Token]
+		const answers = ["", "", "", ""];
+		setInitInteractive(true);
+		setInitPromptFactory(() => ({
+			question: async () => answers.shift() ?? "",
+			close: () => { },
+		}));
+
+		const { exitCode } = await captureLog(() => initCommand(["--force"]));
+		expect(exitCode).toBe(0);
+		const registry = new Registry(new Database(dbPath));
+		const gh = await registry.get("github");
+		expect(gh).toBeDefined();
+		// Token should be empty string effectively, so not set in env
+		expect(gh?.env?.GITHUB_TOKEN).toBeUndefined();
+	});
+});
+
+test("nooa mcp init emits JSON", async () => {
+	const { exitCode, output } = await captureLog(() => initCommand(["--json"]));
+	expect(exitCode).toBe(0);
+	const json = JSON.parse(output);
+	expect(json).toHaveProperty("summary");
+	expect(json.summary.length).toBeGreaterThan(0);
+});
+
+test("init handles errors gracefully", async () => {
+	await withDb(async () => {
+		setInitInteractive(true);
+		setInitPromptFactory(() => {
+			throw new Error("Prompt Error");
+		});
+
+		const { exitCode } = await captureLog(() => initCommand([]));
+		expect(exitCode).toBe(1);
 	});
 });

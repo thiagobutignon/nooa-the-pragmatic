@@ -1,0 +1,844 @@
+bun test v1.3.6 (d530ed99)
+
+index.nooa.test.ts:
+(pass) nooa root > nooa --help shows root usage and subcommands [131.42ms]
+(pass) nooa root > nooa --version prints 0.0.1 [82.39ms]
+(pass) nooa root > package.json exposes nooa bin [0.21ms]
+
+tests/contract.test.ts:
+(pass) NOOA Contract Tests > Init Contract > should create .nooa directory and core files [10.73ms]
+(pass) NOOA Contract Tests > Init Contract > should fail if .nooa already exists without --force [0.41ms]
+(pass) NOOA Contract Tests > Init Contract > should succeed if .nooa already exists with --force [1.59ms]
+(pass) NOOA Contract Tests > Prompt Injection Contract > should follow precedence: constitution -> soul -> user -> memory [1.18ms]
+(pass) NOOA Contract Tests > Prompt Injection Contract > should truncate content when budgets are exceeded [0.60ms]
+(pass) NOOA Contract Tests > Memory Contract > should generate valid YAML entries [132.94ms]
+(pass) NOOA Contract Tests > Memory Contract > should promote entries to durable memory [17.69ms]
+(pass) NOOA Contract Tests > Reflection Contract > should only reflect on material events [1.43ms]
+(pass) NOOA Contract Tests > Reflection Contract > should reflect on material events [48.58ms]
+(pass) NOOA Contract Tests > Reflection Contract > should cap reflections at 3 per session [107.47ms]
+(pass) NOOA Contract Tests > Locking Contract > should prevent concurrent writes to memory [73.55ms]
+
+src/core/telemetry.test.ts:
+(pass) TelemetryStore > tracks events in sqlite [2.40ms]
+(pass) TelemetryStore > filters by level and trace_id [1.80ms]
+(pass) TelemetryStore > reopens database if closed [1.49ms]
+
+src/core/registry.test.ts:
+(pass) CommandRegistry > registers and retrieves a command
+(pass) CommandRegistry > lists registered commands
+
+src/core/io.test.ts:
+(pass) IO Utilities > runWithStdin provides mock constant content [0.18ms]
+(pass) IO Utilities > getStdinText returns empty string when TTY [0.01ms]
+(pass) IO Utilities > getStdinText reads from non-TTY stream async iterator [0.15ms]
+(pass) IO Utilities > getStdinText handles async iterator error [0.10ms]
+(pass) IO Utilities > getStdinText handles stream events [1.52ms]
+(pass) IO Utilities > getStdinText handles stream timeout [201.69ms]
+(pass) IO Utilities > getStdinText handles stream error [1.32ms]
+
+src/core/loader.test.ts:
+no export
+(pass) Command Loader > loads commands from directory [1.58ms]
+
+src/core/logger.test.ts:
+(pass) Logger > writes structured JSON with context [0.11ms]
+(pass) Logger > debug level [0.05ms]
+(pass) Logger > warn level
+(pass) Logger > error level [0.34ms]
+(pass) Logger > AsyncLocalStorage context [0.11ms]
+(pass) Logger > getContext/clearContext without storage
+(pass) Logger > createTraceId handles crypto and fallback [0.11ms]
+(pass) Logger > createLogger with functions and defaults [0.02ms]
+
+src/core/event-bus.test.ts:
+(pass) EventBus > publishes events to subscribers
+(pass) EventBus > unsubscribes from events
+(pass) EventBus > handles off with non-existent event
+(pass) EventBus > handles emit with no subscribers
+
+tests/core/cohesion.test.ts:
+(pass) Command Cohesion Contract > Command: prompt > prompt should support --help and return exit 0 [122.43ms]
+(pass) Command Cohesion Contract > Command: prompt > prompt should NOT have logs in stdout when --json is used [223.50ms]
+(pass) Command Cohesion Contract > Command: prompt > prompt should record telemetry success or failure [108.93ms]
+(pass) Command Cohesion Contract > Command: review > review should support --help and return exit 0 [111.63ms]
+(pass) Command Cohesion Contract > Command: review > review should NOT have logs in stdout when --json is used [230.06ms]
+(pass) Command Cohesion Contract > Command: review > review should record telemetry success or failure [120.13ms]
+(pass) Command Cohesion Contract > search should validate max-results and return exit 2 [106.00ms]
+
+src/core/memory/schema.test.ts:
+(pass) Memory Schema > formatMemoryAsMarkdown produces valid YAML [0.12ms]
+(pass) Memory Schema > parseMemoryFromMarkdown reverses format [0.09ms]
+(pass) Memory Schema > parseMemoryFromMarkdown throws on invalid format
+(pass) Memory Schema > parseMemoryFromMarkdown handles missing content
+
+src/core/mcp/ConfigStore.test.ts:
+(pass) ConfigStore can save and load MCP config [0.12ms]
+(pass) ConfigStore can update existing MCP config [0.47ms]
+(pass) ConfigStore can list all servers [0.14ms]
+(pass) ConfigStore can delete a server [0.15ms]
+(pass) ConfigStore returns undefined for non-existent server
+
+src/core/mcp/types.test.ts:
+(pass) McpServer type is defined
+(pass) McpTool type is defined
+(pass) McpResource type is defined
+(pass) McpPrompt type is defined
+
+src/core/mcp/ServerManager.test.ts:
+(pass) ServerManager can start a server [22.19ms]
+(pass) ServerManager tracks running servers [20.92ms]
+(pass) ServerManager can stop a specific server [20.74ms]
+(pass) ServerManager can get running client [20.13ms]
+(pass) ServerManager stops all servers on stopAll [38.51ms]
+(pass) ServerManager returns list of running servers [21.72ms]
+
+src/core/mcp/alias.test.ts:
+(pass) aliases persist metadata and respect deletion [2.37ms]
+
+src/core/mcp/Registry.test.ts:
+(pass) Registry.healthCheck returns healthy status [22.01ms]
+(pass) Registry.healthCheck marks disabled servers as down [2.17ms]
+
+src/core/mcp/Client.test.ts:
+(pass) callTool retries until transient failures resolve [3.50ms]
+(pass) callTool throws after max retries [3.54ms]
+(pass) Client methods delegate to sendRequest [0.23ms]
+(pass) Real Client flow with mock process [0.15ms]
+
+src/core/mcp/ToolProvider.test.ts:
+(pass) ToolProvider can get tools from enabled MCPs [20.54ms]
+(pass) ToolProvider can execute a tool [20.56ms]
+(pass) ToolProvider returns empty array for no enabled MCPs [0.25ms]
+
+src/core/integrations/github.test.ts:
+(pass) GitHubClient > requestJson handles success [0.30ms]
+(pass) GitHubClient > requestJson handles API error with message [0.03ms]
+(pass) GitHubClient > requestJson handles API error without valid json [0.11ms]
+(pass) GitHubClient > createPR sends correct body [0.04ms]
+(pass) GitHubClient > getPRDiff returns text [0.09ms]
+(pass) GitHubClient > getPRDiff throws on failure
+(pass) GitHubClient > mergePR uses correct method [0.12ms]
+(pass) GitHubClient > closePR sends closed state
+(pass) GitHubClient > commentPR sends body
+(pass) GitHubClient > getPRStatus aggregates info, approvals and checks [0.37ms]
+(pass) GitHubClient > getPRStatus handles missing labels or sha [0.10ms]
+
+src/core/db/embeddings.test.ts:
+(pass) Embeddings Schema > creates embeddings table [0.26ms]
+
+src/core/db/index.test.ts:
+(pass) Store Core > stats() returns valid counts [0.48ms]
+(pass) Store Core > clear() removes all embeddings [0.14ms]
+(pass) Store Core > searchEmbeddings returns matches sorted by similarity [0.47ms]
+(pass) Store Core > cosineSimilarity handles zero vectors and dimension mismatch [0.18ms]
+
+src/core/db/cron.test.ts:
+(pass) Cron DB Schema > can create cron_jobs and cron_logs tables [0.22ms]
+
+src/core/db/cron_store.test.ts:
+(pass) CronStore > creates the cron_jobs table and persists jobs [0.50ms]
+(pass) CronStore > getByName returns the job when exists
+(pass) CronStore > delete and toggle jobs behave consistently [0.35ms]
+(pass) CronStore > recordExecution logs runs and listLogs returns entries [0.40ms]
+
+src/core/skills/Discovery.test.ts:
+(pass) Discovery > lists available skills in directory [0.66ms]
+
+src/core/policy/PolicyEngine.test.ts:
+(pass) PolicyEngine > identifies forbidden markers [0.95ms]
+(pass) PolicyEngine > respects nooa-ignore comment [0.32ms]
+(pass) PolicyEngine > respects .nooa-ignore file [0.36ms]
+(pass) PolicyEngine > ignores non-source files and tests
+(pass) PolicyEngine > checkFiles aggregates results [0.57ms]
+(pass) PolicyEngine > handles file read errors gracefully [0.21ms]
+
+src/core/reflection/hook.test.ts:
+(pass) Auto Reflection Hook > autoReflect adds observable memory entry [1.09ms]
+{"level":"warn","event":"memory.embedding_failed","timestamp":1770092831142,"metadata":{"error":"Embed provider returned no embedding"}}
+(pass) Auto Reflection Hook > autoReflect skips excluded commands (e.g. reflection itself) [0.90ms]
+
+src/features/commit/cli.test.ts:
+(pass) nooa commit > shows help [114.93ms]
+(pass) nooa commit > blocks TODO markers by default [215.59ms]
+(pass) nooa commit > runs tests by default [265.07ms]
+
+src/features/context/execute.test.ts:
+(pass) Context Builder > extracts context for a given file [0.15ms]
+(pass) Context Builder > falls back to symbol lookup when file not found [0.21ms]
+(pass) Context Builder > throws error when symbol lookup fails [0.03ms]
+(pass) Context Builder > handles ripgrep error in symbol lookup
+
+src/features/context/cli.test.ts:
+(pass) context CLI > outputs context for a file [194.23ms]
+(pass) context CLI > includes MCP resources when requested [137.78ms]
+
+src/features/memory/engine.test.ts:
+(pass) MemoryEngine > addEntry creates daily file and stores embedding [1.83ms]
+(pass) MemoryEngine > deleteEntry removes record from file [1.19ms]
+(pass) MemoryEngine > updateEntry modifies existing record [0.99ms]
+(pass) MemoryEngine > search semantic works [0.82ms]
+{"level":"warn","event":"memory.embedding_failed","timestamp":1770092832087,"metadata":{"error":"Embed provider returned no embedding"}}
+(pass) MemoryEngine > clearAll removes files [1.35ms]
+(pass) MemoryEngine > promoteEntry moves to durable [1.31ms]
+{"level":"warn","event":"memory.embedding_failed","timestamp":1770092832090,"metadata":{"error":"Embed provider returned no embedding"}}
+{"level":"warn","event":"memory.embedding_failed","timestamp":1770092832109,"metadata":{"error":"Embed provider returned no embedding"}}
+(pass) MemoryEngine > import/export [19.92ms]
+(pass) MemoryEngine > importData throws on invalid format [0.37ms]
+
+src/features/identity/init.test.ts:
+(pass) Identity Initialization > initIdentity creates necessary files [0.93ms]
+(pass) Identity Initialization > initIdentity does not overwrite existing files by default [0.66ms]
+
+src/features/embed/engine.test.ts:
+(pass) embed engine > selects mock provider [0.02ms]
+(pass) embed engine > returns deterministic embedding from mock [0.05ms]
+
+src/features/embed/cli.test.ts:
+(pass) nooa embed cli direct > shows help via execute [1.37ms]
+(pass) nooa embed cli direct > embeds text success via execute [0.30ms]
+(pass) nooa embed cli direct > embeds file success via execute [0.43ms]
+(pass) nooa embed cli direct > fails on missing action via execute [0.17ms]
+(pass) nooa embed cli direct > fails on missing text via execute [0.15ms]
+(pass) nooa embed cli direct > fails on missing file path via execute [0.14ms]
+(pass) nooa embed cli direct > fails on unknown action via execute [0.16ms]
+(pass) nooa embed cli direct > respects --include-embedding flag via execute [0.21ms]
+(pass) nooa embed cli direct > respects --out flag via execute [0.35ms]
+(pass) nooa embed cli direct > handles general errors gracefully in execute [0.26ms]
+
+src/features/chat/execute.test.ts:
+(pass) executeMessage > returns message object with timestamp [1.16ms]
+(pass) executeMessage > handles different roles [1.39ms]
+(pass) executeMessage > formatOutput formats as JSON [0.03ms]
+(pass) executeMessage > formatOutput formats as text
+
+src/features/chat/cli.test.ts:
+(pass) nooa message > shows help [90.02ms]
+(pass) nooa message > validation > requires message text [93.30ms]
+(pass) nooa message > validation > validates role values [90.59ms]
+(pass) nooa message > validation > accepts valid roles [259.34ms]
+(pass) nooa message > integration > outputs plain text by default [92.28ms]
+(pass) nooa message > integration > outputs JSON when --json flag is used [91.04ms]
+(pass) nooa message > integration > respects role flag [89.87ms]
+
+src/features/ignore/cli.test.ts:
+(pass) nooa ignore > shows help with check and test [83.25ms]
+(pass) nooa ignore > prints ignored result when path matches [92.82ms]
+(pass) nooa ignore > prints not ignored result when path does not match [91.21ms]
+(pass) nooa ignore > tests a new pattern against provided paths [92.20ms]
+(pass) nooa ignore > fails when test pattern matches nothing [94.62ms]
+
+src/features/ci/execute.test.ts:
+(pass) executeCi > should return structured result with ok and traceId [159.11ms]
+
+src/features/ci/cli.test.ts:
+(pass) ci CLI > should show help [89.74ms]
+(pass) ci CLI > should output JSON with correct schema [86.53ms]
+
+src/features/doctor/execute.test.ts:
+(pass) executeDoctorCheck > should check all required tools and return result [34.21ms]
+
+src/features/doctor/cli.test.ts:
+(pass) doctor CLI > should show help [87.74ms]
+(pass) doctor CLI > should output JSON with correct schema [116.27ms]
+
+src/features/read/cmd.test.ts:
+(pass) Read Command Definition > exports valid command [0.64ms]
+hello-read{"level":"info","event":"read.success","timestamp":1770092834016,"metadata":{"path":"telemetry-read.txt","bytes":10,"duration_ms":0}}
+(pass) Read Command Definition > records telemetry on successful read [14.37ms]
+
+src/features/read/execute.test.ts:
+(pass) read command > help: displays help [0.39ms]
+{"level":"warn","event":"read.missing_path","timestamp":1770092834032,"metadata":{"duration_ms":1}}
+(pass) read command > failure: missing path and TTY [1.13ms]
+{"level":"info","event":"read.success","timestamp":1770092834033,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/read/tmp-test-read/stdin_path.txt","bytes":13,"duration_ms":0}}
+(pass) read command > success: read path from stdin [0.70ms]
+{"level":"info","event":"read.success","timestamp":1770092834034,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/read/tmp-test-read/test.json","bytes":12,"duration_ms":0}}
+(pass) read command > success: json output [0.83ms]
+{"level":"error","event":"read.failure","timestamp":1770092834034,"metadata":{"path":"nonexistent.txt","duration_ms":0,"error_message":"ENOENT: no such file or directory, open 'nonexistent.txt'"}}
+(pass) read command > error handling: file not found [0.71ms]
+{"level":"error","event":"read.failure","timestamp":1770092834035,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/read/tmp-test-read","duration_ms":0,"error_message":"EISDIR: illegal operation on a directory, read"}}
+(pass) read command > error handling: other error [0.68ms]
+
+src/features/worktree/execute.test.ts:
+(pass) worktree output > writes summary to stderr and keeps stdout empty [237.84ms]
+
+src/features/worktree/cli.test.ts:
+(pass) nooa worktree > shows help [87.63ms]
+(pass) nooa worktree > creates a worktree under .worktrees/<branch> [234.48ms]
+(pass) nooa worktree > respects --no-install and --no-test [228.11ms]
+(pass) nooa worktree > installs deps and runs tests by default [251.93ms]
+(pass) nooa worktree > lists worktrees with list subcommand [446.95ms]
+(pass) nooa worktree > reports worktree info from info subcommand [333.67ms]
+(pass) nooa worktree > removes worktree using remove subcommand [340.10ms]
+(pass) nooa worktree > prunes worktrees via prune subcommand [163.59ms]
+(pass) nooa worktree > locks and unlocks worktrees [462.08ms]
+
+src/features/code/cli-patch.test.ts:
+(pass) nooa code write --patch > --help includes patch flags [86.35ms]
+(pass) nooa code write --patch > applies patch from stdin [88.73ms]
+
+src/features/code/write.test.ts:
+(pass) writeCodeFile > writes content when file does not exist [0.98ms]
+(pass) writeCodeFile > fails when file exists without overwrite [0.26ms]
+(pass) writeCodeFile > overwrites when overwrite is true [0.31ms]
+(pass) writeCodeFile > dry-run does not write file [0.10ms]
+
+src/features/code/refactor.test.ts:
+(pass) Code Refactor Feature > executeRefactor reads, prompts AI, and writes back [0.83ms]
+
+src/features/code/cmd.test.ts:
+(pass) Code Command Definition > exports valid command [0.04ms]
+
+src/features/code/format.test.ts:
+(pass) Code Format Feature > executeFormat runs biome wrapper [0.13ms]
+
+src/features/code/cli-write.test.ts:
+(pass) nooa code write > nooa code write --help shows usage [94.48ms]
+(pass) nooa code write > writes from --from file [90.71ms]
+(pass) nooa code write > fails if file exists without --overwrite [90.94ms]
+(pass) nooa code write > supports --overwrite [100.90ms]
+(pass) nooa code write > writes from stdin [95.55ms]
+(pass) nooa code write > dry-run reports without writing [97.63ms]
+
+src/features/code/patch.test.ts:
+(pass) applyPatch > applies unified diff [0.52ms]
+
+src/features/code/diff.test.ts:
+(pass) Code Diff Feature > executeDiff returns diff output [0.16ms]
+(pass) Code Diff Feature > executeDiff passes arguments to git diff [0.09ms]
+
+src/features/code/execute.test.ts:
+{"level":"warn","event":"code.write.missing_path","timestamp":1770092837626,"metadata":{"duration_ms":1}}
+(pass) code command execute > write: failure - missing path [1.78ms]
+{"level":"info","event":"code.write.success","timestamp":1770092837627,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code/test.txt","bytes":11,"overwritten":false,"dry_run":false,"duration_ms":1}}
+(pass) code command execute > write: success - basic write [1.13ms]
+{"level":"warn","event":"code.write.missing_input","timestamp":1770092837829,"metadata":{"duration_ms":202}}
+(pass) code command execute > write: failure - missing input [202.34ms]
+{"level":"info","event":"code.write.success","timestamp":1770092837831,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code/dry.txt","bytes":9,"overwritten":false,"dry_run":true,"duration_ms":0}}
+(pass) code command execute > write: dry-run [1.41ms]
+{"level":"info","event":"code.write.success","timestamp":1770092837832,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code/test.json","bytes":12,"overwritten":false,"dry_run":false,"duration_ms":0}}
+(pass) code command execute > write: json output [1.06ms]
+{"level":"info","event":"code.patch.success","timestamp":1770092837833,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code/to_patch.txt","bytes":16,"dry_run":false,"duration_ms":1}}
+(pass) code command execute > patch: basic success [1.15ms]
+{"level":"info","event":"code.patch.success","timestamp":1770092837834,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code/to_patch_sub.txt","bytes":11,"dry_run":false,"duration_ms":0}}
+(pass) code command execute > patch subcommand: implies patch mode [1.05ms]
+(pass) code command execute > help: displays help and returns [0.21ms]
+{"level":"warn","event":"code.patch.invalid_flags","timestamp":1770092837835,"metadata":{"duration_ms":0}}
+(pass) code command execute > error handling: patch exclusive with from [0.60ms]
+{"level":"warn","event":"code.patch.missing_input","timestamp":1770092838037,"metadata":{"duration_ms":202}}
+(pass) code command execute > patch: missing input error [202.57ms]
+{"level":"info","event":"code.patch.success","timestamp":1770092838040,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code/to_patch_json.txt","bytes":9,"dry_run":false,"duration_ms":1}}
+(pass) code command execute > patch: json output [2.20ms]
+{"level":"info","event":"code.write.success","timestamp":1770092838041,"metadata":{"path":"/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code/stdin_out.txt","bytes":13,"overwritten":false,"dry_run":false,"duration_ms":1}}
+(pass) code command execute > write: from stdin [1.80ms]
+{"level":"error","event":"code.write.failure","timestamp":1770092838043,"metadata":{"duration_ms":0,"error_message":"File already exists: /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code","error_stack":"Error: File already exists: /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/tmp-test-code\n    at writeCodeFile (/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/write.ts:30:13)\n    at async <anonymous> (/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/cli.ts:231:27)\n    at async <anonymous> (/Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/fix-tests-100/src/features/code/execute.test.ts:324:21)\n    at processTicksAndRejections (native:7:39)"}}
+(pass) code command execute > error handling: unexpected error [1.33ms]
+(pass) code command execute > unknown action: displays help [0.20ms]
+
+src/features/mcp/configure.test.ts:
+(pass) configure merges env from --env-file [6.09ms]
+(pass) configure picks up .mcp.env when present [3.39ms]
+(pass) configure honors global -> root -> explicit env files [2.83ms]
+
+src/features/mcp/init.test.ts:
+(pass) nooa mcp init installs recommended MCPs [2.87ms]
+(pass) nooa mcp init respects --skip-github [1.32ms]
+(pass) nooa mcp init --github-token configures GitHub env [1.89ms]
+(pass) interactive wizard prompts for GitHub token [2.29ms]
+(pass) nooa mcp init shows help [0.08ms]
+(pass) nooa mcp init skips existing if not forced [1.74ms]
+(pass) interactive 'no' skips installation [0.91ms]
+(pass) force reinstall removes existing [2.49ms]
+(pass) init honors env var NOOA_NON_INTERACTIVE [1.42ms]
+(pass) prompt handles defaults for empty inputs [2.13ms]
+(pass) nooa mcp init emits JSON [0.68ms]
+(pass) init handles errors gracefully [1.90ms]
+
+src/features/mcp/install.test.ts:
+(pass) nooa mcp install registers an MCP [3.01ms]
+(pass) nooa mcp info prints saved MCP metadata [1.99ms]
+(pass) nooa mcp configure updates settings [2.03ms]
+
+src/features/mcp/subcommands.test.ts:
+(pass) list command shows help [0.58ms]
+(pass) install command shows help
+(pass) install command requires package name
+(pass) enable command shows help [0.32ms]
+(pass) enable command requires MCP name
+(pass) disable command shows help [0.05ms]
+(pass) disable command requires MCP name
+
+src/features/mcp/uninstall.test.ts:
+(pass) nooa mcp uninstall removes an entry [2.69ms]
+
+src/features/mcp/alias.test.ts:
+(pass) alias create/list/delete flow [3.06ms]
+(pass) list shows json output when --json [1.32ms]
+
+src/features/mcp/test.test.ts:
+(pass) nooa mcp test checks server health [24.33ms]
+
+src/features/mcp/marketplace.test.ts:
+(pass) marketing command prints results [0.25ms]
+(pass) marketplace supports verified-only filter
+(pass) marketplace emits JSON output [0.24ms]
+
+src/features/mcp/enable-disable.test.ts:
+(pass) nooa mcp enable toggles a disabled MCP [2.82ms]
+(pass) nooa mcp disable turns off an enabled MCP [1.72ms]
+
+src/features/mcp/call.test.ts:
+(pass) nooa mcp call executes an MCP tool [25.56ms]
+(pass) nooa mcp call accepts retry/backoff flags [23.23ms]
+
+src/features/mcp/resource.test.ts:
+(pass) nooa mcp resource reads a resource URI [23.69ms]
+
+src/features/mcp/cli.test.ts:
+(pass) MCP CLI shows help [0.27ms]
+(pass) MCP CLI requires subcommand
+(pass) MCP CLI rejects unknown subcommand [0.10ms]
+(pass) MCP CLI object execute method [0.04ms]
+
+src/features/mcp/list.test.ts:
+(pass) nooa mcp list --installed includes every MCP [1.97ms]
+(pass) nooa mcp list --enabled shows enabled MCPs only [1.82ms]
+
+src/features/mcp/health.test.ts:
+(pass) nooa mcp health prints error when name missing [0.65ms]
+(pass) nooa mcp health returns healthy status text [23.17ms]
+(pass) nooa mcp health --json returns structured status [21.08ms]
+
+src/features/search/engine.test.ts:
+(pass) Search Engine > native search finds exact matches [1.45ms]
+(pass) Search Engine > native search respects include patterns [0.95ms]
+(pass) Search Engine > native search respects exclude patterns [0.72ms]
+(pass) Search Engine > native search supports regex [0.65ms]
+(pass) Search Engine > native search supports context [0.85ms]
+(pass) Search Engine > native search supports count mode [0.67ms]
+(pass) Search Engine > native search handles large files (skip) [0.52ms]
+(pass) Search Engine > native search ignores binary files [0.78ms]
+(pass) Search Engine > rg search parses JSON output [0.76ms]
+(pass) Search Engine > rg search handles context [0.80ms]
+
+src/features/search/cli.test.ts:
+(pass) nooa search > shows help [91.37ms]
+(pass) nooa search > outputs JSON format [86.39ms]
+(pass) nooa search > outputs plain format [90.54ms]
+(pass) nooa search > lists files only [92.05ms]
+(pass) nooa search > records telemetry [94.92ms]
+
+src/features/pr/gh.test.ts:
+(pass) GitHub Automation (gh.ts) > ghPrCreate success [0.34ms]
+(pass) GitHub Automation (gh.ts) > ghPrCreate failure
+(pass) GitHub Automation (gh.ts) > ghPrList [0.11ms]
+(pass) GitHub Automation (gh.ts) > ghPrDiff
+(pass) GitHub Automation (gh.ts) > ghMergePr (squash) [0.16ms]
+(pass) GitHub Automation (gh.ts) > ghMergePr (rebase) [0.02ms]
+(pass) GitHub Automation (gh.ts) > ghMergePr (merge) [0.04ms]
+(pass) GitHub Automation (gh.ts) > ghClosePr [0.05ms]
+(pass) GitHub Automation (gh.ts) > ghCommentPr [0.06ms]
+(pass) GitHub Automation (gh.ts) > ghStatusPr [0.03ms]
+
+src/features/pr/cli.test.ts:
+(pass) nooa pr > pr --help shows usage [83.70ms]
+(pass) nooa pr > merge requires pr number [84.80ms]
+(pass) nooa pr > close requires pr number [80.91ms]
+(pass) nooa pr > comment requires pr number [83.51ms]
+(pass) nooa pr > status requires pr number [81.18ms]
+(pass) nooa pr > merge uses gh and validates pr number [82.88ms]
+(pass) nooa pr > status uses gh and validates pr number [84.10ms]
+
+src/features/push/cli.test.ts:
+(pass) nooa push > shows help [80.96ms]
+(pass) nooa push > fails when working tree is dirty [133.44ms]
+(pass) nooa push > pushes to remote [235.99ms]
+
+src/features/guardrail/schemas.test.ts:
+(pass) Guardrail Schemas > PatternSchema > should validate a literal pattern [1.41ms]
+(pass) Guardrail Schemas > PatternSchema > should validate a regex pattern [0.12ms]
+(pass) Guardrail Schemas > PatternSchema > should default type to literal [0.05ms]
+(pass) Guardrail Schemas > PatternSchema > should reject invalid type [0.15ms]
+(pass) Guardrail Schemas > PatternSpecSchema > should validate anyOf patterns [0.35ms]
+(pass) Guardrail Schemas > PatternSpecSchema > should validate allOf patterns
+(pass) Guardrail Schemas > PatternSpecSchema > should accept empty spec
+(pass) Guardrail Schemas > RefactorRuleSchema > should validate a complete rule [0.45ms]
+(pass) Guardrail Schemas > RefactorRuleSchema > should reject rule without id [0.08ms]
+(pass) Guardrail Schemas > RefactorRuleSchema > should default severity to medium [0.09ms]
+(pass) Guardrail Schemas > RefactorProfileSchema > should validate a complete profile [0.06ms]
+(pass) Guardrail Schemas > RefactorProfileSchema > should reject profile without name
+(pass) Guardrail Schemas > RefactorProfileSchema > should reject profile without rules
+
+src/features/guardrail/engine.test.ts:
+(pass) GuardrailEngine > evaluate > should find TODO patterns in files [19.68ms]
+(pass) GuardrailEngine > evaluate > should respect scope.exclude patterns [17.85ms]
+(pass) GuardrailEngine > evaluate > should return findings with correct structure [18.87ms]
+(pass) GuardrailEngine > evaluate > requires all patterns in allOf within same file [23.96ms]
+fatal: not a git repository (or any of the parent directories): .git
+(pass) GuardrailEngine > evaluate > falls back to scanning files when not a git repo [15.55ms]
+(pass) GuardrailEngine > determinism > should produce identical findings on repeated runs [53.31ms]
+(pass) GuardrailEngine > determinism > should return findings sorted by rule, file, line [24.24ms]
+
+src/features/guardrail/builtin-rules.test.ts:
+(pass) Built-in Profiles > Profile Loading > should load zero-preguica profile [7.92ms]
+(pass) Built-in Profiles > Profile Loading > should load security profile [4.66ms]
+(pass) Built-in Profiles > Profile Loading > should load dangerous-patterns profile [1.17ms]
+(pass) Built-in Profiles > Zero-Preguiça Detection > should detect TODO violations [48.34ms]
+(pass) Built-in Profiles > Zero-Preguiça Detection > should detect FIXME violations [49.51ms]
+(pass) Built-in Profiles > Security Detection > should detect hardcoded secrets [358.62ms]
+(pass) Built-in Profiles > Security Detection > should detect eval usage [355.62ms]
+
+src/features/guardrail/builtin.test.ts:
+(pass) getBuiltinProfilesDir returns correct path [0.66ms]
+(pass) listBuiltinProfiles returns known profiles
+(pass) loadBuiltinProfile loads a profile [1.87ms]
+
+src/features/guardrail/profiles.test.ts:
+(pass) Profile Loader > loadProfile > should load a valid NOOA-style profile [0.47ms]
+(pass) Profile Loader > loadProfile > should throw on invalid YAML [0.29ms]
+(pass) Profile Loader > loadProfile > should throw on non-existent file [0.04ms]
+(pass) Profile Loader > validateProfile > should return valid: true for valid profile [0.27ms]
+(pass) Profile Loader > validateProfile > should return valid: false with errors for invalid profile [0.29ms]
+(pass) Profile Loader > normalizeToNooaFormat (Auditor compatibility) > should normalize Auditor-style identifiers to NOOA patterns
+(pass) Profile Loader > normalizeToNooaFormat (Auditor compatibility) > should pass through NOOA-style patterns unchanged [0.10ms]
+(pass) Profile Loader > normalizeToNooaFormat (Auditor compatibility) > should return empty spec for empty input
+
+src/features/guardrail/anarchy-regression.test.ts:
+(pass) Anarchy Baseline Profile > should load anarchy-baseline profile successfully [1.07ms]
+(pass) Anarchy Baseline Profile > should validate anarchy-baseline profile schema [0.71ms]
+(pass) Anarchy Baseline Profile > should have secret detection rules [0.64ms]
+(pass) Anarchy Baseline Profile > should have dependency risk rules [1.31ms]
+(pass) Anarchy Baseline Profile > should have test quality rules [1.11ms]
+
+src/features/guardrail/cli.test.ts:
+(pass) Guardrail CLI > init creates default profile [37.96ms]
+✅ Initialized .nooa/guardrails/ directory
+   Created: profiles/default.yaml
+
+Run: nooa guardrail check --profile .nooa/guardrails/profiles/default.yaml
+(pass) Guardrail CLI > validate passes for valid profile [34.79ms]
+(pass) Guardrail CLI > validate fails for missing profile [32.09ms]
+(pass) Guardrail CLI > validate fails for invalid profile content [31.59ms]
+✅ Initialized .nooa/guardrails/ directory
+   Created: profiles/default.yaml
+
+Run: nooa guardrail check --profile .nooa/guardrails/profiles/default.yaml
+(pass) Guardrail CLI > check runs guardrail checks [56.97ms]
+(pass) Guardrail CLI > spec init creates GUARDRAIL.md [32.57ms]
+(pass) Guardrail CLI > spec validate checks profiles [30.18ms]
+(pass) Guardrail CLI > unknown subcommand shows help [31.63ms]
+(pass) Guardrail CLI > add creates new profile [30.38ms]
+(pass) Guardrail CLI > add fails if profile exists [31.28ms]
+(pass) Guardrail CLI > list displays available profiles [28.50ms]
+(pass) Guardrail CLI > show displays profile content [33.48ms]
+(pass) Guardrail CLI > remove deletes profile [34.86ms]
+(pass) Guardrail CLI > spec show lists enabled profiles [29.16ms]
+
+src/features/guardrail/contracts.test.ts:
+(pass) Guardrail Contracts > Severity > should have correct severity levels
+(pass) Guardrail Contracts > Severity > should have 5 severity levels
+(pass) Guardrail Contracts > Confidence > should have correct confidence levels
+(pass) Guardrail Contracts > Confidence > should have 3 confidence levels
+(pass) Guardrail Contracts > Finding interface > should accept a valid finding
+(pass) Guardrail Contracts > Finding interface > should accept optional trace field [0.03ms]
+(pass) Guardrail Contracts > GuardrailReport interface > should accept a valid report [0.02ms]
+(pass) Guardrail Contracts > GuardrailReport interface > should have correct status values [0.01ms]
+
+src/features/guardrail/spec.test.ts:
+(pass) Spec Parser > parseGuardrailSpec > should return defaults when no spec file exists
+(pass) Spec Parser > parseGuardrailSpec > should parse profiles from spec [0.28ms]
+(pass) Spec Parser > parseGuardrailSpec > should parse thresholds from spec [0.16ms]
+(pass) Spec Parser > parseGuardrailSpec > should parse custom rules from spec [0.32ms]
+(pass) Spec Parser > parseGuardrailSpec > should parse exclusions from spec [0.30ms]
+(pass) Spec Parser > parseGuardrailSpec > parses custom rules without require() [0.25ms]
+(pass) Spec Parser > parseGuardrailSpec > does not rely on require() for yaml parsing [0.13ms]
+(pass) Spec Parser > buildProfileFromSpec > should build combined profile from spec
+
+src/features/prompt/service.test.ts:
+(pass) createPrompt writes a new prompt file with frontmatter and body [2.53ms]
+(pass) editPrompt applies a unified diff patch to a prompt file [1.05ms]
+(pass) deletePrompt removes a prompt file [0.79ms]
+(pass) publishPrompt bumps version and appends to changelog [1.60ms]
+
+src/features/prompt/engine.test.ts:
+(pass) PromptEngine > listPrompts returns valid prompts [0.77ms]
+(pass) PromptEngine > listPrompts handles errors gracefully [0.40ms]
+(pass) PromptEngine > loadPrompt parses correctly [0.36ms]
+(pass) PromptEngine > parsePrompt throws on missing frontmatter [0.18ms]
+(pass) PromptEngine > parsePrompt throws on invalid metadata [0.20ms]
+(pass) PromptEngine > renderPrompt substitutes variables [0.34ms]
+(pass) PromptEngine > renderPrompt includes agent context [0.22ms]
+(pass) PromptEngine > renderPrompt includes injected context [0.12ms]
+(pass) PromptEngine > bumpVersion increments version correctly [0.89ms]
+(pass) PromptEngine > bumpVersion throws on invalid version [0.52ms]
+
+src/features/prompt/cli.test.ts:
+(pass) nooa prompt --help lists new subcommands [87.51ms]
+(pass) nooa prompt create writes a new prompt [92.84ms]
+(pass) nooa prompt edit applies patch from stdin [98.31ms]
+(pass) nooa prompt delete removes prompt file [92.98ms]
+(pass) nooa prompt publish bumps version and updates changelog [93.50ms]
+
+src/features/ai/engine.test.ts:
+(pass) AiEngine > complete() > registers and uses a provider [0.28ms]
+(pass) AiEngine > complete() > throws error for missing provider
+{"level":"warn","event":"AI request failed (attempt 1/4), retrying in 178ms","timestamp":1770092842014,"metadata":{"error":"Transient failure"}}
+{"level":"warn","event":"AI request failed (attempt 2/4), retrying in 30ms","timestamp":1770092842193,"metadata":{"error":"Transient failure"}}
+(pass) AiEngine > complete() > retries on failure [209.76ms]
+{"level":"warn","event":"Primary provider primary completed failed, falling back to secondary","timestamp":1770092842224,"metadata":{"error":"Transient failure"}}
+(pass) AiEngine > complete() > falls back to secondary provider [0.31ms]
+{"level":"warn","event":"Primary provider primary completed failed, falling back to secondary","timestamp":1770092842224,"metadata":{"error":"Transient failure"}}
+(pass) AiEngine > complete() > rethrows error if fallback fails [0.10ms]
+(pass) AiEngine > embed() > uses provider for embedding [0.16ms]
+(pass) AiEngine > embed() > throws error for missing provider in embed [0.05ms]
+{"level":"warn","event":"AI request failed (attempt 1/3), retrying in 103ms","timestamp":1770092842224,"metadata":{"error":"Embed failure"}}
+(pass) AiEngine > embed() > retries on embed failure [103.49ms]
+{"level":"warn","event":"Primary provider p1 embed failed, falling back to p2","timestamp":1770092842328,"metadata":{"error":"Embed failure"}}
+(pass) AiEngine > embed() > falls back in embed [0.31ms]
+
+src/features/ai/cli.test.ts:
+(pass) nooa ai can invoke an MCP tool [93.50ms]
+
+src/features/review/discovery.test.ts:
+(pass) Test Discovery heuristic > finds test in same directory [62.58ms]
+(pass) Test Discovery heuristic > finds test in root tests/ directory [62.49ms]
+(pass) Test Discovery heuristic > returns empty array if no test found [62.51ms]
+
+src/features/review/execute.test.ts:
+(pass) executeReview > normalizes 'maintainability' category to 'arch' [15.12ms]
+(pass) executeReview > defaults null file to input_path [14.00ms]
+
+src/features/fix/execute.test.ts:
+(pass) executeFix > should track telemetry and return ok in dry run [1.14ms]
+(pass) executeFix > should carry out full fix loop (Stage 1-5) [0.98ms]
+(pass) executeFix > should handle failures in stages [0.19ms]
+(pass) executeFix > should handle error when goal or search fails [67.00ms]
+
+src/features/fix/cli.test.ts:
+(pass) fix CLI > should show help [86.88ms]
+(pass) fix CLI > should output JSON [84.68ms]
+
+src/features/index/index.test.ts:
+(pass) Index Feature Execution > clearIndex calls store.clear
+(pass) Index Feature Execution > getIndexStats calls store.stats
+(pass) Index Feature Execution > indexRepo recursively lists and indexes files [0.55ms]
+(pass) Index Feature Execution > executeSearch embeds query and searches store
+(pass) Index Feature Execution > rebuildIndex calls clear and indexRepo [0.09ms]
+(pass) Index Feature Execution > chunking logic with large text [0.07ms]
+
+src/features/skills/manager.test.ts:
+(pass) SkillManager > createSkill creates directory and main file [1.20ms]
+(pass) SkillManager > listSkills returns all skills [1.17ms]
+(pass) SkillManager > deleteSkill removes directory [0.35ms]
+(pass) SkillManager > enable/disable skill [0.47ms]
+(pass) SkillManager > updateSkill verifies existence [0.35ms]
+(pass) SkillManager > showSkill handles frontmatter correctly [0.37ms]
+(pass) SkillManager > parseFrontmatter edge cases [0.15ms]
+(pass) SkillManager > listSkills handles empty root [0.17ms]
+
+src/features/skills/cli.test.ts:
+Current skills:
+  - s1 (enabled): d1
+(pass) Skills CLI > list subcommand [0.36ms]
+Current skills:
+  (none)
+(pass) Skills CLI > list subcommand empty
+Skill 'new-skill' created.
+(pass) Skills CLI > add subcommand
+Error: Skill name required.
+(pass) Skills CLI > add subcommand error on missing name
+Skill 'old-skill' removed.
+(pass) Skills CLI > remove subcommand [0.06ms]
+Error: Skill name required.
+(pass) Skills CLI > remove subcommand error on missing name [0.03ms]
+Skill 's1' enabled.
+(pass) Skills CLI > enable subcommand [0.02ms]
+Error: Skill name required.
+(pass) Skills CLI > enable subcommand error on missing name
+Skill 's1' disabled.
+(pass) Skills CLI > disable subcommand [0.07ms]
+Error: Skill name required.
+(pass) Skills CLI > disable subcommand error on missing name [0.03ms]
+Name: test
+Description: desc
+
+Content:
+
+content
+(pass) Skills CLI > show subcommand [0.08ms]
+Error: Skill name required.
+(pass) Skills CLI > show subcommand error on missing name [0.09ms]
+Skill 's1' updated successfully.
+(pass) Skills CLI > update subcommand [0.09ms]
+Error: Skill name required.
+(pass) Skills CLI > update subcommand error on missing name [0.02ms]
+(pass) Skills CLI > help output [0.12ms]
+
+src/features/eval/cli.test.ts:
+(pass) nooa eval CLI extensions > help lists report/history/compare [85.76ms]
+(pass) nooa eval CLI extensions > history prints matching entries [83.70ms]
+(pass) nooa eval CLI extensions > report returns the latest entry [85.35ms]
+(pass) nooa eval CLI extensions > compare shows score delta between entries [88.29ms]
+
+src/features/run/parser.test.ts:
+(pass) pipeline parser > delimiter mode > splits by -- [0.57ms]
+(pass) pipeline parser > delimiter mode > unescapes \-- in delimiter mode
+(pass) pipeline parser > delimiter mode > handles internal vs external
+(pass) pipeline parser > string mode > parses quoted strings [0.57ms]
+(pass) pipeline parser > string mode > unescapes \-- in string mode
+(pass) pipeline parser > string mode > detects exec prefix
+
+src/features/goal/execute.test.ts:
+(pass) Goal Manager > can set and get goal [0.83ms]
+(pass) Goal Manager > returns null if no goal exists [0.17ms]
+(pass) Goal Manager > can clear a goal [0.45ms]
+(pass) Goal Manager > clearGoal does nothing if file doesn't exist [0.14ms]
+
+src/features/goal/cli.test.ts:
+(pass) Goal CLI > goal --help shows usage [87.20ms]
+(pass) Goal CLI > goal status --json outputs structured data [86.83ms]
+
+src/features/cron/cli.test.ts:
+(pass) nooa cron CLI > shows help output [93.08ms]
+(pass) nooa cron CLI > add and lists jobs [198.46ms]
+(pass) nooa cron CLI > list --json returns structured data [177.13ms]
+(pass) nooa cron CLI > status, run, logs, and history work end-to-end [428.40ms]
+(pass) nooa cron CLI > edit and remove commands enforce force and updates [435.55ms]
+
+tests/features/alias/cli.test.ts:
+✅ Alias "deploy" saved
+(pass) alias dispatches stored command [93.59ms]
+✅ Alias "json-list" saved
+(pass) alias appends invocation arguments [112.53ms]
+
+src/features/ai/providers/openai.test.ts:
+(pass) OpenAiProvider > complete() sends correct request [0.11ms]
+(pass) OpenAiProvider > complete() throws on missing API key
+(pass) OpenAiProvider > complete() throws on non-ok response [0.16ms]
+(pass) OpenAiProvider > complete() throws when no choices returned [0.05ms]
+(pass) OpenAiProvider > embed() sends correct request [0.12ms]
+
+src/features/ai/providers/ollama.test.ts:
+(pass) OllamaProvider > complete() sends correct request [0.06ms]
+(pass) OllamaProvider > complete() throws on error
+(pass) OllamaProvider > embed() sends correct request
+(pass) OllamaProvider > embed() throws on error
+
+src/features/eval/scorers/deterministic.test.ts:
+(pass) DeterministicScorer > passes valid JSON check [0.37ms]
+(pass) DeterministicScorer > extracts JSON from markdown
+(pass) DeterministicScorer > handles invalid JSON [0.12ms]
+(pass) DeterministicScorer > skips checks if no valid JSON parsed
+(pass) DeterministicScorer > verifies properties [0.03ms]
+(pass) DeterministicScorer > checks enums on arrays [0.05ms]
+(pass) DeterministicScorer > fails on invalid enum value [0.05ms]
+(pass) DeterministicScorer > detects absolute paths
+(pass) DeterministicScorer > verifies max_count
+(pass) DeterministicScorer > verifies max_count success
+(pass) DeterministicScorer > verifies property_equals
+(pass) DeterministicScorer > handles missing property or limit for max_count [0.12ms]
+(pass) DeterministicScorer > handles missing property for property_equals [0.01ms]
+(pass) DeterministicScorer > handles edge cases in getValues [0.04ms]
+(pass) DeterministicScorer > handles general errors during check
+--------------------------------------------|---------|---------|-------------------
+File                                        | % Funcs | % Lines | Uncovered Line #s
+--------------------------------------------|---------|---------|-------------------
+All files                                   |   96.07 |   95.29 |
+ src/core/db/cron_store.ts                  |  100.00 |  100.00 | 
+ src/core/db/index.ts                       |  100.00 |  100.00 | 
+ src/core/db/schema/cron.ts                 |  100.00 |  100.00 | 
+ src/core/db/schema/cron_jobs.ts            |  100.00 |   75.86 | 51-53,55-58
+ src/core/db/schema/cron_logs.ts            |  100.00 |  100.00 | 
+ src/core/db/schema/embeddings.ts           |  100.00 |  100.00 | 
+ src/core/db/schema/mcp_aliases.ts          |  100.00 |  100.00 | 
+ src/core/db/schema/mcp_servers.ts          |  100.00 |  100.00 | 
+ src/core/event-bus.ts                      |   75.00 |  100.00 | 
+ src/core/integrations/github.ts            |  100.00 |  100.00 | 
+ src/core/io.ts                             |  100.00 |   96.72 | 79-80
+ src/core/logger.ts                         |  100.00 |  100.00 | 
+ src/core/mcp/Client.ts                     |   95.45 |   96.43 | 180-183
+ src/core/mcp/ConfigStore.ts                |  100.00 |  100.00 | 
+ src/core/mcp/Registry.ts                   |  100.00 |  100.00 | 
+ src/core/mcp/ServerManager.ts              |   91.67 |  100.00 | 
+ src/core/mcp/ToolProvider.ts               |  100.00 |  100.00 | 
+ src/core/mcp/alias.ts                      |  100.00 |  100.00 | 
+ src/core/mcp/db.ts                         |  100.00 |  100.00 | 
+ src/core/memory/schema.ts                  |  100.00 |  100.00 | 
+ src/core/policy/PolicyEngine.ts            |  100.00 |  100.00 | 
+ src/core/reflection/hook.ts                |  100.00 |   93.55 | 20-21
+ src/core/registry.ts                       |   85.71 |  100.00 | 
+ src/core/skills/Discovery.ts               |  100.00 |  100.00 | 
+ src/core/telemetry.ts                      |  100.00 |  100.00 | 
+ src/features/ai/engine.ts                  |   92.31 |  100.00 | 
+ src/features/ai/providers/mock.ts          |   85.71 |  100.00 | 
+ src/features/ai/providers/mod.ts           |  100.00 |  100.00 | 
+ src/features/ai/providers/ollama.ts        |   80.00 |  100.00 | 
+ src/features/ai/providers/openai.ts        |   83.33 |  100.00 | 
+ src/features/chat/execute.ts               |  100.00 |  100.00 | 
+ src/features/ci/execute.ts                 |  100.00 |   86.60 | 29-36,47-51
+ src/features/code/cli.ts                   |  100.00 |   91.56 | 78-82,86-95,99-109
+ src/features/code/diff.ts                  |  100.00 |  100.00 | 
+ src/features/code/format.ts                |  100.00 |  100.00 | 
+ src/features/code/patch.ts                 |  100.00 |   96.92 | 20
+ src/features/code/refactor.ts              |  100.00 |  100.00 | 
+ src/features/code/write.ts                 |  100.00 |  100.00 | 
+ src/features/context/execute.ts            |  100.00 |  100.00 | 
+ src/features/doctor/execute.ts             |  100.00 |   96.15 | 26
+ src/features/embed/cli.ts                  |  100.00 |  100.00 | 
+ src/features/embed/engine.ts               |  100.00 |   97.62 | 
+ src/features/eval/scorers/deterministic.ts |   85.71 |  100.00 | 
+ src/features/fix/execute.ts                |  100.00 |  100.00 | 
+ src/features/goal/execute.ts               |  100.00 |  100.00 | 
+ src/features/guardrail/builtin.ts          |  100.00 |  100.00 | 
+ src/features/guardrail/cli.ts              |   91.67 |   75.91 | 75-76,120-122,135-138,144,147-149,161-162,178,184,188-189,267-268,285-286,293-295,305-306,321-322,362-363,370-372,393,395-398,404-406,428-429,436-438,441-443,450-451,476-481,483-484,511-532,538-540
+ src/features/guardrail/contracts.ts        |  100.00 |  100.00 | 
+ src/features/guardrail/engine.ts           |   87.50 |  100.00 | 
+ src/features/guardrail/profiles.ts         |  100.00 |   86.21 | 33,56,103-105,110-112
+ src/features/guardrail/schemas.ts          |  100.00 |  100.00 | 
+ src/features/guardrail/spec.ts             |  100.00 |   98.23 | 97-98
+ src/features/identity/init.ts              |  100.00 |  100.00 | 
+ src/features/identity/templates.ts         |  100.00 |  100.00 | 
+ src/features/index/execute.ts              |  100.00 |  100.00 | 
+ src/features/init/execute.ts               |  100.00 |  100.00 | 
+ src/features/mcp/alias.ts                  |  100.00 |   83.56 | 21,31-32,46-47,50-51,66,79-80,85
+ src/features/mcp/call.ts                   |  100.00 |   88.61 | 34,46-47,54-55,76-77,99-100
+ src/features/mcp/cli.ts                    |  100.00 |   36.78 | 50-53,55-58,60-63,65-68,70-73,75-78,80-83,85-88,90-93,95-98,100-103,105-108,110-113,115-117
+ src/features/mcp/configure.ts              |  100.00 |   90.43 | 31,43-44,49-50,54-55,63-64
+ src/features/mcp/disable.ts                |  100.00 |   94.29 | 38-39
+ src/features/mcp/enable.ts                 |  100.00 |   94.29 | 38-39
+ src/features/mcp/health.ts                 |  100.00 |   88.00 | 17,24-25,50-51
+ src/features/mcp/helpers.ts                |  100.00 |   94.29 | 49,78,88-89
+ src/features/mcp/info.ts                   |  100.00 |   65.22 | 17,25-26,31-32,40-41,46-54
+ src/features/mcp/init.ts                   |   90.00 |   99.36 | 
+ src/features/mcp/install.ts                |  100.00 |   93.33 | 62-65
+ src/features/mcp/list.ts                   |  100.00 |   71.74 | 40-52
+ src/features/mcp/marketplace.ts            |  100.00 |   83.67 | 19-20,50,57,79,87-88,98,116-117,126-131
+ src/features/mcp/resource.ts               |  100.00 |   80.00 | 18,26-27,33-34,43-44,55,60-61
+ src/features/mcp/test-utils.ts             |  100.00 |  100.00 | 
+ src/features/mcp/test.ts                   |  100.00 |   79.59 | 18,25-26,31-32,41-42,53,58-59
+ src/features/mcp/uninstall.ts              |  100.00 |   79.49 | 17,24-25,30-31,39-40
+ src/features/memory/engine.ts              |  100.00 |  100.00 | 
+ src/features/memory/reflect.ts             |  100.00 |  100.00 | 
+ src/features/memory/summarize.ts           |  100.00 |   98.36 | 
+ src/features/pr/gh.ts                      |  100.00 |  100.00 | 
+ src/features/prompt/engine.ts              |  100.00 |  100.00 | 
+ src/features/prompt/injection.ts           |  100.00 |  100.00 | 
+ src/features/prompt/service.ts             |  100.00 |   72.04 | 76-80,125,127-132,134-147
+ src/features/read/cli.ts                   |  100.00 |  100.00 | 
+ src/features/review/discovery.ts           |  100.00 |   97.37 | 
+ src/features/review/execute.ts             |  100.00 |   88.39 | 62-63,67-69,71-72,77-80,84,98,177-180
+ src/features/run/parser.ts                 |  100.00 |  100.00 | 
+ src/features/search/engine.ts              |  100.00 |   95.95 | 52-54,114,150,178,229,237
+ src/features/skills/cli.ts                 |  100.00 |  100.00 | 
+ src/features/skills/manager.ts             |   94.74 |  100.00 | 
+ src/features/skills/templates.ts           |  100.00 |  100.00 | 
+ src/test-utils/cli-env.ts                  |  100.00 |  100.00 | 
+ tmp_features/bar/cli.ts                    |    0.00 |  100.00 | 
+ tmp_features/baz/cli.ts                    |  100.00 |  100.00 | 
+ tmp_features/foo/cli.ts                    |    0.00 |  100.00 | 
+--------------------------------------------|---------|---------|-------------------
+
+ 478 pass
+ 0 fail
+ 1002 expect() calls
+Ran 478 tests across 101 files. [16.12s]

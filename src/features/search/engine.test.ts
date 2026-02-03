@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test, spyOn } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -107,5 +107,68 @@ describe("Search Engine", () => {
 			root: testDir,
 		});
 		expect(results).toHaveLength(0);
+	});
+
+	test("rg search parses JSON output", async () => {
+		process.env.NOOA_SEARCH_ENGINE = "rg";
+
+		const mockStdout = [
+			JSON.stringify({ type: "match", data: { path: { text: "src/c.ts" }, lines: { text: "function test() {" }, line_number: 1, submatches: [{ start: 9, end: 13 }] } }),
+			JSON.stringify({ type: "match", data: { path: { text: "src/c.ts" }, lines: { text: "  return true;" }, line_number: 2, submatches: [] } }),
+		].join("\n");
+
+		const spawnSpy = spyOn(Bun, "spawn").mockImplementation((() => ({
+			stdout: new Response(mockStdout).body,
+			exitCode: 0,
+			kill: () => { },
+			unref: () => { },
+		})) as any);
+
+		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({ exitCode: 0 } as any);
+
+		const results = await runSearch({
+			query: "test",
+			root: testDir,
+		});
+
+		expect(results).toHaveLength(2);
+		expect(results[0].path).toBe("src/c.ts");
+		expect(results[0].line).toBe(1);
+		expect(results[0].snippet).toContain("function test");
+
+		expect(spawnSpy).toHaveBeenCalled();
+		const cmd = spawnSpy.mock.calls[0][0].cmd;
+		expect(cmd).toContain("rg");
+		expect(cmd).toContain("--json");
+
+		spawnSpy.mockRestore();
+		spawnSyncSpy.mockRestore();
+	});
+
+	test("rg search handles context", async () => {
+		process.env.NOOA_SEARCH_ENGINE = "rg";
+
+		const mockStdout = [
+			JSON.stringify({ type: "context", data: { path: { text: "ctx.txt" }, lines: { text: "line1\n" }, line_number: 1 } }),
+			JSON.stringify({ type: "match", data: { path: { text: "ctx.txt" }, lines: { text: "match\n" }, line_number: 2, submatches: [{ start: 0, end: 5 }] } }),
+		].join("\n");
+
+		const spawnSpy = spyOn(Bun, "spawn").mockImplementation((() => ({
+			stdout: new Response(mockStdout).body,
+			exitCode: 0,
+		})) as any);
+		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({ exitCode: 0 } as any);
+
+		const results = await runSearch({
+			query: "match",
+			root: testDir,
+			context: 1
+		});
+
+		expect(results[0].snippet).toContain("line1");
+		expect(results[0].snippet).toContain("match");
+
+		spawnSpy.mockRestore();
+		spawnSyncSpy.mockRestore();
 	});
 });
