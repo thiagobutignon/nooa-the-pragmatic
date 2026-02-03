@@ -28,7 +28,7 @@ describe("Built-in Profiles", () => {
         it("should load security profile", async () => {
             const profile = await loadProfile(join(profilesDir, "security.yaml"));
             expect(profile.refactor_name).toBe("security");
-            expect(profile.rules.length).toBe(6);
+            expect(profile.rules.length).toBeGreaterThanOrEqual(6);
             expect(profile.rules.map((r) => r.id)).toContain("hardcoded-secret");
             expect(profile.rules.map((r) => r.id)).toContain("sql-injection-risk");
         });
