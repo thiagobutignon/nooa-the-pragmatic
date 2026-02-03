@@ -22,6 +22,9 @@ import { prompt } from "./prompt";
 import { push } from "./push";
 import { read } from "./read";
 import { review } from "./review";
+import { runSdk } from "./run";
+import { scaffold } from "./scaffold";
+import { search } from "./search";
 
 export const sdk = {
 	ai,
@@ -48,9 +51,9 @@ export const sdk = {
 	push,
 	read,
 	review,
-	run: {},
-	scaffold: {},
-	search: {},
+	run: runSdk,
+	scaffold,
+	search,
 	skills: {},
 	worktree: {},
 };
