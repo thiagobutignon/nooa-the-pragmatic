@@ -11,6 +11,16 @@ A **self-evolving module** defines a command's specification (inputs, outputs, e
 
 **Core Principle:** Define once in code/schema, generate everything else (CLI help, Agent Tool Specs, SDK types, Documentation) automatically. This guarantees zero drift between what the code *does* and what the documentation *says*.
 
+## Required Reading
+
+Before implementing or modifying any module, **YOU MUST READ** the following references located in `references/`:
+
+1. `self-evolving-cli-modules.md`: The deep research report explaining the "Why" and "What".
+2. `implementation-archetypes.md`: The 5 core patterns (we use Archetype 2/Command Builder).
+3. `implementation-roadmap.md`: The strategic plan for rolling this out.
+
+**Why is this mandatory?** These documents contain the architectural decisions, trade-offs, and "Iron Laws" of our system. Skipping them leads to drift and technical debt.
+
 ## When to Use
 
 - Creating **ANY** new CLI command in NOOA.
