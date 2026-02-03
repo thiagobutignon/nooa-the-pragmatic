@@ -3,6 +3,7 @@ import { ask } from "./ask";
 import { check } from "./check";
 import { ci } from "./ci";
 import { code } from "./code";
+import { commit } from "./commit";
 
 export const sdk = {
 	ai,
@@ -10,7 +11,7 @@ export const sdk = {
 	check,
 	ci,
 	code,
-	commit: {},
+	commit,
 	context: {},
 	cron: {},
 	doctor: {},
