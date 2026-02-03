@@ -1,0 +1,1 @@
+Script gerou erros de sintaxe ao adicionar mockRestore() no meio de objetos JSON e em lugares inválidos. Abordagem correta é manual para arquivos críticos.
