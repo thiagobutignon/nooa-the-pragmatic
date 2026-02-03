@@ -1,0 +1,12 @@
+{
+  "generated": "2026-02-03T21:59:25.939Z",
+  "version": "1.0.0",
+  "features": [
+    {
+      "name": "read",
+      "version": "1.2.0",
+      "description": "Read file contents",
+      "agentDoc": "<instruction version=\"1.2.0\" name=\"read\">\n  <purpose>Read file contents</purpose>\n  <usage>\n    <cli>nooa read &lt;path&gt; [--json]</cli>\n    <sdk>await read.run({ path: \"file.txt\", json: false })</sdk>\n    <tui>ReadFileDialog({ initialPath })</tui>\n  </usage>\n  <contract>\n    <input>\n      <field name=\"path\" type=\"string\" required=\"true\" />\n      <field name=\"json\" type=\"boolean\" required=\"false\" default=\"false\" since=\"1.1.0\" />\n    </input>\n\n    <output>\n      <field name=\"ok\" type=\"boolean\" />\n      <field name=\"traceId\" type=\"string\" />\n      <field name=\"path\" type=\"string\" />\n      <field name=\"bytes\" type=\"number\" />\n      <field name=\"content\" type=\"string\" />\n    </output>\n  </contract>\n  <exit-codes>\n    <code value=\"0\">Success</code>\n    <code value=\"1\">File not found or read failed</code>\n    <code value=\"2\">Path required or invalid</code>\n  </exit-codes>\n  <examples>\n    <example>\n      <input>nooa read README.md</input>\n      <output>File contents to stdout</output>\n    </example>\n    <example>\n      <input>nooa read package.json --json</input>\n      <output>{ \"path\": \"package.json\", \"bytes\": 1234, \"content\": \"...\" }</output>\n    </example>\n  </examples>\n  <errors>\n    <error code=\"read.missing_path\">Path required or invalid</error>\n    <error code=\"read.not_found\">File not found</error>\n    <error code=\"read.read_failed\">Read failed</error>\n  </errors>\n</instruction>"
+    }
+  ]
+}

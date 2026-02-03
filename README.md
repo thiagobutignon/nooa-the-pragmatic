@@ -56,9 +56,7 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 
 ## 📖 Documentation
 
-- [Commands Documentation](docs/commands/)
-- [SDK Documentation](docs/sdk/README.md)
-- [Guardrail Command](docs/commands/guardrail.md)
+- [Feature Documentation](docs/features/)
 - [Project Policy](.nooa/POLICY.md)
 - [Constitution](.nooa/CONSTITUTION.md)
 

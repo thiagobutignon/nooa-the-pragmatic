@@ -1,8 +1,20 @@
-import type { Command, CommandContext } from "../../core/command";
-import { createTraceId, logger } from "../../core/logger";
-import { telemetry } from "../../core/telemetry";
+import { readFile } from "node:fs/promises";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { createTraceId } from "../../core/logger";
+import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";
 
-const readHelp = `
+export const readMeta: AgentDocMeta = {
+    name: "read",
+    description: "Read file contents",
+    changelog: [
+        { version: "1.2.0", changes: ["Added stdin support"] },
+        { version: "1.1.0", changes: ["Added --json flag"] },
+        { version: "1.0.0", changes: ["Initial release"] },
+    ],
+};
+
+export const readHelp = `
 Usage: nooa read <path> [flags]
 
 Read file contents from the local filesystem.
@@ -11,8 +23,9 @@ Arguments:
   <path>      Path to the file to read.
 
 Flags:
-  --json      Output JSON with path, bytes, content.
-  -h, --help  Show help message.
+  --json              Output JSON with path, bytes, content.
+  --include-changelog Include changelog in help output.
+  -h, --help          Show help message.
 
 Examples:
   nooa read README.md
@@ -20,143 +33,173 @@ Examples:
 
 Exit Codes:
   0: Success
-  1: Runtime Error (failed execution)
-  2: Validation Error (invalid path)
+  1: Runtime Error (file not found or read failed)
+  2: Validation Error (missing path)
+
+Error Codes:
+  read.missing_path: Path required or invalid
+  read.not_found: File not found
+  read.read_failed: Read failed
 `;
 
-const readCommand: Command = {
-	name: "read",
-	description: "Read file contents",
-	options: {}, // No specific flags other than global help/json
-	execute: async ({ rawArgs, values: _globalValues, bus }: CommandContext) => {
-		const { parseArgs } = await import("node:util");
-		const parsed = parseArgs({
-			args: rawArgs,
-			options: {
-				...readCommand.options,
-				help: { type: "boolean", short: "h" },
-				json: { type: "boolean" }, // shared
-			},
-			strict: true,
-			allowPositionals: true,
-		});
-		const values = parsed.values as { help?: boolean; json?: boolean };
-		const positionals = parsed.positionals as string[];
+export const readSdkUsage = `
+SDK Usage:
+  const result = await read.run({ path: "file.txt", json: false });
+  if (result.ok) {
+    console.log(result.data.content);
+  }
+`;
 
-		const { getStdinText } = await import("../../core/io");
-
-		const traceId = createTraceId();
-		const startTime = Date.now();
-
-		if (values.help) {
-			console.log(readHelp);
-			return;
-		}
-
-		let path = positionals[1];
-
-		// Handle stdin if no path provided
-		if (!path) {
-			path = await getStdinText();
-		}
-
-		if (!path) {
-			console.error("Error: Path is required.");
-			telemetry.track(
-				{
-					event: "read.failure",
-					level: "error",
-					success: false,
-					duration_ms: Date.now() - startTime,
-					trace_id: traceId,
-					metadata: { reason: "missing_path" },
-				},
-				bus,
-			);
-			logger.warn("read.missing_path", { duration_ms: Date.now() - startTime });
-			process.exitCode = 2;
-			return;
-		}
-
-		try {
-			const { readFile } = await import("node:fs/promises");
-			const content = await readFile(path, "utf-8");
-			const duration = Date.now() - startTime;
-
-			if (values.json) {
-				console.log(
-					JSON.stringify(
-						{
-							path,
-							bytes: Buffer.byteLength(content),
-							content,
-						},
-						null,
-						2,
-					),
-				);
-			} else {
-				process.stdout.write(content);
-			}
-
-			telemetry.track(
-				{
-					event: "read.success",
-					level: "info",
-					success: true,
-					duration_ms: duration,
-					trace_id: traceId,
-					metadata: { path, bytes: Buffer.byteLength(content) },
-				},
-				bus,
-			);
-			logger.info("read.success", {
-				path,
-				bytes: Buffer.byteLength(content),
-				duration_ms: duration,
-			});
-			bus?.emit("read.completed", {
-				path,
-				bytes: Buffer.byteLength(content),
-				duration_ms: duration,
-				trace_id: traceId,
-				success: true,
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			const duration = Date.now() - startTime;
-			if (message.toLowerCase().includes("no such file")) {
-				console.error(`Error: File not found: ${path}`);
-			} else {
-				console.error(`Error: ${message}`);
-			}
-
-			telemetry.track(
-				{
-					event: "read.failure",
-					level: "error",
-					success: false,
-					duration_ms: duration,
-					trace_id: traceId,
-					metadata: { path, error: message },
-				},
-				bus,
-			);
-			logger.error("read.failure", error as Error, {
-				path,
-				duration_ms: duration,
-			});
-			bus?.emit("read.completed", {
-				path,
-				duration_ms: duration,
-				trace_id: traceId,
-				success: false,
-				error: message,
-			});
-			process.exitCode = 1;
-			return;
-		}
-	},
+export const readUsage = {
+    cli: "nooa read <path> [--json]",
+    sdk: "await read.run({ path: \"file.txt\", json: false })",
+    tui: "ReadFileDialog({ initialPath })",
 };
+
+export const readSchema = {
+    path: { type: "string", required: true },
+    json: { type: "boolean", required: false, default: false, since: "1.1.0" },
+} satisfies SchemaSpec;
+
+export const readOutputFields = [
+    { name: "ok", type: "boolean" },
+    { name: "traceId", type: "string" },
+    { name: "path", type: "string" },
+    { name: "bytes", type: "number" },
+    { name: "content", type: "string" },
+];
+
+export const readExamples = [
+    { input: "nooa read README.md", output: "File contents to stdout" },
+    {
+        input: "nooa read package.json --json",
+        output: '{ "path": "package.json", "bytes": 1234, "content": "..." }',
+    },
+];
+
+export const readErrors = [
+    { code: "read.missing_path", message: "Path required or invalid" },
+    { code: "read.not_found", message: "File not found" },
+    { code: "read.read_failed", message: "Read failed" },
+];
+
+export const readExitCodes = [
+    { value: "0", description: "Success" },
+    { value: "1", description: "File not found or read failed" },
+    { value: "2", description: "Path required or invalid" },
+];
+
+
+export interface ReadRunInput {
+    path?: string;
+    json?: boolean;
+}
+
+export interface ReadRunResult {
+    ok: boolean;
+    traceId: string;
+    path: string;
+    bytes: number;
+    content: string;
+}
+
+export async function run(
+	input: ReadRunInput,
+): Promise<SdkResult<ReadRunResult>> {
+	const traceId = createTraceId();
+	const path = input.path;
+
+	if (!path) {
+		return {
+			ok: false,
+			error: sdkError("read.missing_path", "Path is required."),
+		};
+	}
+
+	try {
+		const content = await readFile(path, "utf-8");
+        return {
+            ok: true,
+            data: {
+                ok: true,
+                traceId,
+                path,
+                bytes: Buffer.byteLength(content),
+                content,
+            },
+        };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const isNotFound = message.toLowerCase().includes("no such file");
+		return {
+			ok: false,
+			error: sdkError(isNotFound ? "read.not_found" : "read.read_failed", "Failed to read file.", {
+				path,
+				error: message,
+			}),
+		};
+	}
+}
+
+const readBuilder = new CommandBuilder<ReadRunInput, ReadRunResult>()
+    .meta(readMeta)
+    .usage(readUsage)
+    .schema(readSchema)
+    .help(readHelp)
+    .sdkUsage(readSdkUsage)
+    .outputFields(readOutputFields)
+    .examples(readExamples)
+    .errors(readErrors)
+    .exitCodes(readExitCodes)
+    .options({ options: buildStandardOptions() })
+    .parseInput(async ({ values, positionals }) => {
+        const { getStdinText } = await import("../../core/io");
+        let path = positionals[1];
+
+        if (!path) {
+            path = await getStdinText();
+        }
+
+        return {
+            path,
+            json: Boolean(values.json),
+        };
+    })
+    .run(run)
+	.onFailure((error, input) => {
+		const errorMessage = error.details?.error
+			? String(error.details.error)
+			: error.message;
+		if (errorMessage.toLowerCase().includes("no such file")) {
+			console.error(`Error: File not found: ${input.path ?? ""}`);
+		} else {
+			console.error(`Error: ${error.message}`);
+		}
+		process.exitCode = error.code === "read.missing_path" ? 2 : 1;
+	})
+    .onSuccess((output, values) => {
+        if (values.json) {
+            console.log(JSON.stringify(output, null, 2));
+            return;
+        }
+        process.stdout.write(output.content);
+    })
+    .telemetry({
+        eventPrefix: "read",
+        successMetadata: (_, output) => ({
+            path: output.path,
+            bytes: output.bytes,
+        }),
+        failureMetadata: (input, error) => ({
+            path: input.path,
+            error: error.message,
+        }),
+    });
+
+export const readAgentDoc = readBuilder.buildAgentDoc(false);
+export const readFeatureDoc = (includeChangelog: boolean) =>
+    readBuilder.buildFeatureDoc(includeChangelog);
+
+const readCommand = readBuilder.build();
 
 export default readCommand;

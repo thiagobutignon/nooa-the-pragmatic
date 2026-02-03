@@ -64,7 +64,7 @@ export async function executeScaffold(
 		if (options.withDocs) {
 			files.push({
 				tpl: "command-docs.md",
-				path: join(root, "docs/commands", `${options.name}.md`),
+				path: join(root, "docs/features", `${options.name}.md`),
 			});
 		}
 

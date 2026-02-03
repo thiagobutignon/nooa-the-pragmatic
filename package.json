@@ -27,7 +27,8 @@
 		"lint:fix": "biome check --write --unsafe src && biome format --write src",
 		"format": "biome format src",
 		"format:fix": "biome format src --write",
-		"auto-lint-fix": "bun run lint:fix"
+		"auto-lint-fix": "bun run lint:fix",
+		"docs": "bun run scripts/generate-docs.ts"
 	},
 	"dependencies": {
 		"js-yaml": "^4.1.1",
