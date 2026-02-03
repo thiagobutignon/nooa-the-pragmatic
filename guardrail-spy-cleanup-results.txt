@@ -1,0 +1,194 @@
+
+❌ Guardrail Check: FAIL
+   Profile: .nooa/guardrails/profiles/test-spy-cleanup.yaml
+   Files scanned: 14
+   Findings: 93
+   Execution: 54ms
+
+Findings:
+  🔴 [spy-variable-without-restore] src/core/logger.test.ts:121 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(process.stderr, "write").mockImplementation(() => true);
+  🔴 [spy-variable-without-restore] src/core/mcp/Client.test.ts:82 - Spy variables must call mockRestore() before test ends
+     const _spawnSpy = spyOn(keyModule(), "spawn").mockReturnValue(
+  🔴 [spy-variable-without-restore] src/core/reflection/hook.test.ts:43 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:38 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:82 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:137 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:202 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:220 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:240 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:268 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:327 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/code/execute.test.ts:347 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:8 - Spy variables must call mockRestore() before test ends
+     const readFileSpy = spyOn(fsPromises, "readFile").mockResolvedValue(
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:11 - Spy variables must call mockRestore() before test ends
+     const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:29 - Spy variables must call mockRestore() before test ends
+     const readFileSpy = spyOn(fsPromises, "readFile")
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:33 - Spy variables must call mockRestore() before test ends
+     const execaSpy = spyOn(execaModule, "execa").mockImplementation(
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:57 - Spy variables must call mockRestore() before test ends
+     const readFileSpy = spyOn(fsPromises, "readFile").mockRejectedValue(
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:60 - Spy variables must call mockRestore() before test ends
+     const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:74 - Spy variables must call mockRestore() before test ends
+     const readFileSpy = spyOn(fsPromises, "readFile").mockRejectedValue(
+  🔴 [spy-variable-without-restore] src/features/context/execute.test.ts:77 - Spy variables must call mockRestore() before test ends
+     const execaSpy = spyOn(execaModule, "execa").mockRejectedValue(
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:32 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:44 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:61 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:76 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:90 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:102 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:114 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:126 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/embed/cli.test.ts:152 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/fix/execute.test.ts:36 - Spy variables must call mockRestore() before test ends
+     const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/fix/execute.test.ts:39 - Spy variables must call mockRestore() before test ends
+     const searchSpy = spyOn(indexExecute, "executeSearch").mockResolvedValue([
+  🔴 [spy-variable-without-restore] src/features/fix/execute.test.ts:42 - Spy variables must call mockRestore() before test ends
+     const goalSpy = spyOn(goalExecute, "getGoal").mockResolvedValue(
+  🔴 [spy-variable-without-restore] src/features/fix/execute.test.ts:45 - Spy variables must call mockRestore() before test ends
+     const aiSpy = spyOn(AiEngine.prototype, "complete").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/fix/execute.test.ts:76 - Spy variables must call mockRestore() before test ends
+     const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/fix/execute.test.ts:91 - Spy variables must call mockRestore() before test ends
+     const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/fix/execute.test.ts:94 - Spy variables must call mockRestore() before test ends
+     const goalSpy = spyOn(goalExecute, "getGoal").mockRejectedValue(
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:50 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:57 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:74 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:83 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:95 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:105 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:117 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:131 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:147 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:156 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:157 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:183 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:184 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:205 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:229 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:250 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:271 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:291 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/guardrail/cli.test.ts:313 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation(() => { });
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:9 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(store, "clear").mockResolvedValue(undefined as never);
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:19 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(store, "stats").mockResolvedValue(expected as any);
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:29 - Spy variables must call mockRestore() before test ends
+     const readdirSpy = spyOn(fs, "readdir").mockImplementation(
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:44 - Spy variables must call mockRestore() before test ends
+     const readFileSpy = spyOn(fs, "readFile").mockResolvedValue(
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:47 - Spy variables must call mockRestore() before test ends
+     const storeSpy = spyOn(store, "storeEmbedding").mockResolvedValue(
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:50 - Spy variables must call mockRestore() before test ends
+     const _aiSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:65 - Spy variables must call mockRestore() before test ends
+     const searchSpy = spyOn(store, "searchEmbeddings").mockResolvedValue([
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:68 - Spy variables must call mockRestore() before test ends
+     const _aiSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:80 - Spy variables must call mockRestore() before test ends
+     const clearSpy = spyOn(store, "clear").mockResolvedValue(
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:83 - Spy variables must call mockRestore() before test ends
+     const readdirSpy = spyOn(fs, "readdir").mockResolvedValue([] as any);
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:93 - Spy variables must call mockRestore() before test ends
+     const readFileSpy = spyOn(fs, "readFile").mockResolvedValue(
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:96 - Spy variables must call mockRestore() before test ends
+     const storeSpy = spyOn(store, "storeEmbedding").mockResolvedValue(
+  🔴 [spy-variable-without-restore] src/features/index/index.test.ts:104 - Spy variables must call mockRestore() before test ends
+     const _aiSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/cli.test.ts:76 - Spy variables must call mockRestore() before test ends
+     const mergeSpy = spyOn({ ghMergePr }, "ghMergePr");
+  🔴 [spy-variable-without-restore] src/features/pr/cli.test.ts:91 - Spy variables must call mockRestore() before test ends
+     const statusSpy = spyOn({ ghStatusPr }, "ghStatusPr");
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:19 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:40 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:52 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:64 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:75 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:96 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:110 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:124 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:135 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/pr/gh.test.ts:146 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(execaModule, "execa").mockResolvedValue({
+  🔴 [spy-variable-without-restore] src/features/prompt/engine.test.ts:38 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(logger, "error").mockImplementation(() => {});
+  🔴 [spy-variable-without-restore] src/features/prompt/engine.test.ts:83 - Spy variables must call mockRestore() before test ends
+     const spy = spyOn(
+  🔴 [spy-variable-without-restore] src/features/read/execute.test.ts:24 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/read/execute.test.ts:40 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/read/execute.test.ts:70 - Spy variables must call mockRestore() before test ends
+     const writeSpy = spyOn(process.stdout, "write").mockImplementation(
+  🔴 [spy-variable-without-restore] src/features/read/execute.test.ts:95 - Spy variables must call mockRestore() before test ends
+     const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/read/execute.test.ts:115 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/read/execute.test.ts:133 - Spy variables must call mockRestore() before test ends
+     const errSpy = spyOn(console, "error").mockImplementation((msg: string) => {
+  🔴 [spy-variable-without-restore] src/features/search/engine.test.ts:136 - Spy variables must call mockRestore() before test ends
+     const spawnSpy = spyOn(Bun, "spawn").mockImplementation((() => ({
+  🔴 [spy-variable-without-restore] src/features/search/engine.test.ts:143 - Spy variables must call mockRestore() before test ends
+     const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({
+  🔴 [spy-variable-without-restore] src/features/search/engine.test.ts:189 - Spy variables must call mockRestore() before test ends
+     const spawnSpy = spyOn(Bun, "spawn").mockImplementation((() => ({
+  🔴 [spy-variable-without-restore] src/features/search/engine.test.ts:193 - Spy variables must call mockRestore() before test ends
+     const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({
+  🔴 [spyon-without-restore] src/features/guardrail/cli.test.ts:24 - Every spyOn() call must have a corresponding mockRestore()
+     spyOn(process, "cwd").mockReturnValue(testDir);
