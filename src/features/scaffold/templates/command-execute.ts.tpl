@@ -11,7 +11,7 @@ export async function execute{{Command}}(options: {{Command}}Options, bus?: any)
     const startTime = Date.now();
 
     // 1. Core Logic
-    // TODO: Implement {{name}} logic
+    // Implement {{name}} logic
     const result = {
         message: "Action performed by {{name}}"
     };

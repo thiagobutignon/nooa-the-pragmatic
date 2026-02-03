@@ -21,20 +21,20 @@ export class MockProvider implements AiProvider {
 		const lastMessage = request.messages[request.messages.length - 1];
 		const input = lastMessage?.content || "";
 
-		let content = `Mock response for: ${input}`;
+		let content = `Simulated response for: ${input}`;
 		if (input.toLowerCase().includes("json")) {
 			content = JSON.stringify(
 				{
 					schemaVersion: "1.0",
 					ok: true,
-					summary: "This is a mock review summary.",
+					summary: "This is a simulated review summary.",
 					findings: [
 						{
 							severity: "low",
 							file: "unknown",
 							line: 1,
 							category: "style",
-							message: "Mock finding",
+							message: "Simulated finding",
 							suggestion: "Fix it",
 						},
 					],

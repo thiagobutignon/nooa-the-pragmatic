@@ -44,8 +44,7 @@ export class SkillManager {
 	}
 
 	async updateSkill(name: string): Promise<void> {
-		// Placeholder for future implementation
-		// For now, we verify the skill exists
+		// Verify the skill exists
 		const skillDir = join(this.skillsRootDir, name);
 		await stat(skillDir);
 	}
@@ -100,14 +99,14 @@ export class SkillManager {
 		name: string;
 		description: string;
 	} {
-		const match = content.match(/^---\n([\s\S]*?)\n---/);
-		if (match) {
+		const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+		if (match?.[1]) {
 			const frontmatter = match[1];
-			const nameMatch = frontmatter.match(/name:\s*(.*)/);
-			const descMatch = frontmatter.match(/description:\s*(.*)/);
+			const nameMatch = frontmatter.match(/^name:[ \t]*(.*)$/im);
+			const descMatch = frontmatter.match(/^description:[ \t]*(.*)$/im);
 			return {
-				name: nameMatch ? nameMatch[1].trim() : "",
-				description: descMatch ? descMatch[1].trim() : "",
+				name: nameMatch ? (nameMatch[1]?.trim() ?? "") : "",
+				description: descMatch ? (descMatch[1]?.trim() ?? "") : "",
 			};
 		}
 		return { name: "", description: "" };

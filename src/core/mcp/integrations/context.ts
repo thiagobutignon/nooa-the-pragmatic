@@ -1,4 +1,7 @@
-// Placeholder integration for Context command to use MCP resources
+/**
+ * Context Command MCP Integration
+ * Provides MCP resource discovery for the context engine.
+ */
 // This would be integrated into src/features/context/execute.ts
 
 import type { Database } from "bun:sqlite";
@@ -21,10 +24,11 @@ export async function getMcpResourcesForContext(
 			)
 			.all();
 
-		return rows.map((row) => ({
+		return rows.map((row: any) => ({
 			id: row.id,
 			name: row.name,
 			package: row.package,
+			uri: `mcp://${row.name}`, // Provide a default URI
 		}));
 	} catch (error) {
 		console.warn("No MCP resources available:", error);

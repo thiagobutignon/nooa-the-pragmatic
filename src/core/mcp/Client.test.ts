@@ -1,4 +1,5 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
+import { EventEmitter } from "node:events";
 import { Client } from "./Client";
 
 class StubClient extends Client {
@@ -25,17 +26,19 @@ class StubClient extends Client {
 			params,
 			attempts: this.attempts,
 			timeout: timeoutMs,
+			resources: method === "resources/list" ? ["r1"] : undefined,
+			tools: method === "tools/list" ? ["t1"] : undefined,
 		};
 	}
 }
 
 test("callTool retries until transient failures resolve", async () => {
 	const client = new StubClient(2);
-	const result = await client.callTool(
+	const result = (await client.callTool(
 		"echo",
 		{ message: "hi" },
 		{ retries: 3, backoff: 1 },
-	);
+	)) as any;
 	expect(result.attempts).toBe(3);
 	expect(result.params.name).toBe("echo");
 	expect(result.params.arguments).toEqual({ message: "hi" });
@@ -47,3 +50,44 @@ test("callTool throws after max retries", async () => {
 		client.callTool("echo", { data: "ping" }, { retries: 3, backoff: 1 }),
 	).rejects.toThrow("transient");
 });
+
+test("Client methods delegate to sendRequest", async () => {
+	const client = new StubClient(0);
+	const resources = await client.listResources();
+	expect(resources).toEqual(["r1"]);
+
+	const read = await client.readResource("uri");
+	expect((read as any).params).toEqual({ uri: "uri" });
+
+	const tools = await client.listTools();
+	expect(tools).toEqual(["t1"]);
+
+	const ping = await client.ping();
+	expect(ping).toBe(true);
+});
+
+test("Real Client flow with mock process", async () => {
+	const client = new Client({ command: "dummy", args: [] });
+
+	const mockStdin = { write: () => true };
+	const mockStdout = new EventEmitter();
+	const mockProcess = {
+		stdin: mockStdin,
+		stdout: mockStdout,
+		kill: () => {},
+		killed: false,
+		on: () => {},
+	};
+
+	const _spawnSpy = spyOn(keyModule(), "spawn").mockReturnValue(
+		mockProcess as any,
+	);
+
+	(client as any).process = mockProcess;
+
+	const _promise = (client as any).sendRequest("test", {});
+});
+
+function keyModule() {
+	return require("node:child_process");
+}

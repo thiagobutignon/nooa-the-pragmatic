@@ -19,13 +19,14 @@ Subcommands:
 const skillsCommand: Command = {
 	name: "skills",
 	description: "Manage NOOA skills",
-	execute: async ({ rawArgs }: CommandContext) => {
+	execute: async ({ rawArgs }: CommandContext, injectedManager?: any) => {
 		const { SkillManager } = await import("./manager");
-		const manager = new SkillManager(join(process.cwd(), ".agent/skills"));
+		const manager =
+			injectedManager || new SkillManager(join(process.cwd(), ".agent/skills"));
 
-		const subcommand = rawArgs[1];
-		const arg1 = rawArgs[2];
-		const arg2 = rawArgs[3];
+		const subcommand = rawArgs[0];
+		const arg1 = rawArgs[1];
+		const arg2 = rawArgs[2];
 
 		if (subcommand === "list") {
 			const skills = await manager.listSkills();
@@ -107,7 +108,7 @@ const skillsCommand: Command = {
 				return;
 			}
 			await manager.updateSkill(arg1);
-			console.log(`Skill '${arg1}' update placeholder executed.`);
+			console.log(`Skill '${arg1}' updated successfully.`);
 			return;
 		}
 

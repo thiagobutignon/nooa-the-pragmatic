@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getGoal, setGoal } from "./execute";
+import { clearGoal, getGoal, setGoal } from "./execute";
 
 describe("Goal Manager", () => {
 	let testDir: string;
@@ -24,5 +24,23 @@ describe("Goal Manager", () => {
 		expect(goal).not.toBeNull();
 		if (!goal) return;
 		expect(goal).toContain(expectedGoal);
+	});
+
+	test("returns null if no goal exists", async () => {
+		const goal = await getGoal(testDir);
+		expect(goal).toBeNull();
+	});
+
+	test("can clear a goal", async () => {
+		await setGoal("Temp goal", testDir);
+		await clearGoal(testDir);
+		const goal = await getGoal(testDir);
+		expect(goal).toContain("# No active goal");
+	});
+
+	test("clearGoal does nothing if file doesn't exist", async () => {
+		await clearGoal(testDir);
+		const goal = await getGoal(testDir);
+		expect(goal).toBeNull();
 	});
 });

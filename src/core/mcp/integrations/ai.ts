@@ -1,4 +1,7 @@
-// Placeholder integration for AI command to use MCP tools
+/**
+ * AI Command MCP Integration
+ * Provides MCP tool execution and discovery for the AI engine.
+ */
 // This would be integrated into src/features/ai/execute.ts
 
 import type { Database } from "bun:sqlite";

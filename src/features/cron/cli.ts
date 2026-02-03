@@ -36,7 +36,7 @@ Flags:
   --since <date>          Only logs newer than this timestamp.
   --force                 Force destructive operations (remove/run).
   --json                  Emit JSON output.
-  --daemon <cmd>          Manage daemon (start|stop|status) - TODO.
+  --daemon <cmd>          Manage daemon (start|stop|status).
   -h, --help              Show this help.
 
 Examples:

@@ -23,13 +23,13 @@ export function formatMemoryAsMarkdown(entry: MemoryEntry): string {
 
 export function parseMemoryFromMarkdown(markdown: string): MemoryEntry {
     const yaml = require("js-yaml");
-    const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)/);
-    if (!match || !match[1] || !match[2]) {
+    const match = markdown.trim().match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n([\s\S]*))?$/);
+    if (!match || !match[1]) {
         throw new Error("Invalid memory format: Missing or malformed YAML frontmatter.");
     }
     const metadata = yaml.load(match[1]) as Omit<MemoryEntry, "content">;
     return {
         ...metadata,
-        content: match[2].trim()
+        content: (match[2] || "").trim()
     };
 }

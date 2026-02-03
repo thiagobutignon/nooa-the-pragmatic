@@ -27,7 +27,6 @@ Examples:
   nooa ai "Who are you?"
   nooa ai "Explain TDD" --provider openai
   nooa ai "Tell a joke" --json
-  nooa ai "" --mcp-source mock --mcp-tool echo --mcp-args '{"message":"hey"}'
 `;
 
 const aiCommand: Command = {

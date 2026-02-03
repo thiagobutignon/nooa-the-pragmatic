@@ -137,8 +137,6 @@ export class Client {
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 		}
-
-		throw new Error("callTool exhausted retries");
 	}
 
 	async listResources(): Promise<unknown[]> {

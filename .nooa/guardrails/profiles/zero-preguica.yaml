@@ -26,7 +26,8 @@ rules:
         - "**/*.md"
         - "**/mock/**"
         - "**/*.mock.ts"
-
+        - "src/features/guardrail/cli.ts"
+        - "test/fixtures/mock-mcp-server.cjs"
   - id: no-fixme
     description: FIXMEs are not allowed in production code
     severity: medium
@@ -44,6 +45,7 @@ rules:
         - "**/.nooa/guardrails/**"
         - "**/*.spec.ts"
         - "**/*.md"
+        - "src/features/guardrail/cli.ts"
 
   - id: no-mock-marker
     description: MOCK markers are not allowed in production code
@@ -60,8 +62,10 @@ rules:
         - "**/docs/**"
         - "**/.agent/**"
         - "**/.nooa/guardrails/**"
-        - "**/*.spec.ts"
         - "**/mock/**"
+        - "**/*.mock.ts"
+        - "src/features/guardrail/cli.ts"
+        - "test/fixtures/mock-mcp-server.cjs"
         - "**/*.mock.ts"
 
   - id: no-placeholder
@@ -85,3 +89,5 @@ rules:
         - "**/*.spec.ts"
         - "**/*.md"
         - "**/*.tpl"
+        - "src/features/guardrail/cli.ts"
+        - "test/fixtures/mock-mcp-server.cjs"

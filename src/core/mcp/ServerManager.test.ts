@@ -106,3 +106,22 @@ test("ServerManager stops all servers on stopAll", async () => {
 	expect(manager.isRunning("server-1")).toBe(false);
 	expect(manager.isRunning("server-2")).toBe(false);
 });
+
+test("ServerManager returns list of running servers", async () => {
+	const config: McpServer = {
+		id: "test-1",
+		name: "test-server",
+		command: "node",
+		args: ["./test/fixtures/mock-mcp-server.cjs"],
+		enabled: true,
+	};
+
+	await manager.start(config);
+	const running = manager.getRunningServers();
+	expect(running).toHaveLength(1);
+	expect(running).toContain("test-server");
+
+	await manager.stopAll();
+	const runningAfter = manager.getRunningServers();
+	expect(runningAfter).toHaveLength(0);
+});

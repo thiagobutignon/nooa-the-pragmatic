@@ -1,16 +1,20 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	mock,
+	spyOn,
+	test,
+} from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MemoryEngine } from "../../features/memory/engine";
 import { autoReflect } from "./hook";
 
-// Mock MemoryEngine
-const addEntryMock = mock(async () => ({ id: "mem-123" }));
-mock.module("../../features/memory/engine", () => ({
-	MemoryEngine: class {
-		addEntry = addEntryMock;
-	},
-}));
+// We will use spyOn locally in beforeEach or tests
+const addEntryMock = mock(async () => ({ id: "mem-123" }) as any);
 
 describe("Auto Reflection Hook", () => {
 	let testDir: string;
@@ -36,6 +40,9 @@ describe("Auto Reflection Hook", () => {
 	});
 
 	test("autoReflect adds observable memory entry", async () => {
+		const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
+			addEntryMock as any,
+		);
 		await autoReflect("test-cmd", ["--arg", "val"], { success: true }, testDir);
 
 		expect(addEntryMock).toHaveBeenCalled();
@@ -44,6 +51,7 @@ describe("Auto Reflection Hook", () => {
 		expect(callArgs.scope).toBe("session");
 		expect(callArgs.content).toContain("Ran command: test-cmd");
 		expect(callArgs.content).toContain("--arg val");
+		spy.mockRestore();
 	});
 
 	test("autoReflect skips excluded commands (e.g. reflection itself)", async () => {

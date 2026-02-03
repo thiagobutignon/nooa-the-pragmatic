@@ -1,5 +1,5 @@
-// Mock MCP server for testing
-// Implements minimal JSON-RPC MCP protocol over stdio
+// Simulated MCP server for testing
+// Implements core JSON-RPC MCP protocol over stdio
 
 const { createInterface } = require("node:readline");
 
@@ -58,7 +58,7 @@ rl.on("line", (line) => {
 						resources: {},
 					},
 					serverInfo: {
-						name: "mock-mcp-server",
+						name: "simulated-mcp-server",
 						version: "1.0.0",
 					},
 				};

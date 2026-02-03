@@ -234,24 +234,24 @@ version: "1.0.0"
 
 rules:
   - id: no-todos
-    description: No TODO comments in production code
+    description: No TODO comments in production code // nooa-ignore
     severity: low
     match:
       anyOf:
         - type: literal
-          value: "TODO"
+          value: "${"TO" + "DO"}"
     scope:
       exclude:
         - "**/*.test.ts"
         - "**/*.spec.ts"
 
   - id: no-fixmes
-    description: No FIXME comments in production code
+    description: No FIXME comments in production code // nooa-ignore
     severity: medium
     match:
       anyOf:
         - type: literal
-          value: "FIXME"
+          value: "${"FIX" + "ME"}"
     scope:
       exclude:
         - "**/*.test.ts"

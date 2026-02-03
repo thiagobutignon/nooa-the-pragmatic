@@ -61,7 +61,7 @@ const embedCommand: Command = {
 		try {
 			const action = positionals[1];
 			const inputArg = positionals.slice(2).join(" ").trim();
-			if (!action || !inputArg) {
+			if (!action) {
 				telemetry.track(
 					{
 						event: "embed.failure",
@@ -69,13 +69,13 @@ const embedCommand: Command = {
 						success: false,
 						trace_id: traceId,
 						metadata: {
-							reason: "missing_input",
+							reason: "missing_action",
 							duration_ms: Date.now() - startTime,
 						},
 					},
 					bus,
 				);
-				console.error("Error: Input is required.");
+				console.error("Error: Action (text/file) is required.");
 				process.exitCode = 2;
 				return;
 			}
@@ -87,9 +87,27 @@ const embedCommand: Command = {
 			if (action === "text") {
 				inputType = "text";
 				inputText = inputArg;
+				if (!inputText) {
+					telemetry.track(
+						{
+							event: "embed.failure",
+							level: "warn",
+							success: false,
+							trace_id: traceId,
+							metadata: {
+								reason: "missing_text",
+								duration_ms: Date.now() - startTime,
+							},
+						},
+						bus,
+					);
+					console.error("Error: Text is required.");
+					process.exitCode = 2;
+					return;
+				}
 			} else if (action === "file") {
 				inputType = "file";
-				inputPath = positionals[2];
+				inputPath = positionals[2] ?? null;
 				if (!inputPath) {
 					telemetry.track(
 						{
