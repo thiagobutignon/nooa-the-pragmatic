@@ -19,6 +19,9 @@ import { mcp } from "./mcp";
 import { message } from "./message";
 import { pr } from "./pr";
 import { prompt } from "./prompt";
+import { push } from "./push";
+import { read } from "./read";
+import { review } from "./review";
 
 export const sdk = {
 	ai,
@@ -42,9 +45,9 @@ export const sdk = {
 	message,
 	pr,
 	prompt,
-	push: {},
-	read: {},
-	review: {},
+	push,
+	read,
+	review,
 	run: {},
 	scaffold: {},
 	search: {},
