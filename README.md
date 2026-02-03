@@ -57,6 +57,7 @@ Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME
 ## 📖 Documentation
 
 - [Commands Documentation](docs/commands/)
+- [SDK Documentation](docs/sdk/README.md)
 - [Guardrail Command](docs/commands/guardrail.md)
 - [Project Policy](.nooa/POLICY.md)
 - [Constitution](.nooa/CONSTITUTION.md)
@@ -71,4 +72,4 @@ gh auth login
 
 ---
 
-**NOOA v1.6.0** — *Engineering with Soul.*
+**NOOA v1.6.1** — *Engineering with Soul.*
