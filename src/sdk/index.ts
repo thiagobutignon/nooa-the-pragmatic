@@ -1,5 +1,7 @@
+import { ai } from "./ai";
+
 export const sdk = {
-	ai: {},
+	ai,
 	ask: {},
 	check: {},
 	ci: {},
