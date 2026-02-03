@@ -25,6 +25,8 @@ import { review } from "./review";
 import { runSdk } from "./run";
 import { scaffold } from "./scaffold";
 import { search } from "./search";
+import { skills } from "./skills";
+import { worktree } from "./worktree";
 
 export const sdk = {
 	ai,
@@ -54,8 +56,8 @@ export const sdk = {
 	run: runSdk,
 	scaffold,
 	search,
-	skills: {},
-	worktree: {},
+	skills,
+	worktree,
 };
 
 export type { SdkError, SdkResult, SdkWarning } from "./types";
