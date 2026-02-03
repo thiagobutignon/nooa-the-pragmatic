@@ -14,6 +14,8 @@ import { goal } from "./goal";
 import { guardrail } from "./guardrail";
 import { ignore } from "./ignore";
 import { indexSdk } from "./indexing";
+import { init } from "./init";
+import { mcp } from "./mcp";
 
 export const sdk = {
 	ai,
@@ -32,8 +34,8 @@ export const sdk = {
 	guardrail,
 	ignore,
 	index: indexSdk,
-	init: {},
-	mcp: {},
+	init,
+	mcp,
 	message: {},
 	pr: {},
 	prompt: {},
