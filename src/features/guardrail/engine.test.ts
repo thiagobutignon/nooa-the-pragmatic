@@ -128,6 +128,64 @@ describe("GuardrailEngine", () => {
 			expect(finding.file).toBeDefined();
 			expect(finding.line).toBeGreaterThan(0);
 		});
+
+		it("requires all patterns in allOf within same file", async () => {
+			const profile: RefactorProfile = {
+				refactor_name: "allof-test",
+				description: "allOf must require both patterns",
+				rules: [
+					{
+						id: "allof",
+						description: "both required",
+						severity: "low",
+						match: {
+							allOf: [
+								{ type: "literal", value: "TODO" },
+								{ type: "literal", value: "FIXME" },
+							],
+						},
+					},
+				],
+			};
+
+			const engine = new GuardrailEngine(tempDir);
+			const findings = await engine.evaluate(profile);
+
+			// In our fixture, TODO and FIXME are in different files, so no match
+			expect(findings.length).toBe(0);
+		});
+
+		it("falls back to scanning files when not a git repo", async () => {
+			const nongitDir = await mkdtemp(join(tmpdir(), "guardrail-nogit-"));
+			try {
+				await writeFile(
+					join(nongitDir, "sample.ts"),
+					"// NO_GIT_TODO: fix\nconst a = 1;",
+				);
+
+				const profile: RefactorProfile = {
+					refactor_name: "nogit",
+					description: "No git fallback",
+					rules: [
+						{
+							id: "no-git",
+							description: "match without git",
+							severity: "low",
+							match: {
+								anyOf: [{ type: "literal", value: "NO_GIT_TODO" }],
+							},
+						},
+					],
+				};
+
+				const engine = new GuardrailEngine(nongitDir);
+				const findings = await engine.evaluate(profile);
+
+				expect(findings.length).toBeGreaterThan(0);
+			} finally {
+				await rm(nongitDir, { recursive: true, force: true });
+			}
+		});
 	});
 
 	describe("determinism", () => {

@@ -4,14 +4,11 @@
  * Clean-room implementation (AGPL-safe).
  */
 import { execSync, spawnSync } from "node:child_process";
+import { readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 import { minimatch } from "minimatch";
 import type { Confidence, Finding, Severity } from "./contracts";
-import type {
-	Pattern,
-	PatternSpec,
-	RefactorProfile,
-	RefactorRule,
-} from "./schemas";
+import type { Pattern, RefactorProfile, RefactorRule } from "./schemas";
 
 /**
  * GuardrailEngine - Evaluates profiles against a codebase.
@@ -29,12 +26,24 @@ export class GuardrailEngine {
 	 */
 	async evaluate(
 		profile: RefactorProfile,
-		options: { deterministic?: boolean } = { deterministic: true },
+		options: {
+			deterministic?: boolean;
+			files?: string[];
+			exclude?: string[];
+		} = { deterministic: true },
 	): Promise<Finding[]> {
 		const allFindings: Finding[] = [];
+		const baseFiles = this.filterFiles(
+			options.files ?? this.getTrackedFiles(),
+			options.exclude,
+		);
 
 		for (const rule of profile.rules) {
-			const ruleFindings = await this.evaluateRule(rule, profile.version);
+			const ruleFindings = await this.evaluateRule(
+				rule,
+				profile.version,
+				baseFiles,
+			);
 			allFindings.push(...ruleFindings);
 		}
 
@@ -58,18 +67,20 @@ export class GuardrailEngine {
 	private async evaluateRule(
 		rule: RefactorRule,
 		_profileVersion?: string,
+		fileList?: string[],
 	): Promise<Finding[]> {
 		const findings: Finding[] = [];
-		const patterns = this.getPatterns(rule.match);
+		const anyOf = rule.match.anyOf ?? [];
+		const allOf = rule.match.allOf ?? [];
 
-		for (const pattern of patterns) {
-			const matches = await this.searchPattern(pattern, rule.scope);
+		const shouldIgnore = (content: string) =>
+			content.includes("// nooa-ignore") ||
+			content.includes("/* nooa-ignore */");
+
+		for (const pattern of anyOf) {
+			const matches = await this.searchPattern(pattern, rule.scope, fileList);
 			for (const match of matches) {
-				// Check for ignore comments on the same line as the finding
-				if (
-					match.content.includes("// nooa-ignore") ||
-					match.content.includes("/* nooa-ignore */")
-				) {
+				if (shouldIgnore(match.content)) {
 					continue;
 				}
 
@@ -87,23 +98,63 @@ export class GuardrailEngine {
 			}
 		}
 
+		if (allOf.length > 0) {
+			const fileMatches = new Map<
+				string,
+				{
+					matches: Array<{ line: number; column?: number; content: string }>;
+					count: number;
+				}
+			>();
+
+			for (const pattern of allOf) {
+				const matches = await this.searchPattern(pattern, rule.scope, fileList);
+				const seenFiles = new Set<string>();
+
+				for (const match of matches) {
+					const entry = fileMatches.get(match.file) ?? {
+						matches: [],
+						count: 0,
+					};
+					entry.matches.push({
+						line: match.line,
+						column: match.column,
+						content: match.content,
+					});
+					fileMatches.set(match.file, entry);
+					seenFiles.add(match.file);
+				}
+
+				for (const file of seenFiles) {
+					const entry = fileMatches.get(file);
+					if (entry) {
+						entry.count += 1;
+					}
+				}
+			}
+
+			for (const [file, entry] of fileMatches.entries()) {
+				if (entry.count !== allOf.length) continue;
+				for (const match of entry.matches) {
+					if (shouldIgnore(match.content)) {
+						continue;
+					}
+					findings.push({
+						rule: rule.id,
+						message: rule.description,
+						file,
+						line: match.line,
+						column: match.column,
+						severity: rule.severity as Severity,
+						category: rule.category ?? "guardrail",
+						confidence: "high" as Confidence,
+						snippet: match.content,
+					});
+				}
+			}
+		}
+
 		return findings;
-	}
-
-	/**
-	 * Extract patterns from PatternSpec.
-	 */
-	private getPatterns(spec: PatternSpec): Pattern[] {
-		const patterns: Pattern[] = [];
-
-		if (spec.anyOf) {
-			patterns.push(...spec.anyOf);
-		}
-		if (spec.allOf) {
-			patterns.push(...spec.allOf);
-		}
-
-		return patterns;
 	}
 
 	/**
@@ -113,6 +164,7 @@ export class GuardrailEngine {
 	private async searchPattern(
 		pattern: Pattern,
 		scope?: { include?: string[]; exclude?: string[] },
+		fileList?: string[],
 	): Promise<
 		Array<{ file: string; line: number; column?: number; content: string }>
 	> {
@@ -124,9 +176,8 @@ export class GuardrailEngine {
 		}> = [];
 
 		try {
-			// Get file list from git for determinism
-			const gitFiles = this.getTrackedFiles();
-			if (gitFiles.length === 0) {
+			const files = fileList ?? this.getTrackedFiles();
+			if (files.length === 0) {
 				return results;
 			}
 
@@ -135,6 +186,7 @@ export class GuardrailEngine {
 				"-n", // Line numbers
 				"--column", // Column numbers
 				"--no-heading", // No file headers
+				"--with-filename", // Always include filename
 			];
 
 			if (pattern.type === "literal") {
@@ -146,8 +198,8 @@ export class GuardrailEngine {
 				}
 			}
 
-			// Add all git-tracked files as arguments
-			rgArgs.push(...gitFiles);
+			// Add all files as arguments
+			rgArgs.push(...files);
 
 			// Run ripgrep
 			const rgResult = spawnSync("rg", rgArgs, {
@@ -177,10 +229,55 @@ export class GuardrailEngine {
 				encoding: "utf-8",
 				maxBuffer: 10 * 1024 * 1024,
 			});
-			return result.split("\n").filter(Boolean);
+			const files = result.split("\n").filter(Boolean);
+			if (files.length > 0) {
+				return files;
+			}
 		} catch {
-			return [];
+			// Fall through to filesystem scan
 		}
+		return this.listFilesRecursively(this.cwd);
+	}
+
+	private filterFiles(files: string[], exclude?: string[]): string[] {
+		if (!exclude?.length) return files;
+		return files.filter(
+			(file) => !exclude.some((pattern) => minimatch(file, pattern)),
+		);
+	}
+
+	private listFilesRecursively(root: string): string[] {
+		const results: string[] = [];
+		const stack = [root];
+
+		while (stack.length > 0) {
+			const current = stack.pop();
+			if (!current) continue;
+			let entries: string[] = [];
+			try {
+				entries = readdirSync(current);
+			} catch {
+				continue;
+			}
+
+			for (const entry of entries) {
+				if (entry === ".git" || entry === "node_modules") continue;
+				const fullPath = join(current, entry);
+				let stat;
+				try {
+					stat = statSync(fullPath);
+				} catch {
+					continue;
+				}
+				if (stat.isDirectory()) {
+					stack.push(fullPath);
+				} else if (stat.isFile()) {
+					results.push(relative(this.cwd, fullPath));
+				}
+			}
+		}
+
+		return results.sort();
 	}
 
 	/**

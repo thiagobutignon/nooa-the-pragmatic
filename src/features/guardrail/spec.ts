@@ -6,6 +6,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parse as parseYaml } from "yaml";
 import { type BuiltinProfileName, loadBuiltinProfile } from "./builtin";
 import type { RefactorProfile, RefactorRule } from "./schemas";
 import { RefactorRuleSchema } from "./schemas";
@@ -83,8 +84,7 @@ function extractCustomRules(content: string): RefactorRule[] {
 
 	try {
 		const yaml = rulesSection[1];
-		const { parse } = require("yaml");
-		const parsed = parse(yaml);
+		const parsed = parseYaml(yaml);
 
 		if (!parsed?.rules || !Array.isArray(parsed.rules)) return [];
 
