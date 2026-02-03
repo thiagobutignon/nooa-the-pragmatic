@@ -8,6 +8,8 @@ import { context } from "./context";
 import { cron } from "./cron";
 import { doctor } from "./doctor";
 import { embed } from "./embed";
+import { evalSdk } from "./eval";
+import { fix } from "./fix";
 
 export const sdk = {
 	ai,
@@ -20,8 +22,8 @@ export const sdk = {
 	cron,
 	doctor,
 	embed,
-	eval: {},
-	fix: {},
+	eval: evalSdk,
+	fix,
 	goal: {},
 	guardrail: {},
 	ignore: {},
