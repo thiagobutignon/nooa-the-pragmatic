@@ -6,6 +6,7 @@ import { code } from "./code";
 import { commit } from "./commit";
 import { context } from "./context";
 import { cron } from "./cron";
+import { doctor } from "./doctor";
 
 export const sdk = {
 	ai,
@@ -16,7 +17,7 @@ export const sdk = {
 	commit,
 	context,
 	cron,
-	doctor: {},
+	doctor,
 	embed: {},
 	eval: {},
 	fix: {},
