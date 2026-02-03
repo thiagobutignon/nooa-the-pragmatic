@@ -4,9 +4,9 @@ import { parseArgs } from "node:util";
 import { execa } from "execa";
 import type { Command, CommandContext } from "../../core/command";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
-import { loadProfile } from "../guardrail/profiles";
-import { GuardrailEngine } from "../guardrail/engine";
 import type { GuardrailReport } from "../guardrail/contracts";
+import { GuardrailEngine } from "../guardrail/engine";
+import { loadProfile } from "../guardrail/profiles";
 
 export async function checkCli(args: string[]) {
 	const { values, positionals } = parseArgs({

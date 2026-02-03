@@ -3,6 +3,13 @@
  * Public API for the guardrail system.
  */
 
+export type { BuiltinProfileName } from "./builtin";
+// Built-in Profiles
+export {
+	getBuiltinProfilesDir,
+	listBuiltinProfiles,
+	loadBuiltinProfile,
+} from "./builtin";
 export type { Finding, GuardrailReport } from "./contracts";
 // Contracts
 export { Confidence, ExitCode, Severity } from "./contracts";
@@ -27,15 +34,6 @@ export {
 	RefactorProfileSchema,
 	RefactorRuleSchema,
 } from "./schemas";
-
-// Built-in Profiles
-export {
-	getBuiltinProfilesDir,
-	listBuiltinProfiles,
-	loadBuiltinProfile,
-} from "./builtin";
-export type { BuiltinProfileName } from "./builtin";
-
-// Spec Parser
-export { parseGuardrailSpec, buildProfileFromSpec } from "./spec";
 export type { GuardrailSpec } from "./spec";
+// Spec Parser
+export { buildProfileFromSpec, parseGuardrailSpec } from "./spec";

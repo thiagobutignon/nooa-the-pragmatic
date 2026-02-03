@@ -2,34 +2,34 @@
  * Spec Parser Tests
  * Test GUARDRAIL.md parsing functionality.
  */
-import { describe, expect, it, beforeAll, afterAll } from "bun:test";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseGuardrailSpec, buildProfileFromSpec } from "./spec";
+import { buildProfileFromSpec, parseGuardrailSpec } from "./spec";
 
 describe("Spec Parser", () => {
-    describe("parseGuardrailSpec", () => {
-        let tempDir: string;
+	describe("parseGuardrailSpec", () => {
+		let tempDir: string;
 
-        beforeAll(async () => {
-            tempDir = await mkdtemp(join(tmpdir(), "spec-parser-test-"));
-            await mkdir(join(tempDir, ".nooa/guardrails"), { recursive: true });
-        });
+		beforeAll(async () => {
+			tempDir = await mkdtemp(join(tmpdir(), "spec-parser-test-"));
+			await mkdir(join(tempDir, ".nooa/guardrails"), { recursive: true });
+		});
 
-        afterAll(async () => {
-            await rm(tempDir, { recursive: true, force: true });
-        });
+		afterAll(async () => {
+			await rm(tempDir, { recursive: true, force: true });
+		});
 
-        it("should return defaults when no spec file exists", async () => {
-            const spec = await parseGuardrailSpec(join(tempDir, "nonexistent.md"));
-            expect(spec.profiles).toContain("zero-preguica");
-            expect(spec.customRules).toHaveLength(0);
-            expect(spec.thresholds.critical).toBe(0);
-        });
+		it("should return defaults when no spec file exists", async () => {
+			const spec = await parseGuardrailSpec(join(tempDir, "nonexistent.md"));
+			expect(spec.profiles).toContain("zero-preguica");
+			expect(spec.customRules).toHaveLength(0);
+			expect(spec.thresholds.critical).toBe(0);
+		});
 
-        it("should parse profiles from spec", async () => {
-            const specContent = `
+		it("should parse profiles from spec", async () => {
+			const specContent = `
 # GUARDRAIL.md
 
 ## Enabled Profiles
@@ -43,15 +43,15 @@ describe("Spec Parser", () => {
 |----------|-----------|
 | critical | 0         |
 `;
-            await writeFile(join(tempDir, "spec.md"), specContent);
+			await writeFile(join(tempDir, "spec.md"), specContent);
 
-            const spec = await parseGuardrailSpec(join(tempDir, "spec.md"));
-            expect(spec.profiles).toContain("zero-preguica");
-            expect(spec.profiles).toContain("security");
-        });
+			const spec = await parseGuardrailSpec(join(tempDir, "spec.md"));
+			expect(spec.profiles).toContain("zero-preguica");
+			expect(spec.profiles).toContain("security");
+		});
 
-        it("should parse thresholds from spec", async () => {
-            const specContent = `
+		it("should parse thresholds from spec", async () => {
+			const specContent = `
 ## Thresholds
 
 | Severity | Threshold |
@@ -61,17 +61,17 @@ describe("Spec Parser", () => {
 | medium   | 20        |
 | low      | 100       |
 `;
-            await writeFile(join(tempDir, "thresholds.md"), specContent);
+			await writeFile(join(tempDir, "thresholds.md"), specContent);
 
-            const spec = await parseGuardrailSpec(join(tempDir, "thresholds.md"));
-            expect(spec.thresholds.critical).toBe(0);
-            expect(spec.thresholds.high).toBe(5);
-            expect(spec.thresholds.medium).toBe(20);
-            expect(spec.thresholds.low).toBe(100);
-        });
+			const spec = await parseGuardrailSpec(join(tempDir, "thresholds.md"));
+			expect(spec.thresholds.critical).toBe(0);
+			expect(spec.thresholds.high).toBe(5);
+			expect(spec.thresholds.medium).toBe(20);
+			expect(spec.thresholds.low).toBe(100);
+		});
 
-        it("should parse custom rules from spec", async () => {
-            const specContent = `
+		it("should parse custom rules from spec", async () => {
+			const specContent = `
 ## Custom Rules
 
 \`\`\`yaml
@@ -85,15 +85,15 @@ rules:
           value: "DEPRECATED"
 \`\`\`
 `;
-            await writeFile(join(tempDir, "custom.md"), specContent);
+			await writeFile(join(tempDir, "custom.md"), specContent);
 
-            const spec = await parseGuardrailSpec(join(tempDir, "custom.md"));
-            expect(spec.customRules.length).toBe(1);
-            expect(spec.customRules[0].id).toBe("custom-rule");
-        });
+			const spec = await parseGuardrailSpec(join(tempDir, "custom.md"));
+			expect(spec.customRules.length).toBe(1);
+			expect(spec.customRules[0].id).toBe("custom-rule");
+		});
 
-        it("should parse exclusions from spec", async () => {
-            const specContent = `
+		it("should parse exclusions from spec", async () => {
+			const specContent = `
 ## Exclusions
 
 \`\`\`
@@ -101,33 +101,33 @@ rules:
 **/node_modules/**
 \`\`\`
 `;
-            await writeFile(join(tempDir, "exclusions.md"), specContent);
+			await writeFile(join(tempDir, "exclusions.md"), specContent);
 
-            const spec = await parseGuardrailSpec(join(tempDir, "exclusions.md"));
-            expect(spec.exclusions).toContain("**/*.test.ts");
-            expect(spec.exclusions).toContain("**/node_modules/**");
-        });
-    });
+			const spec = await parseGuardrailSpec(join(tempDir, "exclusions.md"));
+			expect(spec.exclusions).toContain("**/*.test.ts");
+			expect(spec.exclusions).toContain("**/node_modules/**");
+		});
+	});
 
-    describe("buildProfileFromSpec", () => {
-        it("should build combined profile from spec", async () => {
-            const spec = {
-                profiles: ["zero-preguica" as const],
-                customRules: [
-                    {
-                        id: "custom",
-                        description: "Custom rule",
-                        severity: "medium" as const,
-                        match: { anyOf: [{ type: "literal" as const, value: "TEST" }] },
-                    },
-                ],
-                thresholds: { critical: 0, high: 0, medium: 10, low: 50 },
-                exclusions: [],
-            };
+	describe("buildProfileFromSpec", () => {
+		it("should build combined profile from spec", async () => {
+			const spec = {
+				profiles: ["zero-preguica" as const],
+				customRules: [
+					{
+						id: "custom",
+						description: "Custom rule",
+						severity: "medium" as const,
+						match: { anyOf: [{ type: "literal" as const, value: "TEST" }] },
+					},
+				],
+				thresholds: { critical: 0, high: 0, medium: 10, low: 50 },
+				exclusions: [],
+			};
 
-            const profile = await buildProfileFromSpec(spec);
-            expect(profile.refactor_name).toBe("spec-combined");
-            expect(profile.rules.length).toBeGreaterThanOrEqual(1);
-        });
-    });
+			const profile = await buildProfileFromSpec(spec);
+			expect(profile.refactor_name).toBe("spec-combined");
+			expect(profile.rules.length).toBeGreaterThanOrEqual(1);
+		});
+	});
 });

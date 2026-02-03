@@ -10,16 +10,16 @@ import type { RefactorProfile } from "./schemas";
  * Available built-in profile names.
  */
 export type BuiltinProfileName =
-    | "zero-preguica"
-    | "security"
-    | "dangerous-patterns"
-    | "default";
+	| "zero-preguica"
+	| "security"
+	| "dangerous-patterns"
+	| "default";
 
 /**
  * Get the path to the built-in profiles directory.
  */
 export function getBuiltinProfilesDir(): string {
-    return join(process.cwd(), ".nooa", "guardrails", "profiles");
+	return join(process.cwd(), ".nooa", "guardrails", "profiles");
 }
 
 /**
@@ -28,16 +28,16 @@ export function getBuiltinProfilesDir(): string {
  * @returns The loaded profile
  */
 export async function loadBuiltinProfile(
-    name: BuiltinProfileName,
+	name: BuiltinProfileName,
 ): Promise<RefactorProfile> {
-    const profilesDir = getBuiltinProfilesDir();
-    const profilePath = join(profilesDir, `${name}.yaml`);
-    return loadProfile(profilePath);
+	const profilesDir = getBuiltinProfilesDir();
+	const profilePath = join(profilesDir, `${name}.yaml`);
+	return loadProfile(profilePath);
 }
 
 /**
  * List all available built-in profile names.
  */
 export function listBuiltinProfiles(): BuiltinProfileName[] {
-    return ["zero-preguica", "security", "dangerous-patterns", "default"];
+	return ["zero-preguica", "security", "dangerous-patterns", "default"];
 }
