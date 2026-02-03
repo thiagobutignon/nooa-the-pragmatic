@@ -85,7 +85,7 @@ test("interactive wizard prompts for GitHub token", async () => {
 		setInitInteractive(true);
 		setInitPromptFactory(() => ({
 			question: async () => answers.shift() ?? "",
-			close: () => { },
+			close: () => {},
 		}));
 		try {
 			const { exitCode } = await captureLog(() => initCommand([]));
@@ -107,7 +107,7 @@ test("nooa mcp init shows help", async () => {
 });
 
 test("nooa mcp init skips existing if not forced", async () => {
-	await withDb(async (dbPath) => {
+	await withDb(async (_dbPath) => {
 		// First run install
 		await initCommand([]);
 
@@ -133,13 +133,13 @@ test("nooa mcp init skips existing if not forced", async () => {
 });
 
 test("interactive 'no' skips installation", async () => {
-	await withDb(async (dbPath) => {
+	await withDb(async (_dbPath) => {
 		// Answers: No to first (filesystem), No to second (github)
 		const answers = ["n", "n"];
 		setInitInteractive(true);
 		setInitPromptFactory(() => ({
 			question: async () => answers.shift() ?? "",
-			close: () => { },
+			close: () => {},
 		}));
 
 		const { exitCode, output } = await captureLog(() => initCommand([]));
@@ -149,12 +149,12 @@ test("interactive 'no' skips installation", async () => {
 });
 
 test("force reinstall removes existing", async () => {
-	await withDb(async (dbPath) => {
+	await withDb(async (_dbPath) => {
 		// First install
 		await initCommand([]);
 
 		// Second install WITH force
-		// We need to verify registry.remove was called? 
+		// We need to verify registry.remove was called?
 		// Or just that it succeeds and reports installed.
 		// coverage for 174: await registry.remove(candidate.name);
 
@@ -169,7 +169,9 @@ test("init honors env var NOOA_NON_INTERACTIVE", async () => {
 	try {
 		await withDb(async () => {
 			// We want to ensure prompt is NOT called
-			const promptFactorySpy = (): any => { throw new Error("Should not be called"); };
+			const promptFactorySpy = (): any => {
+				throw new Error("Should not be called");
+			};
 			setInitPromptFactory(promptFactorySpy);
 
 			// We need resetInitInteractive() to ensure it checks env vars
@@ -190,7 +192,7 @@ test("prompt handles defaults for empty inputs", async () => {
 		setInitInteractive(true);
 		setInitPromptFactory(() => ({
 			question: async () => answers.shift() ?? "",
-			close: () => { },
+			close: () => {},
 		}));
 
 		const { exitCode } = await captureLog(() => initCommand(["--force"]));

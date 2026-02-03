@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -113,18 +113,36 @@ describe("Search Engine", () => {
 		process.env.NOOA_SEARCH_ENGINE = "rg";
 
 		const mockStdout = [
-			JSON.stringify({ type: "match", data: { path: { text: "src/c.ts" }, lines: { text: "function test() {" }, line_number: 1, submatches: [{ start: 9, end: 13 }] } }),
-			JSON.stringify({ type: "match", data: { path: { text: "src/c.ts" }, lines: { text: "  return true;" }, line_number: 2, submatches: [] } }),
+			JSON.stringify({
+				type: "match",
+				data: {
+					path: { text: "src/c.ts" },
+					lines: { text: "function test() {" },
+					line_number: 1,
+					submatches: [{ start: 9, end: 13 }],
+				},
+			}),
+			JSON.stringify({
+				type: "match",
+				data: {
+					path: { text: "src/c.ts" },
+					lines: { text: "  return true;" },
+					line_number: 2,
+					submatches: [],
+				},
+			}),
 		].join("\n");
 
 		const spawnSpy = spyOn(Bun, "spawn").mockImplementation((() => ({
 			stdout: new Response(mockStdout).body,
 			exitCode: 0,
-			kill: () => { },
-			unref: () => { },
+			kill: () => {},
+			unref: () => {},
 		})) as any);
 
-		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({ exitCode: 0 } as any);
+		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({
+			exitCode: 0,
+		} as any);
 
 		const results = await runSearch({
 			query: "test",
@@ -149,20 +167,37 @@ describe("Search Engine", () => {
 		process.env.NOOA_SEARCH_ENGINE = "rg";
 
 		const mockStdout = [
-			JSON.stringify({ type: "context", data: { path: { text: "ctx.txt" }, lines: { text: "line1\n" }, line_number: 1 } }),
-			JSON.stringify({ type: "match", data: { path: { text: "ctx.txt" }, lines: { text: "match\n" }, line_number: 2, submatches: [{ start: 0, end: 5 }] } }),
+			JSON.stringify({
+				type: "context",
+				data: {
+					path: { text: "ctx.txt" },
+					lines: { text: "line1\n" },
+					line_number: 1,
+				},
+			}),
+			JSON.stringify({
+				type: "match",
+				data: {
+					path: { text: "ctx.txt" },
+					lines: { text: "match\n" },
+					line_number: 2,
+					submatches: [{ start: 0, end: 5 }],
+				},
+			}),
 		].join("\n");
 
 		const spawnSpy = spyOn(Bun, "spawn").mockImplementation((() => ({
 			stdout: new Response(mockStdout).body,
 			exitCode: 0,
 		})) as any);
-		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({ exitCode: 0 } as any);
+		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({
+			exitCode: 0,
+		} as any);
 
 		const results = await runSearch({
 			query: "match",
 			root: testDir,
-			context: 1
+			context: 1,
 		});
 
 		expect(results[0].snippet).toContain("line1");
