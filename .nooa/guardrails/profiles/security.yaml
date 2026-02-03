@@ -25,6 +25,9 @@ rules:
         - "**/*.spec.ts"
         - "**/.env.example"
         - "**/README.md"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   - id: exposed-credentials
     description: Credentials exposed in connection strings
@@ -40,6 +43,9 @@ rules:
       exclude:
         - "**/*.test.ts"
         - "**/.env.example"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   - id: sql-injection-risk
     description: Potential SQL injection vulnerability
@@ -72,6 +78,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
         - "**/scripts/**"
 
   - id: dangerous-innerHTML
@@ -105,6 +114,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   # ============================================
   # RACE CONDITIONS & CONCURRENCY

@@ -19,6 +19,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
         - "**/*.spec.ts"
         - "**/*.md"
         - "**/mock/**"
@@ -36,6 +39,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
         - "**/*.spec.ts"
         - "**/*.md"
 
@@ -51,6 +57,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
         - "**/*.spec.ts"
         - "**/mock/**"
         - "**/*.mock.ts"
@@ -70,6 +79,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
         - "**/*.spec.ts"
         - "**/*.md"
         - "**/*.tpl"

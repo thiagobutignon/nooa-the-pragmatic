@@ -7,10 +7,10 @@ import { execSync, spawnSync } from "node:child_process";
 import { minimatch } from "minimatch";
 import type { Confidence, Finding, Severity } from "./contracts";
 import type {
-	Pattern,
-	PatternSpec,
-	RefactorProfile,
-	RefactorRule,
+    Pattern,
+    PatternSpec,
+    RefactorProfile,
+    RefactorRule,
 } from "./schemas";
 
 /**
@@ -19,207 +19,215 @@ import type {
  * Returns findings sorted for byte-identical JSON output.
  */
 export class GuardrailEngine {
-	constructor(private readonly cwd: string) {}
+    constructor(private readonly cwd: string) { }
 
-	/**
-	 * Evaluate a profile against the codebase.
-	 * @param profile - The refactor profile to evaluate
-	 * @param options - Optional settings for evaluation
-	 * @returns Array of findings, sorted for determinism
-	 */
-	async evaluate(
-		profile: RefactorProfile,
-		options: { deterministic?: boolean } = { deterministic: true },
-	): Promise<Finding[]> {
-		const allFindings: Finding[] = [];
+    /**
+     * Evaluate a profile against the codebase.
+     * @param profile - The refactor profile to evaluate
+     * @param options - Optional settings for evaluation
+     * @returns Array of findings, sorted for determinism
+     */
+    async evaluate(
+        profile: RefactorProfile,
+        options: { deterministic?: boolean } = { deterministic: true },
+    ): Promise<Finding[]> {
+        const allFindings: Finding[] = [];
 
-		for (const rule of profile.rules) {
-			const ruleFindings = await this.evaluateRule(rule, profile.version);
-			allFindings.push(...ruleFindings);
-		}
+        for (const rule of profile.rules) {
+            const ruleFindings = await this.evaluateRule(rule, profile.version);
+            allFindings.push(...ruleFindings);
+        }
 
-		// Sort for determinism: rule → file → line → column
-		if (options.deterministic !== false) {
-			allFindings.sort(
-				(a, b) =>
-					a.rule.localeCompare(b.rule) ||
-					a.file.localeCompare(b.file) ||
-					a.line - b.line ||
-					(a.column ?? 0) - (b.column ?? 0),
-			);
-		}
+        // Sort for determinism: rule → file → line → column
+        if (options.deterministic !== false) {
+            allFindings.sort(
+                (a, b) =>
+                    a.rule.localeCompare(b.rule) ||
+                    a.file.localeCompare(b.file) ||
+                    a.line - b.line ||
+                    (a.column ?? 0) - (b.column ?? 0),
+            );
+        }
 
-		return allFindings;
-	}
+        return allFindings;
+    }
 
-	/**
-	 * Evaluate a single rule.
-	 */
-	private async evaluateRule(
-		rule: RefactorRule,
-		_profileVersion?: string,
-	): Promise<Finding[]> {
-		const findings: Finding[] = [];
-		const patterns = this.getPatterns(rule.match);
+    /**
+     * Evaluate a single rule.
+     */
+    private async evaluateRule(
+        rule: RefactorRule,
+        _profileVersion?: string,
+    ): Promise<Finding[]> {
+        const findings: Finding[] = [];
+        const patterns = this.getPatterns(rule.match);
 
-		for (const pattern of patterns) {
-			const matches = await this.searchPattern(pattern, rule.scope);
-			for (const match of matches) {
-				findings.push({
-					rule: rule.id,
-					message: rule.description,
-					file: match.file,
-					line: match.line,
-					column: match.column,
-					severity: rule.severity as Severity,
-					category: rule.category ?? "guardrail",
-					confidence: "high" as Confidence,
-					snippet: match.content,
-				});
-			}
-		}
+        for (const pattern of patterns) {
+            const matches = await this.searchPattern(pattern, rule.scope);
+            for (const match of matches) {
+                // Check for ignore comments on the same line as the finding
+                if (
+                    match.content.includes("// nooa-ignore") ||
+                    match.content.includes("/* nooa-ignore */")
+                ) {
+                    continue;
+                }
 
-		return findings;
-	}
+                findings.push({
+                    rule: rule.id,
+                    message: rule.description,
+                    file: match.file,
+                    line: match.line,
+                    column: match.column,
+                    severity: rule.severity as Severity,
+                    category: rule.category ?? "guardrail",
+                    confidence: "high" as Confidence,
+                    snippet: match.content,
+                });
+            }
+        }
 
-	/**
-	 * Extract patterns from PatternSpec.
-	 */
-	private getPatterns(spec: PatternSpec): Pattern[] {
-		const patterns: Pattern[] = [];
+        return findings;
+    }
 
-		if (spec.anyOf) {
-			patterns.push(...spec.anyOf);
-		}
-		if (spec.allOf) {
-			patterns.push(...spec.allOf);
-		}
+    /**
+     * Extract patterns from PatternSpec.
+     */
+    private getPatterns(spec: PatternSpec): Pattern[] {
+        const patterns: Pattern[] = [];
 
-		return patterns;
-	}
+        if (spec.anyOf) {
+            patterns.push(...spec.anyOf);
+        }
+        if (spec.allOf) {
+            patterns.push(...spec.allOf);
+        }
 
-	/**
-	 * Search for a pattern using ripgrep.
-	 * Uses git ls-files for deterministic file set.
-	 */
-	private async searchPattern(
-		pattern: Pattern,
-		scope?: { include?: string[]; exclude?: string[] },
-	): Promise<
-		Array<{ file: string; line: number; column?: number; content: string }>
-	> {
-		const results: Array<{
-			file: string;
-			line: number;
-			column?: number;
-			content: string;
-		}> = [];
+        return patterns;
+    }
 
-		try {
-			// Get file list from git for determinism
-			const gitFiles = this.getTrackedFiles();
-			if (gitFiles.length === 0) {
-				return results;
-			}
+    /**
+     * Search for a pattern using ripgrep.
+     * Uses git ls-files for deterministic file set.
+     */
+    private async searchPattern(
+        pattern: Pattern,
+        scope?: { include?: string[]; exclude?: string[] },
+    ): Promise<
+        Array<{ file: string; line: number; column?: number; content: string }>
+    > {
+        const results: Array<{
+            file: string;
+            line: number;
+            column?: number;
+            content: string;
+        }> = [];
 
-			// Build ripgrep args - search directly on files
-			const rgArgs = [
-				"-n", // Line numbers
-				"--column", // Column numbers
-				"--no-heading", // No file headers
-			];
+        try {
+            // Get file list from git for determinism
+            const gitFiles = this.getTrackedFiles();
+            if (gitFiles.length === 0) {
+                return results;
+            }
 
-			if (pattern.type === "literal") {
-				rgArgs.push("-F", pattern.value); // Fixed string
-			} else {
-				rgArgs.push(pattern.value); // Regex
-				if (pattern.flags?.includes("i")) {
-					rgArgs.push("-i"); // Case insensitive
-				}
-			}
+            // Build ripgrep args - search directly on files
+            const rgArgs = [
+                "-n", // Line numbers
+                "--column", // Column numbers
+                "--no-heading", // No file headers
+            ];
 
-			// Add all git-tracked files as arguments
-			rgArgs.push(...gitFiles);
+            if (pattern.type === "literal") {
+                rgArgs.push("-F", pattern.value); // Fixed string
+            } else {
+                rgArgs.push(pattern.value); // Regex
+                if (pattern.flags?.includes("i")) {
+                    rgArgs.push("-i"); // Case insensitive
+                }
+            }
 
-			// Run ripgrep
-			const rgResult = spawnSync("rg", rgArgs, {
-				cwd: this.cwd,
-				encoding: "utf-8",
-				maxBuffer: 10 * 1024 * 1024,
-			});
+            // Add all git-tracked files as arguments
+            rgArgs.push(...gitFiles);
 
-			if (rgResult.stdout) {
-				const parsed = this.parseRgOutput(rgResult.stdout, scope);
-				results.push(...parsed);
-			}
-		} catch {
-			// Ripgrep not found or error - return empty
-		}
+            // Run ripgrep
+            const rgResult = spawnSync("rg", rgArgs, {
+                cwd: this.cwd,
+                encoding: "utf-8",
+                maxBuffer: 10 * 1024 * 1024,
+            });
 
-		return results;
-	}
+            if (rgResult.stdout) {
+                const parsed = this.parseRgOutput(rgResult.stdout, scope);
+                results.push(...parsed);
+            }
+        } catch {
+            // Ripgrep not found or error - return empty
+        }
 
-	/**
-	 * Get tracked files from git for deterministic file set.
-	 */
-	private getTrackedFiles(): string[] {
-		try {
-			const result = execSync("git ls-files", {
-				cwd: this.cwd,
-				encoding: "utf-8",
-				maxBuffer: 10 * 1024 * 1024,
-			});
-			return result.split("\n").filter(Boolean);
-		} catch {
-			return [];
-		}
-	}
+        return results;
+    }
 
-	/**
-	 * Parse ripgrep output into structured results.
-	 */
-	private parseRgOutput(
-		stdout: string,
-		scope?: { include?: string[]; exclude?: string[] },
-	): Array<{ file: string; line: number; column?: number; content: string }> {
-		const results: Array<{
-			file: string;
-			line: number;
-			column?: number;
-			content: string;
-		}> = [];
+    /**
+     * Get tracked files from git for deterministic file set.
+     */
+    private getTrackedFiles(): string[] {
+        try {
+            const result = execSync("git ls-files", {
+                cwd: this.cwd,
+                encoding: "utf-8",
+                maxBuffer: 10 * 1024 * 1024,
+            });
+            return result.split("\n").filter(Boolean);
+        } catch {
+            return [];
+        }
+    }
 
-		for (const line of stdout.split("\n").filter(Boolean)) {
-			// Format: file:line:column:content
-			const match = line.match(/^([^:]+):(\d+):(\d+):(.*)$/);
-			if (!match) continue;
+    /**
+     * Parse ripgrep output into structured results.
+     */
+    private parseRgOutput(
+        stdout: string,
+        scope?: { include?: string[]; exclude?: string[] },
+    ): Array<{ file: string; line: number; column?: number; content: string }> {
+        const results: Array<{
+            file: string;
+            line: number;
+            column?: number;
+            content: string;
+        }> = [];
 
-			const file = match[1];
-			const lineNum = match[2];
-			const colNum = match[3];
-			const content = match[4];
+        for (const line of stdout.split("\n").filter(Boolean)) {
+            // Format: file:line:column:content
+            const match = line.match(/^([^:]+):(\d+):(\d+):(.*)$/);
+            if (!match) continue;
 
-			if (!file || !lineNum || !colNum) continue;
+            const file = match[1];
+            const lineNum = match[2];
+            const colNum = match[3];
+            const content = match[4];
 
-			// Apply scope filtering
-			if (scope?.exclude?.some((p) => minimatch(file, p))) {
-				continue;
-			}
-			if (
-				scope?.include?.length &&
-				!scope.include.some((p) => minimatch(file, p))
-			) {
-				continue;
-			}
+            if (!file || !lineNum || !colNum) continue;
 
-			results.push({
-				file,
-				line: parseInt(lineNum, 10),
-				column: parseInt(colNum, 10),
-				content: (content ?? "").trim(),
-			});
-		}
+            // Apply scope filtering
+            if (scope?.exclude?.some((p) => minimatch(file, p))) {
+                continue;
+            }
+            if (
+                scope?.include?.length &&
+                !scope.include.some((p) => minimatch(file, p))
+            ) {
+                continue;
+            }
 
-		return results;
-	}
+            results.push({
+                file,
+                line: parseInt(lineNum, 10),
+                column: parseInt(colNum, 10),
+                content: (content ?? "").trim(),
+            });
+        }
+
+        return results;
+    }
 }

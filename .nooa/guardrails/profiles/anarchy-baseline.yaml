@@ -23,6 +23,25 @@ rules:
       exclude:
         - "**/*.test.ts"
         - "**/*.md"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  - id: aws-secret-key
+    description: AWS Secret Access Key pattern detected
+    severity: critical
+    category: secrets
+    match:
+      anyOf:
+        - type: regex
+          value: "aws_secret_access_key\\s*[:=]\\s*[\"'][A-Za-z0-9/+=]{40}[\"']"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   - id: private-key-header
     description: Private key content detected
@@ -40,6 +59,9 @@ rules:
       exclude:
         - "**/*.test.ts"
         - "**/*.md"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   - id: stripe-secret-key
     description: Stripe secret key detected (sk_live/sk_test)
@@ -52,6 +74,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   # ============================================
   # DEPENDENCY RISKS

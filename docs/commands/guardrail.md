@@ -1,47 +1,47 @@
 # nooa guardrail
 
-Auditoria de código baseada em perfis declarativos (YAML).
+Code auditing based on declarative profiles (YAML).
 
-O comando `guardrail` permite definir regras de conformidade, segurança e qualidade que o código deve seguir. Ele suporta padrões de busca por expressão regular (regex) ou literal, com filtragem por escopo (globs).
+The `guardrail` command allows you to define compliance, security, and quality rules that the code must follow. It supports regex and literal matching patterns with scope filtering (globs).
 
-## Uso
+## Usage
 
 ```bash
 nooa guardrail <subcommand> [options]
 ```
 
-### Subcomandos
+### Subcommands
 
-| Comando | Descrição |
+| Command | Description |
 |---------|-----------|
-| `check` | Verifica o código contra perfis de guardrail |
-| `validate` | Valida o esquema de um perfil YAML |
-| `init` | Inicializa o diretório `.nooa/guardrails` |
+| `check` | Audit code against guardrail profiles |
+| `validate` | Validate a YAML profile schema |
+| `init` | Initialize the `.nooa/guardrails` directory |
 
 ---
 
 ## `nooa guardrail check`
 
-Executa a auditoria no diretório atual.
+Runs the audit in the current directory.
 
-### Opções
+### Options
 
-- `--profile, -p <path>`: Caminho para um perfil YAML específico.
-- `--spec`: Usa o arquivo `GUARDRAIL.md` para combinar múltiplos perfis.
-- `--watch, -w`: Modo contínuo (re-executa ao alterar arquivos).
-- `--json`: Saída estruturada em JSON.
-- `--deterministic`: Garante saída idêntica bytes a byte (padrão com `--json`).
+- `--profile, -p <path>`: Path to a specific YAML profile.
+- `--spec`: Use the `GUARDRAIL.md` file to combine multiple profiles.
+- `--watch, -w`: Continuous mode (re-runs on file changes).
+- `--json`: Structured JSON output.
+- `--deterministic`: Ensures byte-identical output (default with `--json`).
 
-### Exemplos
+### Examples
 
 ```bash
-# Executa os guardrails definidos no GUARDRAIL.md
+# Run guardrails defined in GUARDRAIL.md
 nooa guardrail check --spec
 
-# Executa um perfil específico
+# Run a specific profile
 nooa guardrail check --profile .nooa/guardrails/profiles/security.yaml
 
-# Modo contínuo salvando em JSON
+# Continuous mode saving to JSON
 nooa guardrail check --spec --watch --json > report.json
 ```
 
@@ -49,13 +49,13 @@ nooa guardrail check --spec --watch --json > report.json
 
 ## `nooa guardrail validate`
 
-Verifica se um arquivo de perfil é sintaticamente correto.
+Checks if a profile file is syntactically correct.
 
-### Opções
+### Options
 
-- `--profile, -p <path>`: Caminho para o perfil a validar (obrigatório).
+- `--profile, -p <path>`: Path to the profile to validate (required).
 
-### Exemplo
+### Example
 
 ```bash
 nooa guardrail validate --profile custom-rules.yaml
@@ -63,16 +63,16 @@ nooa guardrail validate --profile custom-rules.yaml
 
 ---
 
-## Estrutura de um Perfil (YAML)
+## Profile Structure (YAML)
 
-Um perfil (`.yaml`) define uma lista de regras:
+A profile (`.yaml`) defines a list of rules:
 
 ```yaml
 refactor_name: security
-description: Regras de segurança
+description: Security rules
 rules:
   - id: no-eval
-    description: O uso de eval() é proibido
+    description: Usage of eval() is forbidden
     severity: high
     match:
       anyOf:
@@ -85,7 +85,7 @@ rules:
 
 ## GUARDRAIL.md (Spec)
 
-O arquivo `GUARDRAIL.md` na raiz do projeto permite automatizar a execução de múltiplos profiles:
+The `GUARDRAIL.md` file at the project root allows automating the execution of multiple profiles:
 
 ```markdown
 # GUARDRAIL.md

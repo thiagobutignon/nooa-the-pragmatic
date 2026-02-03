@@ -12,71 +12,46 @@ nooa guardrail check --spec
 nooa guardrail check --profile .nooa/guardrails/profiles/security.yaml
 ```
 
-## Enabled Profiles
+## Profiles
 
-<!-- Profiles to apply when running `nooa guardrail check --spec` -->
+Selected profiles to be enforced in this project:
 
-- zero-preguica     # No TODOs, FIXMEs, or lazy markers
-- security          # Secrets, SQL injection, XSS detection
-- dangerous-patterns # console.log, debugger, any type
-
-## Custom Rules
-
-<!-- Project-specific rules -->
-
-```yaml
-rules:
-  - id: no-deprecated-api
-    description: Do not use deprecated API endpoints
-    severity: high
-    match:
-      anyOf:
-        - type: literal
-          value: "/api/v1/"
-    scope:
-      include:
-        - "src/**/*.ts"
-```
+- [zero-preguica](file://./profiles/zero-preguica.yaml) - Hygiene (TODO, FIXME, MOCK)
+- [security](file://./profiles/security.yaml) - Secrets and SQL injection risk
+- [dangerous-patterns](file://./profiles/dangerous-patterns.yaml) - console.log, eval, any type
+- [anarchy-baseline](file://./profiles/anarchy-baseline.yaml) - Adversarial patterns from project_anarchy
 
 ## Thresholds
 
-<!-- Fail build if exceeded -->
+Maximum violations allowed before failing:
 
-| Severity | Threshold |
-|----------|-----------|
-| critical | 0         |
-| high     | 0         |
-| medium   | 10        |
-| low      | 50        |
+| Category | Max Violations |
+|----------|----------------|
+| security | 0              |
+| quality  | 5              |
+| hygiene  | 10             |
 
 ## Exclusions
 
-<!-- Global exclusions applied to all profiles -->
+Global exclusions for this spec:
 
-```
-**/*.test.ts
-**/*.spec.ts
-**/node_modules/**
-**/dist/**
-**/.git/**
-```
+- "**/vendor/**"
+- "**/node_modules/**"
+- "**/dist/**"
+- "**/docs/**"
+- "**/.agent/**"
+- "**/.nooa/guardrails/**"
 
-## CI Integration
+## Custom Rules
+
+Add project-specific rules here:
 
 ```yaml
-# .github/workflows/guardrails.yml
-name: Guardrails
-on: [push, pull_request]
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
-      - run: bun nooa guardrail check --spec --json > report.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: guardrail-report
-          path: report.json
+- id: no-local-hardcoded-ip
+  description: Avoid hardcoding local IP addresses
+  severity: medium
+  match:
+    anyOf:
+      - type: regex
+        value: "127\\.0\\.0\\.1"
 ```

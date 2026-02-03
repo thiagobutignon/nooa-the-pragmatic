@@ -33,6 +33,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   - id: empty-catch-block
     description: Empty catch blocks hide errors
@@ -47,6 +50,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
 
   - id: any-type-usage
     description: Using 'any' type defeats TypeScript's type safety
@@ -77,6 +83,9 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
         - "**/*.config.ts"
 
   - id: disabled-eslint
@@ -94,3 +103,6 @@ rules:
     scope:
       exclude:
         - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
