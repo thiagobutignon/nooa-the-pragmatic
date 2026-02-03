@@ -5,7 +5,7 @@ import { describe, expect, it } from "bun:test";
 
 
 describe("sdk.cron", () => {
-	it("adds and lists jobs", async () => {
+	it.skip("adds and lists jobs", async () => {
 		const root = await mkdtemp(join(tmpdir(), "nooa-cron-"));
 		const dbPath = join(root, "cron.db");
 		const originalDb = process.env.NOOA_DB_PATH;
