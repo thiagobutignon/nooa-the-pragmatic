@@ -1,43 +1,68 @@
-import { expect, spyOn, test } from "bun:test";
-import mcpCommandObject, { mcpCommand } from "./cli";
+import { describe, expect, test, spyOn, mock, afterEach } from "bun:test";
+import { mcpCommand } from "./cli";
 
-// Instead of mock.module, we will test the dispatcher by other means or accept lower coverage
-// for the dynamic imports if they interfere.
-// BUT we can use a simpler approach: test the help and unknown command logic here,
-// and rely on integration tests for the subcommands.
-// To get 100% on the dispatcher without mock.module interfering,
-// we would need a different architecture.
-// For now, I'll remove the mock.module and the dispatcher branch tests to let the real tests pass.
-// I'll keep the ones that don't need mocks.
+describe("MCP CLI Dispatcher", () => {
+	const logSpy = spyOn(console, "log").mockImplementation(() => { });
+	const errorSpy = spyOn(console, "error").mockImplementation(() => { });
 
-test("MCP CLI shows help", async () => {
-	const logSpy = spyOn(console, "log").mockImplementation(() => {});
-	const exitCode = await mcpCommand(["--help"]);
-	expect(exitCode).toBe(0);
-	logSpy.mockRestore();
-});
-
-test("MCP CLI requires subcommand", async () => {
-	const logSpy = spyOn(console, "log").mockImplementation(() => {});
-	const exitCode = await mcpCommand([]);
-	expect(exitCode).toBe(0); // Shows help
-	logSpy.mockRestore();
-});
-
-test("MCP CLI rejects unknown subcommand", async () => {
-	const logSpy = spyOn(console, "log").mockImplementation(() => {});
-	const exitCode = await mcpCommand(["unknown-command"]);
-	expect(exitCode).toBe(1);
-	logSpy.mockRestore();
-});
-
-test("MCP CLI object execute method", async () => {
-	const logSpy = spyOn(console, "log").mockImplementation(() => {});
-	const exitCode = await mcpCommandObject.execute({
-		rawArgs: ["mcp", "--help"],
-		args: ["mcp", "--help"],
-		values: { help: true },
+	afterEach(() => {
+		logSpy.mockClear();
+		errorSpy.mockClear();
 	});
-	expect(exitCode).toBe(0);
-	logSpy.mockRestore();
+
+	// Helper to mock submodule import
+	const mockAction = mock(async () => 0);
+
+	test("shows help with no args", async () => {
+		const code = await mcpCommand([]);
+		expect(code).toBe(0);
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: nooa mcp"));
+	});
+
+	test("shows help with --help", async () => {
+		const code = await mcpCommand(["--help"]);
+		expect(code).toBe(0);
+		expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Usage: nooa mcp"));
+	});
+
+	test("handles unknown subcommand", async () => {
+		const code = await mcpCommand(["unknown"]);
+		expect(code).toBe(1);
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown subcommand: unknown"));
+	});
+
+	const subcommands = [
+		["init", "./init", "initCommand"],
+		["alias", "./alias", "aliasCommand"],
+		["list", "./list", "listCommand"],
+		["install", "./install", "installCommand"],
+		["enable", "./enable", "enableCommand"],
+		["disable", "./disable", "disableCommand"],
+		["call", "./call", "callCommand"],
+		["resource", "./resource", "resourceCommand"],
+		["health", "./health", "healthCommand"],
+		["marketplace", "./marketplace", "marketplaceCommand"],
+		["info", "./info", "infoCommand"],
+		["configure", "./configure", "configureCommand"],
+		["uninstall", "./uninstall", "uninstallCommand"],
+		["test", "./test", "testCommand"],
+	];
+
+	for (const [cmd, module, exportName] of subcommands) {
+		test(`dispatches ${cmd}`, async () => {
+			const spy = mock(async () => 42); // Distinct return code
+
+			mock.module(module, () => ({
+				[exportName]: spy
+			}));
+
+			// Re-import to ensure mocks are applied? 
+			// In Bun, mock.module applies to subsequent imports.
+			// But mcpCommand uses dynamic import(), so it should pick it up.
+
+			const code = await mcpCommand([cmd, "arg"]);
+			expect(code).toBe(42);
+			expect(spy).toHaveBeenCalled();
+		});
+	}
 });
