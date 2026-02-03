@@ -2,8 +2,6 @@
 > Context curated for high-integrity results. Precedence: Constitution.
 
 ### Recent Observations
-- [2026-02-03] Ran command: ci ci
-Outcome: Failure
 - [2026-02-03] Ran command: mcp mcp list --json
 Outcome: Success
 - [2026-02-03] Ran command: mcp mcp list
@@ -41,4 +39,6 @@ Outcome: Failure
 - [2026-02-03] Ran command: goal goal status --json
 Outcome: Failure
 - [2026-02-03] Ran command: goal goal --help
+Outcome: Failure
+- [2026-02-03] Ran command: eval eval compare review --suite standard
 Outcome: Failure
