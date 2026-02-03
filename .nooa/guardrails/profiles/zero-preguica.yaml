@@ -1,0 +1,75 @@
+# NOOA Built-in Profile: Zero-Preguiça (Anti-Laziness)
+# Ported from PolicyEngine patterns
+# Severity: low (as these are code hygiene issues)
+
+refactor_name: zero-preguica
+description: Zero-Preguiça rules - no lazy markers in production code
+version: "1.0.0"
+
+rules:
+  - id: no-todo
+    description: TODOs are not allowed in production code
+    severity: low
+    category: code-hygiene
+    match:
+      anyOf:
+        - type: regex
+          value: "TODO[:\\s]"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/*.md"
+        - "**/mock/**"
+        - "**/*.mock.ts"
+
+  - id: no-fixme
+    description: FIXMEs are not allowed in production code
+    severity: medium
+    category: code-hygiene
+    match:
+      anyOf:
+        - type: regex
+          value: "FIXME[:\\s]"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/*.md"
+
+  - id: no-mock-marker
+    description: MOCK markers are not allowed in production code
+    severity: low
+    category: code-hygiene
+    match:
+      anyOf:
+        - type: regex
+          value: "MOCK[:\\s]"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/mock/**"
+        - "**/*.mock.ts"
+
+  - id: no-placeholder
+    description: Implementation placeholders are not allowed
+    severity: medium
+    category: code-hygiene
+    match:
+      anyOf:
+        - type: regex
+          value: "//\\s*implement"
+          flags: "i"
+        - type: regex
+          value: "placeholder"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/*.md"
+        - "**/*.tpl"

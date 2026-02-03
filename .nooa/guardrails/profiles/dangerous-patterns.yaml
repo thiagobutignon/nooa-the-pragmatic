@@ -1,0 +1,96 @@
+# NOOA Built-in Profile: Dangerous Patterns
+# Detects patterns that indicate code quality issues
+# Severity: medium (code quality, not security)
+
+refactor_name: dangerous-patterns
+description: Detects dangerous code patterns that may cause bugs
+version: "1.0.0"
+
+rules:
+  - id: console-log-leftover
+    description: Console.log statements should be removed before production
+    severity: low
+    category: code-quality
+    match:
+      anyOf:
+        - type: regex
+          value: "console\\.(log|debug|info)\\("
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/scripts/**"
+        - "**/cli.ts"
+
+  - id: debugger-statement
+    description: Debugger statements should not be committed
+    severity: medium
+    category: code-quality
+    match:
+      anyOf:
+        - type: literal
+          value: "debugger"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+
+  - id: empty-catch-block
+    description: Empty catch blocks hide errors
+    severity: medium
+    category: code-quality
+    match:
+      anyOf:
+        - type: regex
+          value: "catch\\s*\\([^)]*\\)\\s*\\{\\s*\\}"
+        - type: regex
+          value: "catch\\s*\\{\\s*\\}"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+
+  - id: any-type-usage
+    description: Using 'any' type defeats TypeScript's type safety
+    severity: low
+    category: code-quality
+    match:
+      anyOf:
+        - type: regex
+          value: ":\\s*any\\b"
+        - type: regex
+          value: "as\\s+any\\b"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.tsx"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.d.ts"
+
+  - id: magic-number
+    description: Magic numbers should be named constants
+    severity: low
+    category: code-quality
+    match:
+      anyOf:
+        - type: regex
+          value: "(?:setTimeout|setInterval)\\s*\\([^,]+,\\s*\\d{4,}\\)"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.config.ts"
+
+  - id: disabled-eslint
+    description: Disabled ESLint rules should be reviewed
+    severity: low
+    category: code-quality
+    match:
+      anyOf:
+        - type: regex
+          value: "eslint-disable(?!-next-line)"
+        - type: regex
+          value: "@ts-ignore"
+        - type: regex
+          value: "@ts-nocheck"
+    scope:
+      exclude:
+        - "**/*.test.ts"

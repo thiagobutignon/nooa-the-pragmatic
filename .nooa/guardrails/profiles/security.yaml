@@ -1,0 +1,107 @@
+# NOOA Built-in Profile: Security
+# Detects common security anti-patterns
+# Severity: high/critical (security issues require attention)
+
+refactor_name: security
+description: Security-focused rules for detecting secrets and dangerous patterns
+version: "1.0.0"
+
+rules:
+  - id: hardcoded-secret
+    description: Hardcoded secrets or API keys detected
+    severity: critical
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "(?:api[_-]?key|apikey|secret|password|token|auth)\\s*[:=]\\s*[\"'][^\"']{8,}[\"']"
+          flags: "i"
+        - type: regex
+          value: "(?:AWS_SECRET_ACCESS_KEY|GITHUB_TOKEN|OPENAI_API_KEY)\\s*[:=]\\s*[\"'][^\"']+[\"']"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/.env.example"
+        - "**/README.md"
+
+  - id: exposed-credentials
+    description: Credentials exposed in connection strings
+    severity: critical
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "(?:mysql|postgres|mongodb)://[^:]+:[^@]+@"
+        - type: regex
+          value: "redis://:[^@]+@"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/.env.example"
+
+  - id: sql-injection-risk
+    description: Potential SQL injection vulnerability
+    severity: high
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "\\$\\{.*\\}.*(?:SELECT|INSERT|UPDATE|DELETE|DROP)"
+          flags: "i"
+        - type: regex
+          value: "query\\s*\\(\\s*`[^`]*\\$\\{"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  - id: eval-usage
+    description: Usage of eval() is dangerous
+    severity: high
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "\\beval\\s*\\("
+        - type: regex
+          value: "new\\s+Function\\s*\\("
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/scripts/**"
+
+  - id: dangerous-innerHTML
+    description: innerHTML can lead to XSS vulnerabilities
+    severity: high
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "\\.innerHTML\\s*="
+        - type: regex
+          value: "dangerouslySetInnerHTML"
+    scope:
+      include:
+        - "**/*.tsx"
+        - "**/*.jsx"
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  - id: insecure-random
+    description: Math.random() should not be used for security-sensitive operations
+    severity: medium
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "Math\\.random\\(\\).*(?:token|secret|key|password|id)"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
