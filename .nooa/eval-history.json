@@ -1,0 +1,14 @@
+[
+  {
+    "id": "819a3a21-11e4-4884-90c0-3671a0afdd2b",
+    "prompt": "review",
+    "suite": "review.instant-file",
+    "command": "run",
+    "totalScore": 0.75,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-03T05:40:17.478Z"
+  }
+]
