@@ -2,6 +2,7 @@ import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promise
 import { join } from "node:path";
 import { stringify as stringifyYaml } from "yaml";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	printError,
 	renderJson

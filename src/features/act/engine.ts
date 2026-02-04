@@ -1,5 +1,7 @@
 import { execa } from "execa";
 import { join } from "node:path";
+import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { AiEngine } from "../ai/engine";
 import { MockProvider, OllamaProvider, OpenAiProvider } from "../ai/providers/mod";
 import { loadCommands } from "../../core/registry";
@@ -28,10 +30,31 @@ export class ActEngine {
 		this.ai.register(new MockProvider());
 	}
 
+	private async loadContext(root: string): Promise<string> {
+		const nooaDir = join(root, ".nooa");
+		const files = ["SOUL.md", "USER.md", "TOOLS.md"];
+		let context = "";
+
+		for (const file of files) {
+			const path = join(nooaDir, file);
+			if (existsSync(path)) {
+				try {
+					const content = await readFile(path, "utf-8");
+					context += `\n\n=== ${file} ===\n${content}`;
+				} catch {
+					// Ignore read errors
+				}
+			}
+		}
+		return context;
+	}
+
 	async execute(goal: string, options: ActOptions = {}): Promise<SdkResult<ActResult>> {
-		const featuresDir = join(process.cwd(), "src/features");
+		const root = process.cwd();
+		const featuresDir = join(root, "src/features");
 		const registry = await loadCommands(featuresDir);
 		const commands = registry.list();
+		const context = await this.loadContext(root);
 
 		const tools = commands
 			.filter((cmd) => cmd.agentDoc)
@@ -44,29 +67,30 @@ export class ActEngine {
 		const systemPrompt = `
 You are the NOOA Orchestrator. Your goal is to achieve the user's objective by executing CLI commands.
 
-You have access to the following tools (CLI Commands):
+### CONTEXT & IDENTITY
+${context || "No context found. Operate in default mode."}
+
+### TOOLS (CLI Commands)
 ${tools.map((t) => `- ${t.name}: ${t.description}`).join("\n")}
 
-Valid Command References (XML Docs):
+### VALID REFS (XML)
 ${tools.map((t) => t.agentDoc).join("\n\n")}
 
 INSTRUCTIONS:
-1. Analyze the user's goal.
+1. Analyze the user's goal considering the CONTEXT (SOUL/USER/TOOLS).
 2. Decide which command to run.
 3. OUTPUT a JSON object with the plan:
    {
-     "thought": "Analysis of what to do next",
+     "thought": "Thinking process...",
      "command": "nooa <subcommand> [flags] [args]",
-     "done": boolean // true if goal is achieved
+     "done": boolean
    }
 
 RULES:
-- You MUST use the exact CLI syntax defined in the XML <usage> and <contract> tags.
-- If you need to read a file, use 'nooa read'.
-- If you need to check code, use 'nooa check'.
-- If the goal is done, set "done": true and "command": null.
-- If the previous command failed, analyze the error and try a different approach.
-- Do NOT output markdown code blocks. Output RAW JSON only.
+- Adhere to the working style in USER.md/TOOLS.md.
+- Use exact CLI syntax from XML.
+- If done, set done: true.
+- Output RAW JSON only.
 `;
 
 		const history: Array<{ role: "user" | "assistant" | "system"; content: string }> = [

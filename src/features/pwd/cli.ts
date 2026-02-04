@@ -1,4 +1,5 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	renderJson
 } from "../../core/cli-output";

@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { Database } from "bun:sqlite";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
 	renderJson

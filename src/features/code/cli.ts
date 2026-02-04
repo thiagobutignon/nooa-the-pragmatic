@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
 	renderJson

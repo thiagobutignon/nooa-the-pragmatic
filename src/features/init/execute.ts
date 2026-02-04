@@ -9,6 +9,9 @@ export interface InitOptions {
 	vibe?: string;
 	creature?: string;
 	userName?: string;
+	userRole?: string;
+	workingStyle?: string;
+	architecture?: string;
 	root?: string;
 	force?: boolean;
 	dryRun?: boolean;
@@ -26,6 +29,9 @@ export async function executeInit(options: InitOptions, bus?: EventBus) {
 	const vibe = options.vibe || "resourceful";
 	const creature = options.creature || "protocol droid";
 	const userName = options.userName || "Developer";
+	const userRole = options.userRole || "Lead Developer";
+	const workingStyle = options.workingStyle || "TDD";
+	const architecture = options.architecture || "Vertical Slice";
 	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 	const context = {
@@ -33,8 +39,14 @@ export async function executeInit(options: InitOptions, bus?: EventBus) {
 		vibe,
 		creature,
 		user_name: userName,
+		user_role: userRole,
+		working_style: workingStyle,
+		architecture,
 		timezone,
 		emoji: vibe === "snarky" ? "😼" : "🤖",
+		root: root,
+		test_command: "bun test", // Default, could be derived
+		lint_command: "bun lint", // Default
 		avatar: "",
 		tone_description:
 			vibe === "snarky"
@@ -67,6 +79,7 @@ export async function executeInit(options: InitOptions, bus?: EventBus) {
 		{ tpl: "IDENTITY.md.tpl", path: join(nooaDir, "IDENTITY.md") },
 		{ tpl: "SOUL.md.tpl", path: join(nooaDir, "SOUL.md") },
 		{ tpl: "USER.md.tpl", path: join(nooaDir, "USER.md") },
+		{ tpl: "TOOLS.md.tpl", path: join(nooaDir, "TOOLS.md") },
 	];
 
 	for (const file of files) {

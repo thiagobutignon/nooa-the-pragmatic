@@ -62,6 +62,9 @@ export const initSchema = {
 	name: { type: "string", required: false },
 	vibe: { type: "string", required: false },
 	"user-name": { type: "string", required: false },
+	"user-role": { type: "string", required: false },
+	"working-style": { type: "string", required: false },
+	"architecture": { type: "string", required: false },
 	root: { type: "string", required: false },
 	force: { type: "boolean", required: false },
 	"dry-run": { type: "boolean", required: false },
@@ -99,6 +102,9 @@ export interface InitRunInput {
 	name?: string;
 	vibe?: string;
 	userName?: string;
+	userRole?: string;
+	workingStyle?: string;
+	architecture?: string;
 	root?: string;
 	force?: boolean;
 	dryRun?: boolean;
@@ -124,6 +130,9 @@ export async function run(
 			name: input.name,
 			vibe: input.vibe,
 			userName: input.userName,
+			userRole: input.userRole,
+			workingStyle: input.workingStyle,
+			architecture: input.architecture,
 			root: input.root,
 			force: input.force,
 			dryRun: input.dryRun,
@@ -171,6 +180,9 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 			name: { type: "string" },
 			vibe: { type: "string" },
 			"user-name": { type: "string" },
+			"user-role": { type: "string" },
+			"working-style": { type: "string" },
+			"architecture": { type: "string" },
 			root: { type: "string" },
 			force: { type: "boolean" },
 			"dry-run": { type: "boolean" },
@@ -185,6 +197,9 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 			typeof values["user-name"] === "string"
 				? values["user-name"]
 				: undefined;
+		let userRole = typeof values["user-role"] === "string" ? values["user-role"] : undefined;
+		let workingStyle = typeof values["working-style"] === "string" ? values["working-style"] : undefined;
+		let architecture = typeof values.architecture === "string" ? values.architecture : undefined;
 
 		const nonInteractive = Boolean(values["non-interactive"]);
 		if (!nonInteractive) {
@@ -201,17 +216,29 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 						"What should I be called? (default: NOOA): ",
 					)) || "NOOA";
 			}
+
 			if (!vibe) {
 				vibe =
 					(await rl.question(
 						"What is my vibe? (snarky, protocol, resourceful) (default: resourceful): ",
 					)) || "resourceful";
 			}
+
 			if (!userName) {
 				userName =
 					(await rl.question(
 						"And what should I call you? (default: Developer): ",
 					)) || "Developer";
+			}
+
+			if (!userRole) {
+				userRole = (await rl.question("What is your role? (default: Lead Developer): ")) || "Lead Developer";
+			}
+			if (!workingStyle) {
+				workingStyle = (await rl.question("What is your working style? (e.g. TDD, Prototype-First) (default: TDD): ")) || "TDD";
+			}
+			if (!architecture) {
+				architecture = (await rl.question("Preferred architecture? (e.g. Clean Arch, Vertical Slice) (default: Vertical Slice): ")) || "Vertical Slice";
 			}
 
 			rl.close();
@@ -221,6 +248,9 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 			name,
 			vibe,
 			userName,
+			userRole,
+			workingStyle,
+			architecture,
 			root: typeof values.root === "string" ? values.root : undefined,
 			force: Boolean(values.force),
 			dryRun: Boolean(values["dry-run"]),
