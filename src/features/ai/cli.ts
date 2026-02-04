@@ -7,11 +7,15 @@ import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { AiEngine } from "./engine";
 import { MockProvider, OllamaProvider, OpenAiProvider } from "./providers/mod";
+import type { AiStreamChunk, AiResponse } from "./types";
 
 export const aiMeta: AgentDocMeta = {
 	name: "ai",
 	description: "Query the AI engine",
-	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
+	changelog: [
+		{ version: "1.1.0", changes: ["Added streaming support"] },
+		{ version: "1.0.0", changes: ["Initial release"] },
+	],
 };
 
 export const aiHelp = `
@@ -26,6 +30,7 @@ Flags:
   --provider <name>   Provider name (default: ollama, fallback: openai).
   --model <name>      Model name override.
   --json              Output as JSON.
+  --stream            Stream output tokens to stdout (CLI).
   --mcp-source <name> MCP server to execute a tool.
   --mcp-tool <name>   Tool name exposed by the MCP server.
   --mcp-args <json>   Arguments to pass to the MCP tool (JSON).
@@ -54,6 +59,7 @@ export const aiSchema = {
 	provider: { type: "string", required: false },
 	model: { type: "string", required: false },
 	json: { type: "boolean", required: false },
+	stream: { type: "boolean", required: false, since: "1.1.0" },
 	"mcp-source": { type: "string", required: false },
 	"mcp-tool": { type: "string", required: false },
 	"mcp-args": { type: "string", required: false },
@@ -93,6 +99,7 @@ export interface AiRunInput {
 	provider?: string;
 	model?: string;
 	json?: boolean;
+	stream?: boolean;
 	"mcp-source"?: string;
 	"mcp-tool"?: string;
 	"mcp-args"?: string;
@@ -109,6 +116,30 @@ export interface AiRunResult {
 	server?: string;
 	tool?: string;
 	result?: unknown;
+}
+
+function createEngine() {
+	const engine = new AiEngine();
+	engine.register(new OllamaProvider());
+	engine.register(new OpenAiProvider());
+	engine.register(new MockProvider());
+	return engine;
+}
+
+export async function streamAi(
+	input: AiRunInput,
+): Promise<AsyncGenerator<AiStreamChunk, AiResponse, void>> {
+	const engine = createEngine();
+	return engine.stream(
+		{
+			messages: [{ role: "user", content: input.prompt ?? "" }],
+			model: input.model,
+		},
+		{
+			provider: input.provider,
+			fallbackProvider: input.provider ? undefined : "openai",
+		},
+	);
 }
 
 export async function run(input: AiRunInput): Promise<SdkResult<AiRunResult>> {
@@ -161,12 +192,38 @@ export async function run(input: AiRunInput): Promise<SdkResult<AiRunResult>> {
 		}
 	}
 
-	const engine = new AiEngine();
-	engine.register(new OllamaProvider());
-	engine.register(new OpenAiProvider());
-	engine.register(new MockProvider());
+	const engine = createEngine();
 
 	try {
+		if (input.stream && !input.json) {
+			const iterator = await streamAi(input);
+			let content = "";
+			let finalResponse: AiResponse | undefined;
+
+			while (true) {
+				const next = await iterator.next();
+				if (next.done) {
+					finalResponse = next.value;
+					break;
+				}
+				if (next.value?.content) {
+					content += next.value.content;
+					process.stdout.write(next.value.content);
+				}
+			}
+
+			return {
+				ok: true,
+				data: {
+					mode: "ai",
+					content,
+					provider: finalResponse?.provider ?? input.provider,
+					model: finalResponse?.model ?? input.model,
+					usage: finalResponse?.usage,
+				},
+			};
+		}
+
 		const response = await engine.complete(
 			{
 				messages: [{ role: "user", content: prompt }],
@@ -212,6 +269,7 @@ const aiBuilder = new CommandBuilder<AiRunInput, AiRunResult>()
 			...buildStandardOptions(),
 			provider: { type: "string" },
 			model: { type: "string" },
+			stream: { type: "boolean" },
 			"mcp-source": { type: "string" },
 			"mcp-tool": { type: "string" },
 			"mcp-args": { type: "string" },
@@ -222,6 +280,7 @@ const aiBuilder = new CommandBuilder<AiRunInput, AiRunResult>()
 		provider: values.provider as string | undefined,
 		model: values.model as string | undefined,
 		json: Boolean(values.json),
+		stream: Boolean(values.stream),
 		"mcp-source": values["mcp-source"] as string | undefined,
 		"mcp-tool": values["mcp-tool"] as string | undefined,
 		"mcp-args": values["mcp-args"] as string | undefined,
@@ -239,6 +298,13 @@ const aiBuilder = new CommandBuilder<AiRunInput, AiRunResult>()
 				console.log(
 					`MCP ${output.server}.${output.tool} -> ${JSON.stringify(output.result)}`,
 				);
+			}
+			return;
+		}
+
+		if (values.stream && !values.json) {
+			if (output.content) {
+				process.stdout.write("\n");
 			}
 			return;
 		}

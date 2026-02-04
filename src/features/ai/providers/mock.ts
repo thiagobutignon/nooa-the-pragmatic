@@ -4,6 +4,7 @@ import type {
 	AiProvider,
 	AiRequest,
 	AiResponse,
+	AiStreamChunk,
 } from "../types";
 
 export class MockProvider implements AiProvider {
@@ -55,6 +56,16 @@ export class MockProvider implements AiProvider {
 				totalTokens: 30,
 			},
 		};
+	}
+
+	async *stream(request: AiRequest): AsyncGenerator<AiStreamChunk, AiResponse, void> {
+		const response = await this.complete(request);
+		const chunks = response.content.split(/\s+/);
+		for (const chunk of chunks) {
+			yield { content: `${chunk} ` };
+			await new Promise((resolve) => setTimeout(resolve, 15));
+		}
+		return response;
 	}
 
 	async embed(request: AiEmbeddingRequest): Promise<AiEmbeddingResponse> {
