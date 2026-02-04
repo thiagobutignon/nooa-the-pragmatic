@@ -30,7 +30,10 @@ export type SchemaField = {
 export type SchemaSpec = Record<string, SchemaField>;
 
 type ParseOptions = {
-	options: Record<string, { type: "string" | "boolean"; short?: string }>;
+	options: Record<
+		string,
+		{ type: "string" | "boolean"; short?: string; multiple?: boolean }
+	>;
 };
 
 type InputContext = {

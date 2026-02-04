@@ -1,17 +1,19 @@
 import { join } from "node:path";
-import type { Command, CommandContext } from "../../core/command";
-import { getStdinText } from "../../core/io";
-import { logger } from "../../core/logger";
-import { telemetry } from "../../core/telemetry";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import type { AgentDocMeta, SdkResult } from "../../core/types";
+import { sdkError } from "../../core/types";
 import { PromptEngine } from "./engine";
-import {
-	createPrompt,
-	deletePrompt,
-	editPrompt,
-	publishPrompt,
-} from "./service";
+import { createPrompt, deletePrompt, editPrompt, publishPrompt } from "./service";
 
-const promptHelp = `
+export const promptMeta: AgentDocMeta = {
+	name: "prompt",
+	description: "Manage and render AI prompts",
+	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
+};
+
+export const promptHelp = `
 Usage: nooa prompt <list|view|validate|render|create|edit|delete|publish> [name] [flags]
 
 Manage and render versioned AI prompts.
@@ -45,356 +47,438 @@ Examples:
   nooa prompt create my-prompt --description "My Prompt" --body "Hello"
   nooa prompt edit my-prompt --patch < patch.diff
   nooa prompt publish my-prompt --level patch --note "Refined instructions"
+
+Exit Codes:
+  0: Success
+  1: Runtime Error
+  2: Validation Error
+
+Error Codes:
+  prompt.missing_action: Missing subcommand
+  prompt.missing_name: Prompt name required
+  prompt.missing_description: Missing --description
+  prompt.invalid_output: Invalid --output
+  prompt.missing_body: Prompt body required
+  prompt.missing_patch: Missing --patch
+  prompt.missing_level: Missing --level
+  prompt.invalid_level: Invalid --level
+  prompt.missing_note: Missing --note
+  prompt.runtime_error: Unexpected error
 `;
 
-const promptCommand: Command = {
-	name: "prompt",
-	description: "Manage and render AI prompts",
-	execute: async ({ rawArgs, bus }: CommandContext) => {
-		const { parseArgs } = await import("node:util");
-		const parsed = parseArgs({
-			args: rawArgs,
-			options: {
-				var: { type: "string", multiple: true },
-				json: { type: "boolean" },
-				all: { type: "boolean" },
-				body: { type: "string" },
-				description: { type: "string" },
-				output: { type: "string" },
-				patch: { type: "boolean" },
-				level: { type: "string" },
-				note: { type: "string" },
-				help: { type: "boolean", short: "h" },
-				"debug-injection": { type: "boolean" },
-			},
-			strict: true,
-			allowPositionals: true,
-		});
-		const values = parsed.values as {
-			var?: string[];
-			json?: boolean;
-			all?: boolean;
-			body?: string;
-			description?: string;
-			output?: string;
-			patch?: boolean;
-			level?: string;
-			note?: string;
-			help?: boolean;
-			"debug-injection"?: boolean;
-		};
-		const positionals = parsed.positionals as string[];
+export const promptSdkUsage = `
+SDK Usage:
+  const result = await prompt.run({ action: "list" });
+  if (result.ok) console.log(result.data.prompts);
+`;
 
-		if (values.help) {
-			console.log(promptHelp);
-			return;
+export const promptUsage = {
+	cli: "nooa prompt <list|view|validate|render|create|edit|delete|publish> [name] [flags]",
+	sdk: "await prompt.run({ action: \"list\" })",
+	tui: "PromptConsole()",
+};
+
+export const promptSchema = {
+	action: { type: "string", required: true },
+	name: { type: "string", required: false },
+	var: { type: "string", required: false },
+	body: { type: "string", required: false },
+	description: { type: "string", required: false },
+	output: { type: "string", required: false },
+	patch: { type: "boolean", required: false },
+	level: { type: "string", required: false },
+	note: { type: "string", required: false },
+	all: { type: "boolean", required: false },
+	json: { type: "boolean", required: false },
+	"debug-injection": { type: "boolean", required: false },
+} satisfies SchemaSpec;
+
+export const promptOutputFields = [
+	{ name: "action", type: "string" },
+	{ name: "name", type: "string" },
+	{ name: "prompts", type: "string" },
+	{ name: "prompt", type: "string" },
+	{ name: "rendered", type: "string" },
+	{ name: "version", type: "string" },
+	{ name: "results", type: "string" },
+];
+
+export const promptErrors = [
+	{ code: "prompt.missing_action", message: "Missing subcommand." },
+	{ code: "prompt.missing_name", message: "Prompt name required." },
+	{ code: "prompt.missing_description", message: "Missing --description." },
+	{ code: "prompt.invalid_output", message: "Invalid --output." },
+	{ code: "prompt.missing_body", message: "Prompt body required." },
+	{ code: "prompt.missing_patch", message: "Missing --patch." },
+	{ code: "prompt.missing_level", message: "Missing --level." },
+	{ code: "prompt.invalid_level", message: "Invalid --level." },
+	{ code: "prompt.missing_note", message: "Missing --note." },
+	{ code: "prompt.runtime_error", message: "Unexpected error." },
+];
+
+export const promptExitCodes = [
+	{ value: "0", description: "Success" },
+	{ value: "1", description: "Runtime error" },
+	{ value: "2", description: "Validation error" },
+];
+
+export const promptExamples = [
+	{ input: "nooa prompt list", output: "List prompts" },
+	{ input: "nooa prompt view review", output: "Prompt details" },
+	{ input: "nooa prompt publish review --level patch --note note", output: "Publish prompt" },
+];
+
+export interface PromptRunInput {
+	action?: string;
+	name?: string;
+	vars?: string[];
+	body?: string;
+	description?: string;
+	output?: string;
+	patch?: boolean;
+	level?: string;
+	note?: string;
+	all?: boolean;
+	json?: boolean;
+	debugInjection?: boolean;
+}
+
+export interface PromptRunResult {
+	action: string;
+	name?: string;
+	prompts?: unknown;
+	prompt?: unknown;
+	rendered?: string;
+	version?: string;
+	results?: unknown;
+}
+
+const parseVars = (vars: unknown): string[] => {
+	if (Array.isArray(vars)) {
+		return vars.filter((value): value is string => typeof value === "string");
+	}
+	if (typeof vars === "string") {
+		return [vars];
+	}
+	return [];
+};
+
+export async function run(
+	input: PromptRunInput,
+): Promise<SdkResult<PromptRunResult>> {
+	try {
+		const action = input.action;
+		if (!action) {
+			return {
+				ok: false,
+				error: sdkError("prompt.missing_action", "Missing subcommand."),
+			};
 		}
 
-		const action = positionals[1];
-		const name = positionals[2];
-		const { trace_id: traceId } = logger.getContext();
-
-		// In development, we use the local path.
-		// In production, this might be bundled or point to a known location.
 		const templatesDir = join(process.cwd(), "src/features/prompt/templates");
 		const engine = new PromptEngine(templatesDir);
 
-		try {
-			if (action === "create") {
-				if (!name) throw new Error("Prompt name is required.");
-				const description = values.description as string;
-				if (!description) throw new Error("Missing --description for create.");
-				const output = (values.output as string) || "markdown";
-				if (output && !["json", "markdown"].includes(output)) {
-					throw new Error("Invalid --output. Use json or markdown.");
+		switch (action) {
+			case "create": {
+				if (!input.name) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_name", "Prompt name required."),
+					};
 				}
-				const body = (values.body as string) || (await getStdinText());
-				if (!body) throw new Error("Prompt body is required.");
-
+				if (!input.description) {
+					return {
+						ok: false,
+						error: sdkError(
+							"prompt.missing_description",
+							"Missing --description.",
+						),
+					};
+				}
+				const output = input.output || "markdown";
+				if (!["json", "markdown"].includes(output)) {
+					return {
+						ok: false,
+						error: sdkError("prompt.invalid_output", "Invalid --output."),
+					};
+				}
+				const { getStdinText } = await import("../../core/io");
+				const body = input.body || (await getStdinText());
+				if (!body) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_body", "Prompt body required."),
+					};
+				}
 				await createPrompt({
 					templatesDir,
-					name,
-					description,
+					name: input.name,
+					description: input.description,
 					output: output as "json" | "markdown",
 					body,
 				});
-
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								schemaVersion: "1.0",
-								ok: true,
-								traceId,
-								name,
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log(`Prompt '${name}' created.`);
+				return { ok: true, data: { action, name: input.name } };
+			}
+			case "edit": {
+				if (!input.name) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_name", "Prompt name required."),
+					};
 				}
-			} else if (action === "edit") {
-				if (!name) throw new Error("Prompt name is required.");
-				if (!values.patch) throw new Error("Missing --patch for edit.");
+				if (!input.patch) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_patch", "Missing --patch."),
+					};
+				}
+				const { getStdinText } = await import("../../core/io");
 				const patch = await getStdinText();
-				if (!patch) throw new Error("Patch input is required.");
-
-				await editPrompt({ templatesDir, name, patch });
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								schemaVersion: "1.0",
-								ok: true,
-								traceId,
-								name,
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log(`Prompt '${name}' updated.`);
+				if (!patch) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_patch", "Patch input required."),
+					};
 				}
-			} else if (action === "delete") {
-				if (!name) throw new Error("Prompt name is required.");
-				await deletePrompt({ templatesDir, name });
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								schemaVersion: "1.0",
-								ok: true,
-								traceId,
-								name,
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log(`Prompt '${name}' deleted.`);
+				await editPrompt({ templatesDir, name: input.name, patch });
+				return { ok: true, data: { action, name: input.name } };
+			}
+			case "delete": {
+				if (!input.name) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_name", "Prompt name required."),
+					};
 				}
-			} else if (action === "publish") {
-				if (!name) throw new Error("Prompt name is required.");
-				const level = values.level as string;
-				if (!level) throw new Error("Missing --level for publish.");
-				if (!["patch", "minor", "major"].includes(level)) {
-					throw new Error("Invalid --level. Use patch, minor, or major.");
+				await deletePrompt({ templatesDir, name: input.name });
+				return { ok: true, data: { action, name: input.name } };
+			}
+			case "publish": {
+				if (!input.name) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_name", "Prompt name required."),
+					};
 				}
-				const note = (values.note as string) || (await getStdinText());
-				if (!note) throw new Error("Changelog note is required.");
-
-				const next = await publishPrompt({
+				if (!input.level) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_level", "Missing --level."),
+					};
+				}
+				if (!["patch", "minor", "major"].includes(input.level)) {
+					return {
+						ok: false,
+						error: sdkError("prompt.invalid_level", "Invalid --level."),
+					};
+				}
+				const { getStdinText } = await import("../../core/io");
+				const note = input.note || (await getStdinText());
+				if (!note) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_note", "Missing --note."),
+					};
+				}
+				const version = await publishPrompt({
 					templatesDir,
-					name,
-					level: level as "patch" | "minor" | "major",
+					name: input.name,
+					level: input.level as "patch" | "minor" | "major",
 					changelogPath: join(
 						process.cwd(),
 						"src/features/prompt/CHANGELOG.md",
 					),
 					note,
 				});
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								schemaVersion: "1.0",
-								ok: true,
-								traceId,
-								name,
-								version: next,
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log(`Prompt '${name}' published as v${next}.`);
-				}
-			} else if (action === "list") {
+				return { ok: true, data: { action, name: input.name, version } };
+			}
+			case "list": {
 				const prompts = await engine.listPrompts();
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								schemaVersion: "1.0",
-								ok: true,
-								traceId,
-								prompts,
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log("Available Prompts:");
-					for (const p of prompts) {
-						console.log(`- ${p.name} (v${p.version}): ${p.description}`);
-					}
-				}
-			} else if (action === "view" || action === "validate") {
+				return { ok: true, data: { action, prompts } };
+			}
+			case "view":
+			case "validate": {
 				const validateAll =
-					action === "validate" && (name === "--all" || values.all);
-				if (!name && !validateAll) throw new Error("Prompt name is required.");
+					action === "validate" && (input.name === "--all" || input.all);
+				if (!input.name && !validateAll) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_name", "Prompt name required."),
+					};
+				}
 
 				if (validateAll) {
 					const prompts = await engine.listPrompts();
-					if (values.json) {
-						console.log(
-							JSON.stringify(
-								{
-									schemaVersion: "1.0",
-									ok: true,
-									traceId,
-									results: prompts.map((p) => ({ name: p.name, valid: true })),
-								},
-								null,
-								2,
-							),
-						);
-					} else {
-						console.log("All prompts are valid.");
-					}
-				} else {
-					if (!name) throw new Error("Prompt name is required.");
-					const prompt = await engine.loadPrompt(name);
-					if (action === "view") {
-						if (values.json) {
-							console.log(
-								JSON.stringify(
-									{
-										schemaVersion: "1.0",
-										ok: true,
-										traceId,
-										prompt,
-									},
-									null,
-									2,
-								),
-							);
-						} else {
-							console.log(
-								`--- ${prompt.metadata.name} (v${prompt.metadata.version}) ---`,
-							);
-							console.log(prompt.body);
-						}
-					} else {
-						if (values.json) {
-							console.log(
-								JSON.stringify(
-									{
-										schemaVersion: "1.0",
-										ok: true,
-										traceId,
-										metadata: prompt.metadata,
-									},
-									null,
-									2,
-								),
-							);
-						} else {
-							console.log(`Prompt '${name}' is valid.`);
-						}
-					}
+					return {
+						ok: true,
+						data: {
+							action,
+							results: prompts.map((prompt) => ({
+								name: prompt.name,
+								valid: true,
+							})),
+						},
+					};
 				}
-			} else if (action === "render") {
-				if (!name) throw new Error("Prompt name is required.");
-				const prompt = await engine.loadPrompt(name);
+
+				const prompt = await engine.loadPrompt(input.name as string);
+				if (action === "view") {
+					return { ok: true, data: { action, prompt } };
+				}
+
+				return {
+					ok: true,
+					data: { action, name: input.name, prompt: prompt.metadata },
+				};
+			}
+			case "render": {
+				if (!input.name) {
+					return {
+						ok: false,
+						error: sdkError("prompt.missing_name", "Prompt name required."),
+					};
+				}
+				const prompt = await engine.loadPrompt(input.name);
 				const vars: Record<string, string> = {};
-				if (values.var) {
-					for (const v of values.var) {
-						const [key, ...rest] = v.split("=");
-						vars[key] = rest.join("=");
-					}
+				for (const pair of input.vars || []) {
+					const [key, ...rest] = pair.split("=");
+					vars[key] = rest.join("=");
 				}
 				const rendered = await engine.renderPrompt(prompt, vars);
-
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								schemaVersion: "1.0",
-								ok: true,
-								traceId,
-								metadata: prompt.metadata,
-								rendered,
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log(rendered);
-				}
-			} else {
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								schemaVersion: "1.0",
-								ok: false,
-								traceId,
-								error: "Missing or unknown subcommand",
-								usage: "nooa prompt <list|view|validate|render>",
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log(promptHelp);
-				}
-				process.exitCode = 2;
-				return;
+				return { ok: true, data: { action, name: input.name, rendered } };
 			}
-
-			telemetry.track(
-				{
-					event: `prompt.${action}.success`,
-					level: "info",
-					success: true,
-					trace_id: traceId,
-					metadata: { name, action },
-				},
-				bus,
-			);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			const { trace_id: traceId } = logger.getContext();
-			if (values.json) {
-				console.log(
-					JSON.stringify(
-						{
-							schemaVersion: "1.0",
-							ok: false,
-							traceId,
-							command: "prompt",
-							timestamp: new Date().toISOString(),
-							error: message,
-						},
-						null,
-						2,
-					),
-				);
-			} else {
-				console.error(`Error: ${message}`);
-			}
-			telemetry.track(
-				{
-					event: `prompt.${action}.failure`,
-					level: "error",
-					success: false,
-					trace_id: traceId,
-					metadata: { error: message, name, action },
-				},
-				bus,
-			);
-			process.exitCode = 1;
+			default:
+				return {
+					ok: false,
+					error: sdkError("prompt.missing_action", "Missing subcommand."),
+				};
 		}
-	},
-};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { ok: false, error: sdkError("prompt.runtime_error", message) };
+	}
+}
+
+const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
+	.meta(promptMeta)
+	.usage(promptUsage)
+	.schema(promptSchema)
+	.help(promptHelp)
+	.sdkUsage(promptSdkUsage)
+	.outputFields(promptOutputFields)
+	.examples(promptExamples)
+	.errors(promptErrors)
+	.exitCodes(promptExitCodes)
+	.options({
+		options: {
+			...buildStandardOptions(),
+			var: { type: "string", multiple: true },
+			body: { type: "string" },
+			description: { type: "string" },
+			output: { type: "string" },
+			patch: { type: "boolean" },
+			level: { type: "string" },
+			note: { type: "string" },
+			all: { type: "boolean" },
+			"debug-injection": { type: "boolean" },
+		},
+	})
+	.parseInput(async ({ positionals, values }) => ({
+		action: positionals[1],
+		name: positionals[2],
+		vars: parseVars(values.var),
+		body: typeof values.body === "string" ? values.body : undefined,
+		description:
+			typeof values.description === "string" ? values.description : undefined,
+		output: typeof values.output === "string" ? values.output : undefined,
+		patch: Boolean(values.patch),
+		level: typeof values.level === "string" ? values.level : undefined,
+		note: typeof values.note === "string" ? values.note : undefined,
+		all: Boolean(values.all),
+		json: Boolean(values.json),
+		debugInjection: Boolean(values["debug-injection"]),
+	}))
+	.run(run)
+	.onSuccess((output, values) => {
+		if (values.json) {
+			renderJson(output);
+			return;
+		}
+
+		switch (output.action) {
+			case "create":
+				console.log(`Prompt '${output.name}' created.`);
+				break;
+			case "edit":
+				console.log(`Prompt '${output.name}' updated.`);
+				break;
+			case "delete":
+				console.log(`Prompt '${output.name}' deleted.`);
+				break;
+			case "publish":
+				console.log(`Prompt '${output.name}' published as v${output.version}.`);
+				break;
+			case "list":
+				console.log("Available Prompts:");
+				if (Array.isArray(output.prompts)) {
+					for (const prompt of output.prompts) {
+						console.log(
+							`- ${prompt.name} (v${prompt.version}): ${prompt.description}`,
+						);
+					}
+				}
+				break;
+			case "view":
+				if (output.prompt && typeof output.prompt === "object") {
+					const prompt = output.prompt as { metadata?: { name?: string; version?: string }; body?: string };
+					console.log(
+						`--- ${prompt.metadata?.name ?? output.name} (v${prompt.metadata?.version ?? ""}) ---`,
+					);
+					if (prompt.body) console.log(prompt.body);
+					else console.log(JSON.stringify(prompt, null, 2));
+				}
+				break;
+			case "validate":
+				if (Array.isArray(output.results)) {
+					console.log("Validation Results:");
+					for (const result of output.results) {
+						console.log(`- ${result.name}: ${result.valid ? "valid" : "invalid"}`);
+					}
+				} else if (output.name) {
+					console.log(`Prompt '${output.name}' is valid.`);
+				}
+				break;
+			case "render":
+				if (output.rendered) console.log(output.rendered);
+				break;
+			default:
+				break;
+		}
+	})
+	.onFailure((error) => {
+		printError(error);
+		setExitCode(error, [
+			"prompt.missing_action",
+			"prompt.missing_name",
+			"prompt.missing_description",
+			"prompt.invalid_output",
+			"prompt.missing_body",
+			"prompt.missing_patch",
+			"prompt.missing_level",
+			"prompt.invalid_level",
+			"prompt.missing_note",
+		]);
+	})
+	.telemetry({
+		eventPrefix: "prompt",
+		successMetadata: (input) => ({ action: input.action, name: input.name }),
+		failureMetadata: (input, error) => ({ action: input.action, error: error.message }),
+	});
+
+export const promptAgentDoc = promptBuilder.buildAgentDoc(false);
+export const promptFeatureDoc = (includeChangelog: boolean) =>
+	promptBuilder.buildFeatureDoc(includeChangelog);
+
+const promptCommand = promptBuilder.build();
 
 export default promptCommand;
