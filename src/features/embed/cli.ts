@@ -1,9 +1,19 @@
-import type { Command, CommandContext } from "../../core/command";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { printError, renderJson, setExitCode } from "../../core/cli-output";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
+import type { AgentDocMeta, SdkResult } from "../../core/types";
+import { sdkError } from "../../core/types";
 import { embedText } from "./engine";
 
-const embedHelp = `
+export const embedMeta: AgentDocMeta = {
+	name: "embed",
+	description: "Generate embeddings for text or files",
+	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
+};
+
+export const embedHelp = `
 Usage: nooa embed <text|file> <input> [flags]
 
 Arguments:
@@ -17,213 +27,330 @@ Flags:
   --out <file>              Write JSON output to file
   --json                    Output JSON (default)
   -h, --help                Show help
+
+Exit Codes:
+  0: Success
+  1: Runtime Error
+  2: Validation Error
+
+Error Codes:
+  embed.missing_action: Action (text/file) is required
+  embed.missing_text: Text is required
+  embed.missing_path: File path is required
+  embed.unknown_action: Unknown embed action
+  embed.runtime_error: Embedding failed
 `;
 
-const embedCommand: Command = {
-	name: "embed",
-	description: "Generate embeddings for text or files",
-	execute: async ({ rawArgs, bus }: CommandContext) => {
-		const { parseArgs } = await import("node:util");
-		const { readFile, writeFile } = await import("node:fs/promises");
-		const { randomUUID } = await import("node:crypto");
-		const parsed = parseArgs({
-			args: rawArgs,
-			options: {
-				model: { type: "string" },
-				provider: { type: "string" },
-				"include-embedding": { type: "boolean" },
-				out: { type: "string" },
-				json: { type: "boolean" },
-				help: { type: "boolean", short: "h" },
+export const embedSdkUsage = `
+SDK Usage:
+  const result = await embed.run({
+    action: "text",
+    input: "hello",
+    provider: "ollama"
+  });
+  if (result.ok) console.log(result.data.model);
+`;
+
+export const embedUsage = {
+	cli: "nooa embed <text|file> <input> [flags]",
+	sdk: "await embed.run({ action: \"text\", input: \"hello\" })",
+	tui: "EmbedConsole()",
+};
+
+export const embedSchema = {
+	action: { type: "string", required: true },
+	input: { type: "string", required: true },
+	model: { type: "string", required: false },
+	provider: { type: "string", required: false },
+	"include-embedding": { type: "boolean", required: false },
+	out: { type: "string", required: false },
+	json: { type: "boolean", required: false },
+} satisfies SchemaSpec;
+
+export const embedOutputFields = [
+	{ name: "id", type: "string" },
+	{ name: "model", type: "string" },
+	{ name: "provider", type: "string" },
+	{ name: "dimensions", type: "number" },
+	{ name: "input", type: "string" },
+	{ name: "embedding", type: "string" },
+];
+
+export const embedErrors = [
+	{ code: "embed.missing_action", message: "Action (text/file) is required." },
+	{ code: "embed.missing_text", message: "Text is required." },
+	{ code: "embed.missing_path", message: "File path is required." },
+	{ code: "embed.unknown_action", message: "Unknown embed action." },
+	{ code: "embed.runtime_error", message: "Embedding failed." },
+];
+
+export const embedExitCodes = [
+	{ value: "0", description: "Success" },
+	{ value: "1", description: "Runtime error" },
+	{ value: "2", description: "Validation error" },
+];
+
+export const embedExamples = [
+	{ input: "nooa embed text \"hello\"", output: "Embedding output" },
+	{ input: "nooa embed file README.md", output: "Embedding output" },
+];
+
+export interface EmbedRunInput {
+	action?: "text" | "file";
+	input?: string;
+	model?: string;
+	provider?: string;
+	includeEmbedding?: boolean;
+	out?: string;
+	json?: boolean;
+}
+
+export interface EmbedRunResult {
+	id: string;
+	model: string;
+	provider: string;
+	dimensions: number;
+	input: {
+		type: "text" | "file";
+		path?: string | null;
+		value?: string | null;
+	};
+	embedding?: number[];
+}
+
+export async function run(
+	input: EmbedRunInput,
+): Promise<SdkResult<EmbedRunResult>> {
+	const traceId = createTraceId();
+	logger.setContext({ trace_id: traceId, command: "embed" });
+	const startTime = Date.now();
+
+	if (!input.action) {
+		telemetry.track(
+			{
+				event: "embed.failure",
+				level: "warn",
+				success: false,
+				trace_id: traceId,
+				metadata: { reason: "missing_action", duration_ms: Date.now() - startTime },
 			},
-			strict: true,
-			allowPositionals: true,
-		});
-		const values = parsed.values as {
-			model?: string;
-			provider?: string;
-			"include-embedding"?: boolean;
-			out?: string;
-			json?: boolean;
-			help?: boolean;
+			undefined,
+		);
+		return {
+			ok: false,
+			error: sdkError("embed.missing_action", "Action (text/file) is required."),
 		};
-		const positionals = parsed.positionals as string[];
+	}
 
-		if (values.help) {
-			console.log(embedHelp);
-			return;
-		}
+	let inputText = "";
+	let inputType: "text" | "file" = "text";
+	let inputPath: string | null = null;
 
-		const traceId = createTraceId();
-		logger.setContext({ trace_id: traceId, command: "embed" });
-		const startTime = Date.now();
-
-		try {
-			const action = positionals[1];
-			const inputArg = positionals.slice(2).join(" ").trim();
-			if (!action) {
-				telemetry.track(
-					{
-						event: "embed.failure",
-						level: "warn",
-						success: false,
-						trace_id: traceId,
-						metadata: {
-							reason: "missing_action",
-							duration_ms: Date.now() - startTime,
-						},
-					},
-					bus,
-				);
-				console.error("Error: Action (text/file) is required.");
-				process.exitCode = 2;
-				return;
-			}
-
-			let inputText = "";
-			let inputType: "text" | "file" = "text";
-			let inputPath: string | null = null;
-
-			if (action === "text") {
-				inputType = "text";
-				inputText = inputArg;
-				if (!inputText) {
-					telemetry.track(
-						{
-							event: "embed.failure",
-							level: "warn",
-							success: false,
-							trace_id: traceId,
-							metadata: {
-								reason: "missing_text",
-								duration_ms: Date.now() - startTime,
-							},
-						},
-						bus,
-					);
-					console.error("Error: Text is required.");
-					process.exitCode = 2;
-					return;
-				}
-			} else if (action === "file") {
-				inputType = "file";
-				inputPath = positionals[2] ?? null;
-				if (!inputPath) {
-					telemetry.track(
-						{
-							event: "embed.failure",
-							level: "warn",
-							success: false,
-							trace_id: traceId,
-							metadata: {
-								reason: "missing_path",
-								duration_ms: Date.now() - startTime,
-							},
-						},
-						bus,
-					);
-					console.error("Error: File path is required.");
-					process.exitCode = 2;
-					return;
-				}
-				inputText = await readFile(inputPath, "utf-8");
-			} else {
-				telemetry.track(
-					{
-						event: "embed.failure",
-						level: "warn",
-						success: false,
-						trace_id: traceId,
-						metadata: {
-							reason: "unknown_action",
-							duration_ms: Date.now() - startTime,
-						},
-					},
-					bus,
-				);
-				console.error("Error: Unknown embed action.");
-				process.exitCode = 2;
-				return;
-			}
-
-			telemetry.track(
-				{
-					event: "embed.started",
-					level: "info",
-					success: true,
-					trace_id: traceId,
-					metadata: {
-						input_type: inputType,
-						bytes: Buffer.byteLength(inputText, "utf-8"),
-					},
-				},
-				bus,
-			);
-
-			const result = await embedText(inputText, {
-				provider: values.provider as string | undefined,
-				model: values.model as string | undefined,
-			});
-
-			const payload: Record<string, unknown> = {
-				id: randomUUID(),
-				model: result.model,
-				provider: result.provider,
-				dimensions: result.dimensions,
-				input: {
-					type: inputType,
-					path: inputPath,
-					value: inputType === "text" ? inputText : null,
-				},
-			};
-
-			if (values["include-embedding"]) {
-				payload.embedding = result.embedding;
-			}
-
-			telemetry.track(
-				{
-					event: "embed.success",
-					level: "info",
-					success: true,
-					trace_id: traceId,
-					metadata: {
-						input_type: inputType,
-						bytes: Buffer.byteLength(inputText, "utf-8"),
-						model: result.model,
-						provider: result.provider,
-						duration_ms: Date.now() - startTime,
-					},
-				},
-				bus,
-			);
-
-			const output = JSON.stringify(payload, null, 2);
-			if (values.out) {
-				await writeFile(String(values.out), output);
-				return;
-			}
-
-			console.log(output);
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
+	if (input.action === "text") {
+		inputType = "text";
+		inputText = input.input ?? "";
+		if (!inputText) {
 			telemetry.track(
 				{
 					event: "embed.failure",
-					level: "error",
+					level: "warn",
 					success: false,
 					trace_id: traceId,
-					metadata: {
-						error_message: message,
-						duration_ms: Date.now() - startTime,
-					},
+					metadata: { reason: "missing_text", duration_ms: Date.now() - startTime },
 				},
-				bus,
+				undefined,
 			);
-			console.error(`Error: ${message}`);
-			process.exitCode = 1;
+			return {
+				ok: false,
+				error: sdkError("embed.missing_text", "Text is required."),
+			};
 		}
-	},
-};
+	} else if (input.action === "file") {
+		inputType = "file";
+		inputPath = input.input ?? null;
+		if (!inputPath) {
+			telemetry.track(
+				{
+					event: "embed.failure",
+					level: "warn",
+					success: false,
+					trace_id: traceId,
+					metadata: { reason: "missing_path", duration_ms: Date.now() - startTime },
+				},
+				undefined,
+			);
+			return {
+				ok: false,
+				error: sdkError("embed.missing_path", "File path is required."),
+			};
+		}
+		const { readFile } = await import("node:fs/promises");
+		inputText = await readFile(inputPath, "utf-8");
+	} else {
+		telemetry.track(
+			{
+				event: "embed.failure",
+				level: "warn",
+				success: false,
+				trace_id: traceId,
+				metadata: { reason: "unknown_action", duration_ms: Date.now() - startTime },
+			},
+			undefined,
+		);
+		return {
+			ok: false,
+			error: sdkError("embed.unknown_action", "Unknown embed action."),
+		};
+	}
+
+	telemetry.track(
+		{
+			event: "embed.started",
+			level: "info",
+			success: true,
+			trace_id: traceId,
+			metadata: {
+				input_type: inputType,
+				bytes: Buffer.byteLength(inputText, "utf-8"),
+			},
+		},
+		undefined,
+	);
+
+	try {
+		const result = await embedText(inputText, {
+			provider: input.provider,
+			model: input.model,
+		});
+
+		const payload: EmbedRunResult = {
+			id: crypto.randomUUID(),
+			model: result.model,
+			provider: result.provider,
+			dimensions: result.dimensions,
+			input: {
+				type: inputType,
+				path: inputPath,
+				value: inputType === "text" ? inputText : null,
+			},
+		};
+
+		if (input.includeEmbedding) {
+			payload.embedding = result.embedding;
+		}
+
+		telemetry.track(
+			{
+				event: "embed.success",
+				level: "info",
+				success: true,
+				trace_id: traceId,
+				metadata: {
+					input_type: inputType,
+					bytes: Buffer.byteLength(inputText, "utf-8"),
+					model: result.model,
+					provider: result.provider,
+					duration_ms: Date.now() - startTime,
+				},
+			},
+			undefined,
+		);
+
+		return { ok: true, data: payload };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		telemetry.track(
+			{
+				event: "embed.failure",
+				level: "error",
+				success: false,
+				trace_id: traceId,
+				metadata: { error_message: message, duration_ms: Date.now() - startTime },
+			},
+			undefined,
+		);
+		return {
+			ok: false,
+			error: sdkError("embed.runtime_error", message),
+		};
+	}
+}
+
+const embedBuilder = new CommandBuilder<EmbedRunInput, EmbedRunResult>()
+	.meta(embedMeta)
+	.usage(embedUsage)
+	.schema(embedSchema)
+	.help(embedHelp)
+	.sdkUsage(embedSdkUsage)
+	.outputFields(embedOutputFields)
+	.examples(embedExamples)
+	.errors(embedErrors)
+	.exitCodes(embedExitCodes)
+	.options({
+		options: {
+			...buildStandardOptions(),
+			model: { type: "string" },
+			provider: { type: "string" },
+			"include-embedding": { type: "boolean" },
+			out: { type: "string" },
+		},
+	})
+	.parseInput(async ({ positionals, values }) => ({
+		action: positionals[1] as "text" | "file" | undefined,
+		input: positionals.slice(2).join(" ").trim() || undefined,
+		model: typeof values.model === "string" ? values.model : undefined,
+		provider: typeof values.provider === "string" ? values.provider : undefined,
+		includeEmbedding: Boolean(values["include-embedding"]),
+		out: typeof values.out === "string" ? values.out : undefined,
+		json: values.json !== false,
+	}))
+	.run(run)
+	.onSuccess(async (output, values) => {
+		const jsonOutput = JSON.stringify(output, null, 2);
+		if (values.out) {
+			const { writeFile } = await import("node:fs/promises");
+			await writeFile(String(values.out), jsonOutput);
+			return;
+		}
+		console.log(jsonOutput);
+	})
+	.onFailure((error) => {
+		if (error.code.startsWith("embed.")) {
+			console.error(`Error: ${error.message}`);
+			setExitCode(error, [
+				"embed.missing_action",
+				"embed.missing_text",
+				"embed.missing_path",
+				"embed.unknown_action",
+			]);
+			return;
+		}
+		printError(error);
+		setExitCode(error, [
+			"embed.missing_action",
+			"embed.missing_text",
+			"embed.missing_path",
+			"embed.unknown_action",
+		]);
+	})
+	.telemetry({
+		eventPrefix: "embed",
+		successMetadata: (input, output) => ({
+			input_type: output.input.type,
+			model: output.model,
+			provider: output.provider,
+			include_embedding: Boolean(input.includeEmbedding),
+		}),
+		failureMetadata: (input, error) => ({
+			action: input.action,
+			error: error.message,
+		}),
+	});
+
+export const embedAgentDoc = embedBuilder.buildAgentDoc(false);
+export const embedFeatureDoc = (includeChangelog: boolean) =>
+	embedBuilder.buildFeatureDoc(includeChangelog);
+
+const embedCommand = embedBuilder.build();
 
 export default embedCommand;
