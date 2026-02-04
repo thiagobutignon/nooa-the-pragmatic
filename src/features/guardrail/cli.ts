@@ -1,14 +1,11 @@
-/**
- * Guardrail CLI
- * Command-line interface for guardrail profile checking.
- * Subcommands: check, validate, init
- */
-
 import { access, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseArgs } from "node:util";
 import { stringify as stringifyYaml } from "yaml";
-import type { Command, CommandContext } from "../../core/command";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { printError, renderJson } from "../../core/cli-output";
+import type { AgentDocMeta, SdkResult } from "../../core/types";
+import { sdkError } from "../../core/types";
 import { getBuiltinProfilesDir, loadBuiltinProfile } from "./builtin";
 import type { Finding, GuardrailReport } from "./contracts";
 import { ExitCode } from "./contracts";
@@ -17,7 +14,13 @@ import { loadProfile, validateProfile } from "./profiles";
 import type { RefactorProfile } from "./schemas";
 import { buildProfileFromSpec, parseGuardrailSpec } from "./spec";
 
-const HELP_TEXT = `
+export const guardrailMeta: AgentDocMeta = {
+	name: "guardrail",
+	description: "Run guardrail profile checks on code",
+	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
+};
+
+export const guardrailHelp = `
 Usage: nooa guardrail <subcommand> [options]
 
 Subcommands:
@@ -54,180 +57,208 @@ Examples:
   nooa guardrail spec init
   nooa guardrail add my-profile
   nooa guardrail remove my-profile --force
+
+Exit Codes:
+  0: Success
+  1: Runtime Error
+  2: Validation Error
+  3: Blocking Findings
+  4: Warning Findings
+
+Error Codes:
+  guardrail.missing_subcommand: Missing subcommand
+  guardrail.invalid_subcommand: Unknown subcommand
+  guardrail.missing_profile: Profile is required
+  guardrail.missing_name: Profile name required
+  guardrail.force_required: --force required
+  guardrail.invalid_profile: Profile invalid
+  guardrail.not_found: Profile not found
+  guardrail.runtime_error: Unexpected error
 `;
 
-export async function guardrailCli(args: string[]) {
-	const { values, positionals } = parseArgs({
-		args,
-		options: {
-			profile: { type: "string", short: "p" },
-			spec: { type: "boolean" },
-			watch: { type: "boolean", short: "w" },
-			json: { type: "boolean" },
-			deterministic: { type: "boolean" },
-			force: { type: "boolean" },
-			help: { type: "boolean", short: "h" },
-		},
-		allowPositionals: true,
-	});
+export const guardrailSdkUsage = `
+SDK Usage:
+  await guardrail.run({ action: "check", profile: "security" });
+  await guardrail.run({ action: "list" });
+`;
 
-	if (values.help || positionals.length === 0) {
-		console.log(HELP_TEXT);
-		return;
-	}
+export const guardrailUsage = {
+	cli: "nooa guardrail <subcommand> [options]",
+	sdk: "await guardrail.run({ action: \"check\", profile: \"security\" })",
+	tui: "GuardrailConsole()",
+};
 
-	const subcommand = positionals[0];
+export const guardrailSchema = {
+	action: { type: "string", required: true },
+	profile: { type: "string", required: false },
+	spec: { type: "boolean", required: false },
+	watch: { type: "boolean", required: false },
+	json: { type: "boolean", required: false },
+	deterministic: { type: "boolean", required: false },
+	force: { type: "boolean", required: false },
+} satisfies SchemaSpec;
 
-	switch (subcommand) {
-		case "check":
-			await handleCheck(values);
-			break;
-		case "validate":
-			await handleValidate(values);
-			break;
-		case "init":
-			await handleInit();
-			break;
-		case "list":
-			await handleList();
-			break;
-		case "show":
-			await handleShow(positionals[1]);
-			break;
-		case "spec":
-			await handleSpec(positionals.slice(1));
-			break;
-		case "add":
-			await handleAdd(positionals[1]);
-			break;
-		case "remove":
-			await handleRemove(positionals[1], values.force);
-			break;
-		default:
-			console.error(`Unknown subcommand: ${subcommand}`);
-			console.log(HELP_TEXT);
-			process.exitCode = ExitCode.VALIDATION_ERROR;
-	}
-}
+export const guardrailOutputFields = [
+	{ name: "mode", type: "string" },
+	{ name: "report", type: "string" },
+	{ name: "profiles", type: "string" },
+	{ name: "result", type: "string" },
+];
 
-async function handleCheck(values: {
+export const guardrailErrors = [
+	{ code: "guardrail.missing_subcommand", message: "Missing subcommand." },
+	{ code: "guardrail.invalid_subcommand", message: "Unknown subcommand." },
+	{ code: "guardrail.missing_profile", message: "Profile is required." },
+	{ code: "guardrail.missing_name", message: "Profile name required." },
+	{ code: "guardrail.force_required", message: "--force required." },
+	{ code: "guardrail.invalid_profile", message: "Profile invalid." },
+	{ code: "guardrail.not_found", message: "Profile not found." },
+	{ code: "guardrail.runtime_error", message: "Unexpected error." },
+];
+
+export const guardrailExitCodes = [
+	{ value: "0", description: "Success" },
+	{ value: "1", description: "Runtime error" },
+	{ value: "2", description: "Validation error" },
+	{ value: "3", description: "Blocking findings" },
+	{ value: "4", description: "Warning findings" },
+];
+
+export const guardrailExamples = [
+	{ input: "nooa guardrail check --spec", output: "Run guardrails" },
+	{ input: "nooa guardrail list", output: "List profiles" },
+];
+
+export interface GuardrailRunInput {
+	action?: string;
 	profile?: string;
 	spec?: boolean;
+	watch?: boolean;
 	json?: boolean;
 	deterministic?: boolean;
-}) {
-	if (!values.profile && !values.spec) {
-		console.error("Error: --profile or --spec is required for check");
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
+	force?: boolean;
+	args?: string[];
+}
+
+export interface GuardrailRunResult {
+	mode: string;
+	report?: GuardrailReport;
+	profiles?: string[];
+	result?: string;
+	yaml?: string;
+	valid?: boolean;
+	errors?: string[];
+	payload?: unknown;
+}
+
+export async function run(
+	input: GuardrailRunInput,
+): Promise<SdkResult<GuardrailRunResult>> {
+	const subcommand = input.action;
+	if (!subcommand) {
+		return {
+			ok: false,
+			error: sdkError("guardrail.missing_subcommand", "Missing subcommand."),
+		};
 	}
 
 	try {
-		let profile: RefactorProfile;
-		let profileName: string;
-		let thresholds:
-			| { critical: number; high: number; medium: number; low: number }
-			| undefined;
-		let exclusions: string[] | undefined;
+		switch (subcommand) {
+			case "check": {
+				if (!input.profile && !input.spec) {
+					return {
+						ok: false,
+						error: sdkError(
+							"guardrail.missing_profile",
+							"--profile or --spec is required for check",
+						),
+					};
+				}
 
-		if (values.spec) {
-			// Load from GUARDRAIL.md spec
-			const spec = await parseGuardrailSpec();
-			profile = await buildProfileFromSpec(spec);
-			profileName = "GUARDRAIL.md (spec)";
-			thresholds = spec.thresholds as {
-				critical: number;
-				high: number;
-				medium: number;
-				low: number;
-			};
-			exclusions = spec.exclusions;
-		} else {
-			if (!values.profile) {
-				console.error("Error: --profile is required for check");
-				process.exitCode = ExitCode.VALIDATION_ERROR;
-				return;
+				let profile: RefactorProfile;
+				let profileName: string;
+				let thresholds:
+					| { critical: number; high: number; medium: number; low: number }
+					| undefined;
+				let exclusions: string[] | undefined;
+
+				if (input.spec) {
+					const spec = await parseGuardrailSpec();
+					profile = await buildProfileFromSpec(spec);
+					profileName = "GUARDRAIL.md (spec)";
+					thresholds = spec.thresholds as {
+						critical: number;
+						high: number;
+						medium: number;
+						low: number;
+					};
+					exclusions = spec.exclusions;
+				} else {
+					const rawPath = input.profile as string;
+					const builtinProfiles = [
+						"zero-preguica",
+						"security",
+						"dangerous-patterns",
+						"default",
+					];
+
+					let profilePath = rawPath;
+					if (builtinProfiles.includes(rawPath)) {
+						profilePath = join(getBuiltinProfilesDir(), `${rawPath}.yaml`);
+					}
+
+					profile = await loadProfile(profilePath);
+					profileName = rawPath;
+				}
+
+				const engine = new GuardrailEngine(process.cwd());
+				const startTime = Date.now();
+				const findings = await engine.evaluate(profile, { exclude: exclusions });
+				const executionMs = Date.now() - startTime;
+				const report = buildReport(findings, profileName, executionMs, thresholds);
+				return { ok: true, data: { mode: "check", report } };
 			}
-			const rawPath = values.profile;
-			const builtinProfiles = [
-				"zero-preguica",
-				"security",
-				"dangerous-patterns",
-				"default",
-			];
 
-			let profilePath = rawPath;
-			if (builtinProfiles.includes(rawPath)) {
-				const { getBuiltinProfilesDir } = await import("./builtin");
-				profilePath = join(getBuiltinProfilesDir(), `${rawPath}.yaml`);
+			case "validate": {
+				if (!input.profile) {
+					return {
+						ok: false,
+						error: sdkError(
+							"guardrail.missing_profile",
+							"--profile is required for validate",
+						),
+					};
+				}
+				const result = await validateProfile(input.profile);
+				if (!result.valid) {
+					return {
+						ok: false,
+						error: sdkError("guardrail.invalid_profile", "Profile invalid.", {
+							errors: result.errors ?? [],
+							profile: input.profile,
+						}),
+					};
+				}
+				return {
+					ok: true,
+					data: { mode: "validate", result: `Profile "${input.profile}" is valid` },
+				};
 			}
 
-			profile = await loadProfile(profilePath);
-			profileName = rawPath;
-		}
+			case "init": {
+				const guardrailsDir = join(process.cwd(), ".nooa", "guardrails");
+				const profilesDir = join(guardrailsDir, "profiles");
+				const templatesDir = join(guardrailsDir, "templates");
+				await mkdir(profilesDir, { recursive: true });
+				await mkdir(templatesDir, { recursive: true });
 
-		const engine = new GuardrailEngine(process.cwd());
-		const startTime = Date.now();
-		const findings = await engine.evaluate(profile, { exclude: exclusions });
-		const executionMs = Date.now() - startTime;
-
-		const report = buildReport(findings, profileName, executionMs, thresholds);
-
-		if (values.json) {
-			console.log(JSON.stringify(report, null, 2));
-		} else {
-			printReport(report);
-		}
-
-		// Set exit code based on findings
-		if (report.status === "fail") {
-			process.exitCode = ExitCode.BLOCKING_FINDINGS;
-		} else if (report.status === "warning") {
-			process.exitCode = ExitCode.WARNING_FINDINGS;
-		}
-	} catch (error) {
-		console.error(`Error: ${error}`);
-		process.exitCode = ExitCode.RUNTIME_ERROR;
-	}
-}
-
-async function handleValidate(values: { profile?: string }) {
-	if (!values.profile) {
-		console.error("Error: --profile is required for validate");
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
-	}
-
-	const result = await validateProfile(values.profile);
-
-	if (result.valid) {
-		console.log(`✅ Profile "${values.profile}" is valid`);
-	} else {
-		console.error(`❌ Profile "${values.profile}" is invalid:`);
-		for (const error of result.errors ?? []) {
-			console.error(`   ${error}`);
-		}
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-	}
-}
-
-async function handleInit() {
-	const guardrailsDir = join(process.cwd(), ".nooa", "guardrails");
-	const profilesDir = join(guardrailsDir, "profiles");
-	const templatesDir = join(guardrailsDir, "templates");
-
-	try {
-		await mkdir(profilesDir, { recursive: true });
-		await mkdir(templatesDir, { recursive: true });
-
-		// Create default profile if not exists
-		const defaultProfile = join(profilesDir, "default.yaml");
-		try {
-			await access(defaultProfile);
-		} catch {
-			await writeFile(
-				defaultProfile,
-				`# NOOA Guardrail Profile - Default
+				const defaultProfile = join(profilesDir, "default.yaml");
+				try {
+					await access(defaultProfile);
+				} catch {
+					await writeFile(
+						defaultProfile,
+						`# NOOA Guardrail Profile - Default
 refactor_name: default
 description: Default guardrail profile for NOOA
 version: "1.0.0"
@@ -256,86 +287,68 @@ rules:
       exclude:
         - "**/*.test.ts"
 `,
-			);
-		}
-
-		console.log("✅ Initialized .nooa/guardrails/ directory");
-		console.log("   Created: profiles/default.yaml");
-		console.log(
-			"\nRun: nooa guardrail check --profile .nooa/guardrails/profiles/default.yaml",
-		);
-	} catch (error) {
-		console.error(`Error initializing guardrails: ${error}`);
-		process.exitCode = ExitCode.RUNTIME_ERROR;
-	}
-}
-
-async function handleList() {
-	const profilesDir = getBuiltinProfilesDir();
-	try {
-		const entries = await readdir(profilesDir, { withFileTypes: true });
-		const names = entries
-			.filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
-			.map((entry) => entry.name.replace(/\.yaml$/, ""))
-			.sort();
-
-		for (const name of names) {
-			console.log(name);
-		}
-	} catch (error) {
-		console.error(`Error listing profiles: ${error}`);
-		process.exitCode = ExitCode.RUNTIME_ERROR;
-	}
-}
-
-async function handleShow(input?: string) {
-	if (!input) {
-		console.error("Error: profile name or path is required for show");
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
-	}
-
-	try {
-		let profilePath = input;
-		if (!input.endsWith(".yaml")) {
-			profilePath = join(getBuiltinProfilesDir(), `${input}.yaml`);
-		}
-		const profile = await loadProfile(profilePath);
-		console.log(stringifyYaml(profile));
-	} catch (error) {
-		console.error(`Error showing profile: ${error}`);
-		process.exitCode = ExitCode.RUNTIME_ERROR;
-	}
-}
-
-async function handleSpec(args: string[]) {
-	const subcommand = args[0];
-
-	if (subcommand === "show") {
-		try {
-			const spec = await parseGuardrailSpec();
-			console.log("Enabled profiles:");
-			for (const profileName of spec.profiles) {
-				console.log(`- ${profileName}`);
+					);
+				}
+				return {
+					ok: true,
+					data: {
+						mode: "init",
+						result: "Initialized .nooa/guardrails/ directory",
+					},
+				};
 			}
-		} catch (error) {
-			console.error(`Error showing GUARDRAIL.md: ${error}`);
-			process.exitCode = ExitCode.RUNTIME_ERROR;
-		}
-		return;
-	}
 
-	if (subcommand === "init") {
-		const guardrailsDir = join(process.cwd(), ".nooa", "guardrails");
-		try {
-			await mkdir(guardrailsDir, { recursive: true });
-			const specPath = join(guardrailsDir, "GUARDRAIL.md");
-			try {
-				await access(specPath);
-			} catch {
-				await writeFile(
-					specPath,
-					`# GUARDRAIL.md
+			case "list": {
+				const profilesDir = getBuiltinProfilesDir();
+				const entries = await readdir(profilesDir, { withFileTypes: true });
+				const names = entries
+					.filter((entry) => entry.isFile() && entry.name.endsWith(".yaml"))
+					.map((entry) => entry.name.replace(/\.yaml$/, ""))
+					.sort();
+				return { ok: true, data: { mode: "list", profiles: names } };
+			}
+
+			case "show": {
+				const inputName = input.args?.[0];
+				if (!inputName) {
+					return {
+						ok: false,
+						error: sdkError(
+							"guardrail.missing_name",
+							"profile name or path is required for show",
+						),
+					};
+				}
+				let profilePath = inputName;
+				if (!inputName.endsWith(".yaml")) {
+					profilePath = join(getBuiltinProfilesDir(), `${inputName}.yaml`);
+				}
+				const profile = await loadProfile(profilePath);
+				return {
+					ok: true,
+					data: { mode: "show", yaml: stringifyYaml(profile) },
+				};
+			}
+
+			case "spec": {
+				const specCommand = input.args?.[0];
+				if (specCommand === "show") {
+					const spec = await parseGuardrailSpec();
+					return {
+						ok: true,
+						data: { mode: "spec", result: spec },
+					};
+				}
+				if (specCommand === "init") {
+					const guardrailsDir = join(process.cwd(), ".nooa", "guardrails");
+					await mkdir(guardrailsDir, { recursive: true });
+					const specPath = join(guardrailsDir, "GUARDRAIL.md");
+					try {
+						await access(specPath);
+					} catch {
+						await writeFile(
+							specPath,
+							`# GUARDRAIL.md
 
 ## Enabled Profiles
 
@@ -356,102 +369,248 @@ async function handleSpec(args: string[]) {
 **/node_modules/**
 \`\`\`
 `,
+						);
+					}
+					return {
+						ok: true,
+						data: { mode: "spec", result: "Initialized GUARDRAIL.md" },
+					};
+				}
+				if (specCommand !== "validate") {
+					return {
+						ok: false,
+						error: sdkError(
+							"guardrail.invalid_subcommand",
+							"spec subcommand is required (validate)",
+						),
+					};
+				}
+
+				const spec = await parseGuardrailSpec();
+				const invalidProfiles: string[] = [];
+				for (const profileName of spec.profiles) {
+					try {
+						await loadBuiltinProfile(profileName);
+					} catch {
+						invalidProfiles.push(profileName);
+					}
+				}
+
+				if (invalidProfiles.length > 0) {
+					return {
+						ok: false,
+						error: sdkError(
+							"guardrail.invalid_profile",
+							`GUARDRAIL.md references missing profiles: ${invalidProfiles.join(", ")}`,
+						),
+					};
+				}
+
+				return { ok: true, data: { mode: "spec", result: "GUARDRAIL.md is valid" } };
+			}
+
+			case "add": {
+				const name = input.args?.[0];
+				if (!name) {
+					return {
+						ok: false,
+						error: sdkError("guardrail.missing_name", "profile name is required"),
+					};
+				}
+				const profilesDir = getBuiltinProfilesDir();
+				const profilePath = join(profilesDir, `${name}.yaml`);
+				try {
+					await mkdir(profilesDir, { recursive: true });
+					await access(profilePath);
+					return {
+						ok: false,
+						error: sdkError(
+							"guardrail.invalid_profile",
+							`profile "${name}" already exists`,
+						),
+					};
+				} catch {
+					// continue
+				}
+				await writeFile(
+					profilePath,
+					`# NOOA Guardrail Profile
+refactor_name: ${name}
+description: ${name} profile
+version: "1.0.0"
+
+rules:
+  - id: example-rule
+    description: Example rule
+    severity: low
+    match:
+      anyOf:
+        - type: literal
+          value: "TODO"
+`,
 				);
+				return {
+					ok: true,
+					data: { mode: "add", result: `Created profile: ${profilePath}` },
+				};
 			}
-			console.log("✅ Initialized GUARDRAIL.md");
-		} catch (error) {
-			console.error(`Error initializing GUARDRAIL.md: ${error}`);
-			process.exitCode = ExitCode.RUNTIME_ERROR;
-		}
-		return;
-	}
 
-	if (subcommand !== "validate") {
-		console.error("Error: spec subcommand is required (validate)");
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
-	}
-
-	try {
-		const spec = await parseGuardrailSpec();
-		const invalidProfiles: string[] = [];
-
-		for (const profileName of spec.profiles) {
-			try {
-				await loadBuiltinProfile(profileName);
-			} catch {
-				invalidProfiles.push(profileName);
+			case "remove": {
+				const name = input.args?.[0];
+				if (!name) {
+					return {
+						ok: false,
+						error: sdkError("guardrail.missing_name", "profile name is required"),
+					};
+				}
+				if (!input.force) {
+					return {
+						ok: false,
+						error: sdkError(
+							"guardrail.force_required",
+							"--force is required to remove profiles",
+						),
+					};
+				}
+				const profilePath = join(getBuiltinProfilesDir(), `${name}.yaml`);
+				await rm(profilePath);
+				return {
+					ok: true,
+					data: { mode: "remove", result: `Removed profile: ${profilePath}` },
+				};
 			}
+
+			default:
+				return {
+					ok: false,
+					error: sdkError("guardrail.invalid_subcommand", "Unknown subcommand."),
+				};
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { ok: false, error: sdkError("guardrail.runtime_error", message) };
+	}
+}
+
+const guardrailBuilder = new CommandBuilder<GuardrailRunInput, GuardrailRunResult>()
+	.meta(guardrailMeta)
+	.usage(guardrailUsage)
+	.schema(guardrailSchema)
+	.help(guardrailHelp)
+	.sdkUsage(guardrailSdkUsage)
+	.outputFields(guardrailOutputFields)
+	.examples(guardrailExamples)
+	.errors(guardrailErrors)
+	.exitCodes(guardrailExitCodes)
+	.options({
+		options: {
+			...buildStandardOptions(),
+			profile: { type: "string", short: "p" },
+			spec: { type: "boolean" },
+			watch: { type: "boolean", short: "w" },
+			json: { type: "boolean" },
+			deterministic: { type: "boolean" },
+			force: { type: "boolean" },
+		},
+	})
+	.parseInput(async ({ positionals, values }) => ({
+		action: positionals[1],
+		profile: typeof values.profile === "string" ? values.profile : undefined,
+		spec: Boolean(values.spec),
+		watch: Boolean(values.watch),
+		json: Boolean(values.json),
+		deterministic: Boolean(values.deterministic),
+		force: Boolean(values.force),
+		args: positionals.slice(2),
+	}))
+	.run(run)
+	.onSuccess((output, values) => {
+		if (values.json) {
+			renderJson(output);
+			return;
 		}
 
-		if (invalidProfiles.length > 0) {
-			console.error(
-				`❌ GUARDRAIL.md references missing profiles: ${invalidProfiles.join(", ")}`,
-			);
+		if (output.mode === "check" && output.report) {
+			printReport(output.report);
+			if (output.report.status === "fail") {
+				process.exitCode = ExitCode.BLOCKING_FINDINGS;
+			} else if (output.report.status === "warning") {
+				process.exitCode = ExitCode.WARNING_FINDINGS;
+			}
+			return;
+		}
+
+		if (output.mode === "list" && output.profiles) {
+			for (const name of output.profiles) {
+				console.log(name);
+			}
+			return;
+		}
+
+		if (output.mode === "show" && output.yaml) {
+			console.log(output.yaml);
+			return;
+		}
+
+		if (output.result) {
+			console.log(output.result);
+			return;
+		}
+	})
+	.onFailure((error) => {
+		if (error.code === "guardrail.missing_subcommand") {
+			console.log(guardrailHelp);
 			process.exitCode = ExitCode.VALIDATION_ERROR;
 			return;
 		}
 
-		console.log("✅ GUARDRAIL.md is valid");
-	} catch (error) {
-		console.error(`Error validating GUARDRAIL.md: ${error}`);
+		if (error.code === "guardrail.invalid_subcommand") {
+			console.error(`Unknown subcommand: ${error.message}`);
+			console.log(guardrailHelp);
+			process.exitCode = ExitCode.VALIDATION_ERROR;
+			return;
+		}
+
+		if (
+			error.code === "guardrail.missing_profile" ||
+			error.code === "guardrail.missing_name" ||
+			error.code === "guardrail.force_required" ||
+			error.code === "guardrail.invalid_profile"
+		) {
+			console.error(error.message);
+			process.exitCode = ExitCode.VALIDATION_ERROR;
+			return;
+		}
+
+		if (error.code === "guardrail.not_found") {
+			console.error(error.message);
+			process.exitCode = ExitCode.RUNTIME_ERROR;
+			return;
+		}
+
+		printError(error);
 		process.exitCode = ExitCode.RUNTIME_ERROR;
-	}
-}
+	})
+	.telemetry({
+		eventPrefix: "guardrail",
+		successMetadata: (input, output) => ({
+			action: output.mode,
+			profile: input.profile,
+		}),
+		failureMetadata: (input, error) => ({
+			action: input.action,
+			profile: input.profile,
+			error: error.message,
+		}),
+	});
 
-async function handleAdd(name?: string) {
-	if (!name) {
-		console.error("Error: profile name is required for add");
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
-	}
+export const guardrailAgentDoc = guardrailBuilder.buildAgentDoc(false);
+export const guardrailFeatureDoc = (includeChangelog: boolean) =>
+	guardrailBuilder.buildFeatureDoc(includeChangelog);
 
-	const profilesDir = getBuiltinProfilesDir();
-	const profilePath = join(profilesDir, `${name}.yaml`);
+const guardrailCommand = guardrailBuilder.build();
 
-	try {
-		await mkdir(profilesDir, { recursive: true });
-		await access(profilePath);
-		console.error(`Error: profile "${name}" already exists`);
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
-	} catch {
-		// File doesn't exist, continue.
-	}
-
-	try {
-		await writeFile(
-			profilePath,
-			`# NOOA Guardrail Profile\nrefactor_name: ${name}\ndescription: ${name} profile\nversion: "1.0.0"\n\nrules:\n  - id: example-rule\n    description: Example rule\n    severity: low\n    match:\n      anyOf:\n        - type: literal\n          value: "TODO"\n`,
-		);
-		console.log(`✅ Created profile: ${profilePath}`);
-	} catch (error) {
-		console.error(`Error creating profile: ${error}`);
-		process.exitCode = ExitCode.RUNTIME_ERROR;
-	}
-}
-
-async function handleRemove(name?: string, force?: boolean) {
-	if (!name) {
-		console.error("Error: profile name is required for remove");
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
-	}
-	if (!force) {
-		console.error("Error: --force is required to remove profiles");
-		process.exitCode = ExitCode.VALIDATION_ERROR;
-		return;
-	}
-
-	const profilePath = join(getBuiltinProfilesDir(), `${name}.yaml`);
-	try {
-		await rm(profilePath);
-		console.log(`✅ Removed profile: ${profilePath}`);
-	} catch (error) {
-		console.error(`Error removing profile: ${error}`);
-		process.exitCode = ExitCode.RUNTIME_ERROR;
-	}
-}
+export default guardrailCommand;
 
 function buildReport(
 	findings: Finding[],
@@ -503,7 +662,7 @@ function buildReport(
 		meta: {
 			command: "guardrail check",
 			profile: profilePath,
-			traceId: "deterministic", // Fixed for determinism
+			traceId: "deterministic",
 		},
 	};
 }
@@ -532,14 +691,3 @@ function printReport(report: GuardrailReport) {
 		}
 	}
 }
-
-const guardrailCommand: Command = {
-	name: "guardrail",
-	description: "Run guardrail profile checks on code",
-	async execute({ rawArgs }: CommandContext) {
-		const index = rawArgs.indexOf("guardrail");
-		await guardrailCli(rawArgs.slice(index + 1));
-	},
-};
-
-export default guardrailCommand;
