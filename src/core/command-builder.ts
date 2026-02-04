@@ -1,4 +1,5 @@
 import type { Command, CommandContext } from "./command";
+import type { EventBus } from "./event-bus";
 import { HelpBuilder, renderChangelogXml } from "./help-builder";
 import { buildStandardOptions } from "./cli-flags";
 import { createTraceId, logger } from "./logger";
@@ -35,6 +36,7 @@ type ParseOptions = {
 type InputContext = {
 	values: Record<string, unknown>;
 	positionals: string[];
+	bus?: EventBus;
 };
 
 type TelemetryConfig<Input, Output> = {
@@ -52,8 +54,11 @@ export class CommandBuilder<Input, Output> {
 	private parseOptions?: ParseOptions;
 	private inputParser?: (ctx: InputContext) => Promise<Input>;
 	private runFn?: (input: Input) => Promise<SdkResult<Output>>;
-	private renderSuccess?: (output: Output, values: Record<string, unknown>) => void;
-	private renderFailure?: (error: SdkError, input: Input) => void;
+	private renderSuccess?: (
+		output: Output,
+		values: Record<string, unknown>,
+	) => void | Promise<void>;
+	private renderFailure?: (error: SdkError, input: Input) => void | Promise<void>;
 	private telemetryConfig?: TelemetryConfig<Input, Output>;
 	private agentDocIncludeChangelog = false;
 	private examplesValue: AgentDocExample[] = [];
@@ -101,12 +106,17 @@ export class CommandBuilder<Input, Output> {
 		return this;
 	}
 
-	onSuccess(fn: (output: Output, values: Record<string, unknown>) => void) {
+	onSuccess(
+		fn: (
+			output: Output,
+			values: Record<string, unknown>,
+		) => void | Promise<void>,
+	) {
 		this.renderSuccess = fn;
 		return this;
 	}
 
-	onFailure(fn: (error: SdkError, input: Input) => void) {
+	onFailure(fn: (error: SdkError, input: Input) => void | Promise<void>) {
 		this.renderFailure = fn;
 		return this;
 	}
@@ -287,12 +297,12 @@ ${outputXml}
 			const traceId = createTraceId();
 			const startTime = Date.now();
 
-			const input = await inputParser({ values, positionals });
+			const input = await inputParser({ values, positionals, bus });
 			const result = await runFn(input);
 
 			if (!result.ok) {
 				if (this.renderFailure) {
-					this.renderFailure(result.error, input);
+					await this.renderFailure(result.error, input);
 				} else {
 					console.error(`Error: ${result.error.message}`);
 					process.exitCode = result.error.code === "invalid_input" ? 2 : 1;
@@ -316,7 +326,7 @@ ${outputXml}
 			}
 
 			if (this.renderSuccess) {
-				this.renderSuccess(result.data, values);
+				await this.renderSuccess(result.data, values);
 			}
 
 			const successMeta =
