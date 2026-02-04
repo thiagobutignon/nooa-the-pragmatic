@@ -3,6 +3,7 @@ import {
 	handleCommandError,
 	setExitCode
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { SkillManager } from "./manager";

@@ -1,8 +1,12 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { Database } from "bun:sqlite";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import { logger } from "../../core/logger";
 import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";
 import type { McpResource } from "../../core/mcp/types";

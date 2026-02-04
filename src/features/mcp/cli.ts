@@ -1,8 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import {
-	handleCommandError,
-	renderJson
+	handleCommandError
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { dropSubcommandPositionals } from "./helpers";
@@ -119,12 +119,16 @@ export async function run(
 		if (!cmdFn) {
 			return {
 				ok: false,
-				error: sdkError("mcp.unknown_subcommand", "Unknown subcommand."),
+				error: sdkError(
+					"mcp.unknown_subcommand",
+					`Unknown subcommand: ${command}`,
+				),
 			};
 		}
 
-		const rawArgs = input.rawArgs ?? [];
-		const exitCode = await cmdFn(rawArgs.slice(1));
+		const args = input.args ?? [];
+		const normalizedArgs = args[0] === command ? args.slice(1) : args;
+		const exitCode = await cmdFn(normalizedArgs);
 		return { ok: true, data: { result: exitCode } };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -145,22 +149,20 @@ const mcpBuilder = new CommandBuilder<McpRunInput, McpRunResult>()
 	.examples(mcpExamples)
 	.errors(mcpErrors)
 	.exitCodes(mcpExitCodes)
-	.options({ options: buildStandardOptions() })
+	.options({ options: buildStandardOptions(), strict: false })
 	.parseInput(async ({ positionals, values, rawArgs }) => {
 		const normalized = dropSubcommandPositionals(positionals, "mcp");
+		const args =
+			rawArgs && rawArgs.length > 0 ? rawArgs.slice(1) : normalized.slice(1);
 		return {
 			command: normalized[0],
-			args: normalized.slice(1),
+			args,
 			json: Boolean(values.json),
 			rawArgs,
 		};
 	})
 	.run(run)
-	.onSuccess((output, values) => {
-		if (values.json) {
-			renderJson({ ok: true, result: output.result });
-			return;
-		}
+	.onSuccess((output) => {
 		process.exitCode = output.result;
 	})
 	.onFailure((error) => {
@@ -170,7 +172,7 @@ const mcpBuilder = new CommandBuilder<McpRunInput, McpRunResult>()
 			return;
 		}
 		if (error.code === "mcp.unknown_subcommand") {
-			console.error(`Unknown subcommand`);
+			console.error(error.message);
 			console.error('Run "nooa mcp --help" for usage');
 			process.exitCode = 1;
 			return;
@@ -193,6 +195,25 @@ export const mcpAgentDoc = mcpBuilder.buildAgentDoc(false);
 export const mcpFeatureDoc = (includeChangelog: boolean) =>
 	mcpBuilder.buildFeatureDoc(includeChangelog);
 
-const mcpCommand = mcpBuilder.build();
+const mcpCliCommand = mcpBuilder.build();
 
-export default mcpCommand;
+export async function mcpCommand(args: string[]): Promise<number> {
+	const { EventBus } = await import("../../core/event-bus");
+	const bus = new EventBus();
+	if (args.length === 0) {
+		console.log(mcpHelp);
+		return 0;
+	}
+	process.exitCode = 0;
+	await mcpCliCommand.execute({
+		args: ["mcp", ...args],
+		rawArgs: ["mcp", ...args],
+		values: {},
+		bus,
+	});
+	const code = process.exitCode ?? 0;
+	process.exitCode = 0;
+	return code;
+}
+
+export default mcpCliCommand;

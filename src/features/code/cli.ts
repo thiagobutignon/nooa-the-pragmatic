@@ -1,8 +1,12 @@
+import { readFile, writeFile } from "node:fs/promises";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
+import type { AgentDocMeta, SdkResult } from "../../core/types";
+import { sdkError } from "../../core/types";
 import { executeDiff } from "./diff";
 import { executeFormat } from "./format";
 import { applyPatch } from "./patch";

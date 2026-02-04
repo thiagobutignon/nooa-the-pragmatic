@@ -3,6 +3,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import { openMcpDatabase } from "../../core/mcp/db";
 import { executeMcpToolFromAi } from "../../core/mcp/integrations/ai";
 import type { AgentDocMeta, SdkResult } from "../../core/types";

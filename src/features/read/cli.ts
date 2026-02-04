@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { isAbsolute, resolve } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import {
 	printError,

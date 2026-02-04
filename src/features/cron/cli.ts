@@ -3,6 +3,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { CronJobRecord, CronJobSpec } from "../../core/db/cron_store";
@@ -475,9 +476,10 @@ const cronBuilder = new CommandBuilder<CronRunInput, CronRunResult>()
 			active: { type: "boolean" },
 		},
 	})
-	.parseInput(async ({ positionals, values }) => {
-		const delimiterIndex = positionals.indexOf("--");
-		const argv = delimiterIndex >= 0 ? positionals.slice(delimiterIndex + 1) : [];
+	.parseInput(async ({ positionals, values, rawArgs }) => {
+		const sourceArgs = rawArgs ?? positionals;
+		const delimiterIndex = sourceArgs.indexOf("--");
+		const argv = delimiterIndex >= 0 ? sourceArgs.slice(delimiterIndex + 1) : [];
 		return {
 			action: positionals[1],
 			name: positionals[2],

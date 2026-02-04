@@ -4,6 +4,7 @@ import {
 	renderJson,
 	setExitCode
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import { createTraceId, logger } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";

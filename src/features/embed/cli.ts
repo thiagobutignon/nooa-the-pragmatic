@@ -4,6 +4,7 @@ import {
 	renderJsonOrWrite,
 	setExitCode
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -84,6 +85,7 @@ export const embedErrors = [
 	{ code: "embed.missing_text", message: "Text is required." },
 	{ code: "embed.missing_path", message: "File path is required." },
 	{ code: "embed.unknown_action", message: "Unknown embed action." },
+	{ code: "embed.read_failed", message: "Failed to read file." },
 	{ code: "embed.runtime_error", message: "Embedding failed." },
 ];
 
@@ -187,8 +189,19 @@ export async function run(
 				error: sdkError("embed.missing_path", "File path is required."),
 			};
 		}
-		const { readFile } = await import("node:fs/promises");
-		inputText = await readFile(inputPath, "utf-8");
+		try {
+			const { readFile } = await import("node:fs/promises");
+			inputText = await readFile(inputPath, "utf-8");
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				ok: false,
+				error: sdkError("embed.read_failed", "Failed to read file.", {
+					path: inputPath,
+					error: message,
+				}),
+			};
+		}
 	} else {
 		telemetry.track(
 			{

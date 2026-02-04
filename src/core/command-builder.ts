@@ -34,6 +34,7 @@ type ParseOptions = {
 		string,
 		{ type: "string" | "boolean"; short?: string; multiple?: boolean }
 	>;
+	strict?: boolean;
 };
 
 type InputContext = {
@@ -285,7 +286,7 @@ ${outputXml}
 			const parsed = parseArgs({
 				args: rawArgs,
 				options: parseOptions.options,
-				strict: true,
+				strict: parseOptions.strict ?? true,
 				allowPositionals: true,
 			});
 

@@ -2,6 +2,7 @@ import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import {
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 
 export const pwdMeta: AgentDocMeta = {

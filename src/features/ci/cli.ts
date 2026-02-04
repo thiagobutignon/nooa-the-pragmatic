@@ -3,6 +3,7 @@ import {
 	handleCommandError,
 	renderJsonOrWrite
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { EventBus } from "../../core/event-bus";

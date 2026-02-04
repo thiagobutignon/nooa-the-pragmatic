@@ -3,6 +3,7 @@ import {
 	handleCommandError,
 	renderJsonOrWrite
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import * as readline from "node:readline/promises";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";

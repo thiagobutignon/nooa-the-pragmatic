@@ -1,8 +1,12 @@
+import { join } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import {
 	handleCommandError,
-	renderJson
+	renderJson,
+	setExitCode
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { createTraceId } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { PromptEngine } from "./engine";
@@ -152,6 +156,7 @@ export interface PromptRunResult {
 	rendered?: string;
 	version?: string;
 	results?: unknown;
+	traceId?: string;
 }
 
 const parseVars = (vars: unknown): string[] => {
@@ -167,6 +172,7 @@ const parseVars = (vars: unknown): string[] => {
 export async function run(
 	input: PromptRunInput,
 ): Promise<SdkResult<PromptRunResult>> {
+	const traceId = createTraceId();
 	try {
 		const action = input.action;
 		if (!action) {
@@ -218,7 +224,7 @@ export async function run(
 					output: output as "json" | "markdown",
 					body,
 				});
-				return { ok: true, data: { action, name: input.name } };
+			return { ok: true, data: { action, name: input.name, traceId } };
 			}
 			case "edit": {
 				if (!input.name) {
@@ -242,7 +248,7 @@ export async function run(
 					};
 				}
 				await editPrompt({ templatesDir, name: input.name, patch });
-				return { ok: true, data: { action, name: input.name } };
+			return { ok: true, data: { action, name: input.name, traceId } };
 			}
 			case "delete": {
 				if (!input.name) {
@@ -252,7 +258,7 @@ export async function run(
 					};
 				}
 				await deletePrompt({ templatesDir, name: input.name });
-				return { ok: true, data: { action, name: input.name } };
+			return { ok: true, data: { action, name: input.name, traceId } };
 			}
 			case "publish": {
 				if (!input.name) {
@@ -291,11 +297,11 @@ export async function run(
 					),
 					note,
 				});
-				return { ok: true, data: { action, name: input.name, version } };
+			return { ok: true, data: { action, name: input.name, version, traceId } };
 			}
 			case "list": {
 				const prompts = await engine.listPrompts();
-				return { ok: true, data: { action, prompts } };
+			return { ok: true, data: { action, prompts, traceId } };
 			}
 			case "view":
 			case "validate": {
@@ -318,20 +324,21 @@ export async function run(
 								name: prompt.name,
 								valid: true,
 							})),
+							traceId,
 						},
 					};
 				}
 
 				const prompt = await engine.loadPrompt(input.name as string);
 				if (action === "view") {
-					return { ok: true, data: { action, prompt } };
-				}
-
-				return {
-					ok: true,
-					data: { action, name: input.name, prompt: prompt.metadata },
-				};
+				return { ok: true, data: { action, prompt, traceId } };
 			}
+
+			return {
+				ok: true,
+				data: { action, name: input.name, prompt: prompt.metadata, traceId },
+			};
+		}
 			case "render": {
 				if (!input.name) {
 					return {
@@ -346,17 +353,22 @@ export async function run(
 					vars[key] = rest.join("=");
 				}
 				const rendered = await engine.renderPrompt(prompt, vars);
-				return { ok: true, data: { action, name: input.name, rendered } };
-			}
-			default:
-				return {
-					ok: false,
-					error: sdkError("prompt.missing_action", "Missing subcommand."),
-				};
+			return { ok: true, data: { action, name: input.name, rendered, traceId } };
+		}
+		default:
+			return {
+				ok: false,
+				error: sdkError("prompt.missing_action", "Missing subcommand.", {
+					traceId,
+				}),
+			};
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		return { ok: false, error: sdkError("prompt.runtime_error", message) };
+		return {
+			ok: false,
+			error: sdkError("prompt.runtime_error", message, { traceId }),
+		};
 	}
 }
 
@@ -402,7 +414,15 @@ const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
 	.run(run)
 	.onSuccess((output, values) => {
 		if (values.json) {
-			renderJson(output);
+			const payload = {
+				schemaVersion: "1.0",
+				ok: true,
+				traceId: output.traceId ?? createTraceId(),
+				command: "prompt",
+				timestamp: new Date().toISOString(),
+				...output,
+			};
+			renderJson(payload);
 			return;
 		}
 
@@ -456,8 +476,8 @@ const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
 				break;
 		}
 	})
-	.onFailure((error) => {
-		handleCommandError(error, [
+	.onFailure((error, input) => {
+		const validationCodes = [
 			"prompt.missing_action",
 			"prompt.missing_name",
 			"prompt.missing_description",
@@ -467,7 +487,26 @@ const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
 			"prompt.missing_level",
 			"prompt.invalid_level",
 			"prompt.missing_note",
-		]);
+		];
+
+		if (input.json) {
+			const payload = {
+				schemaVersion: "1.0",
+				ok: false,
+				traceId:
+					typeof error.details?.traceId === "string"
+						? error.details.traceId
+						: createTraceId(),
+				command: "prompt",
+				timestamp: new Date().toISOString(),
+				error: error.message,
+			};
+			renderJson(payload);
+			setExitCode(error, validationCodes);
+			return;
+		}
+
+		handleCommandError(error, validationCodes);
 	})
 	.telemetry({
 		eventPrefix: "prompt",

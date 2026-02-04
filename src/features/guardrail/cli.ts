@@ -1,8 +1,13 @@
+import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { stringify as stringifyYaml } from "yaml";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import {
 	printError,
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { getBuiltinProfilesDir, loadBuiltinProfile } from "./builtin";
@@ -149,6 +154,36 @@ export interface GuardrailRunResult {
 	errors?: string[];
 	payload?: unknown;
 }
+
+const formatSpecSummary = (spec: {
+	profiles: string[];
+	thresholds?: { critical?: number; high?: number; medium?: number; low?: number };
+	exclusions?: string[];
+}) => {
+	const lines: string[] = ["Enabled profiles:"];
+	for (const profile of spec.profiles ?? []) {
+		lines.push(`- ${profile}`);
+	}
+
+	if (spec.thresholds) {
+		lines.push("", "Thresholds:");
+		lines.push(
+			`critical: ${spec.thresholds.critical ?? 0}`,
+			`high: ${spec.thresholds.high ?? 0}`,
+			`medium: ${spec.thresholds.medium ?? 0}`,
+			`low: ${spec.thresholds.low ?? 0}`,
+		);
+	}
+
+	if (spec.exclusions && spec.exclusions.length > 0) {
+		lines.push("", "Exclusions:");
+		for (const exclusion of spec.exclusions) {
+			lines.push(`- ${exclusion}`);
+		}
+	}
+
+	return lines.join("\n");
+};
 
 export async function run(
 	input: GuardrailRunInput,
@@ -335,7 +370,11 @@ rules:
 					const spec = await parseGuardrailSpec();
 					return {
 						ok: true,
-						data: { mode: "spec", result: spec },
+						data: {
+							mode: "spec",
+							result: formatSpecSummary(spec),
+							payload: spec,
+						},
 					};
 				}
 				if (specCommand === "init") {
@@ -525,6 +564,10 @@ const guardrailBuilder = new CommandBuilder<GuardrailRunInput, GuardrailRunResul
 	.run(run)
 	.onSuccess((output, values) => {
 		if (values.json) {
+			if (output.mode === "check" && output.report) {
+				renderJson(output.report);
+				return;
+			}
 			renderJson(output);
 			return;
 		}
@@ -610,6 +653,16 @@ export const guardrailFeatureDoc = (includeChangelog: boolean) =>
 const guardrailCommand = guardrailBuilder.build();
 
 export default guardrailCommand;
+
+export async function guardrailCli(args: string[]) {
+	const bus = new EventBus();
+	await guardrailCommand.execute({
+		args: ["guardrail", ...args],
+		rawArgs: ["guardrail", ...args],
+		values: {},
+		bus,
+	});
+}
 
 function buildReport(
 	findings: Finding[],

@@ -3,6 +3,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import type { EventBus } from "../../core/event-bus";
 import { getCurrentBranch } from "../../core/integrations/git";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -389,7 +390,6 @@ const prBuilder = new CommandBuilder<PrRunInput, PrRunResult>()
 	.onFailure((error) => {
 		handleCommandError(error, [
 			"pr.missing_action",
-			"pr.missing_number",
 			"pr.missing_title",
 			"pr.missing_body",
 			"pr.missing_comment",

@@ -3,6 +3,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
+import { buildStandardOptions } from "../../core/cli-flags";
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -423,7 +424,7 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 		}
 
 		const payload = output.payload as any;
-		if (values.command === "run" && payload?.cases) {
+		if (payload?.cases) {
 			for (const r of payload.cases) {
 				const status = r.passed ? "✅" : "❌";
 				console.log(
@@ -439,12 +440,12 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			return;
 		}
 
-		if (values.command === "apply") {
+		if (payload?.result && payload?.totalScore !== undefined) {
 			console.log(`\n✅ Applied! ${payload.result ?? ""}`);
 			return;
 		}
 
-		if (values.command === "suggest") {
+		if (payload?.failures) {
 			if (!payload.failures || payload.failures.length === 0) {
 				console.log("Everything passed! No suggestions needed.");
 				return;
@@ -459,28 +460,32 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			return;
 		}
 
-		if (values.command === "report") {
+		if (
+			payload?.prompt &&
+			payload?.suite &&
+			payload?.command &&
+			payload?.totalScore !== undefined
+		) {
 			console.log(
 				`Report for ${payload.prompt} (suite: ${payload.suite})\nCommand: ${payload.command}\nScore: ${(payload.totalScore * 100).toFixed(1)}% (${payload.timestamp})`,
 			);
 			return;
 		}
 
-		if (values.command === "history") {
-			if (Array.isArray(payload)) {
+		if (Array.isArray(payload)) {
+			const first = payload[0];
+			console.log(
+				`History for ${first?.prompt ?? "prompt"} (suite: ${first?.suite ?? "suite"}):`,
+			);
+			for (const entry of payload) {
 				console.log(
-					`History for ${values.promptName} (suite: ${values.suite}):`,
+					`[${entry.id}] ${entry.command} • ${(entry.totalScore * 100).toFixed(1)}% • ${entry.timestamp}`,
 				);
-				for (const entry of payload) {
-					console.log(
-						`[${entry.id}] ${entry.command} • ${(entry.totalScore * 100).toFixed(1)}% • ${entry.timestamp}`,
-					);
-				}
-				return;
 			}
+			return;
 		}
 
-		if (values.command === "compare" && payload?.base && payload?.head) {
+		if (payload?.base && payload?.head) {
 			console.log(
 				`Comparing ${payload.base.command} (${payload.base.id}) → ${payload.head.command} (${payload.head.id})`,
 			);
