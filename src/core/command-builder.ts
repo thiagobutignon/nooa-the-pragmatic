@@ -37,6 +37,7 @@ type InputContext = {
 	values: Record<string, unknown>;
 	positionals: string[];
 	bus?: EventBus;
+	rawArgs?: string[];
 };
 
 type TelemetryConfig<Input, Output> = {
@@ -297,7 +298,7 @@ ${outputXml}
 			const traceId = createTraceId();
 			const startTime = Date.now();
 
-			const input = await inputParser({ values, positionals, bus });
+			const input = await inputParser({ values, positionals, bus, rawArgs });
 			const result = await runFn(input);
 
 			if (!result.ok) {
