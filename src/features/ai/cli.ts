@@ -1,12 +1,20 @@
-import type { Command, CommandContext } from "../../core/command";
-import { createTraceId, logger } from "../../core/logger";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { printError, renderJson, setExitCode } from "../../core/cli-output";
 import { openMcpDatabase } from "../../core/mcp/db";
 import { executeMcpToolFromAi } from "../../core/mcp/integrations/ai";
-import { telemetry } from "../../core/telemetry";
+import type { AgentDocMeta, SdkResult } from "../../core/types";
+import { sdkError } from "../../core/types";
 import { AiEngine } from "./engine";
 import { MockProvider, OllamaProvider, OpenAiProvider } from "./providers/mod";
 
-const aiHelp = `
+export const aiMeta: AgentDocMeta = {
+	name: "ai",
+	description: "Query the AI engine",
+	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
+};
+
+export const aiHelp = `
 Usage: nooa ai <prompt> [flags]
 
 Directly query the AI engine.
@@ -29,154 +37,225 @@ Examples:
   nooa ai "Tell a joke" --json
 `;
 
-const aiCommand: Command = {
-	name: "ai",
-	description: "Query the AI engine",
-	execute: async ({ rawArgs, bus }: CommandContext) => {
-		const { parseArgs } = await import("node:util");
-		const parsed = parseArgs({
-			args: rawArgs,
-			options: {
-				provider: { type: "string" },
-				model: { type: "string" },
-				json: { type: "boolean" },
-				help: { type: "boolean", short: "h" },
-				"mcp-source": { type: "string" },
-				"mcp-tool": { type: "string" },
-				"mcp-args": { type: "string" },
-			},
-			strict: true,
-			allowPositionals: true,
-		});
-		const values = parsed.values as {
-			provider?: string;
-			model?: string;
-			json?: boolean;
-			help?: boolean;
-			"mcp-source"?: string;
-			"mcp-tool"?: string;
-			"mcp-args"?: string;
-		};
-		const positionals = parsed.positionals as string[];
+export const aiSdkUsage = `
+SDK Usage:
+  const result = await ai.run({ prompt: "Hello", provider: "ollama" });
+  if (result.ok) console.log(result.data.content);
+`;
 
-		if (values.help) {
-			console.log(aiHelp);
-			return;
-		}
-
-		const prompt = positionals[1];
-		if (!prompt) {
-			console.error("Error: Prompt is required.");
-			process.exitCode = 2;
-			return;
-		}
-
-		const mcpSource = values["mcp-source"];
-		const mcpTool = values["mcp-tool"];
-		const mcpArgsRaw = values["mcp-args"];
-		if (mcpSource && mcpTool) {
-			const db = openMcpDatabase();
-			try {
-				let args = {};
-				if (mcpArgsRaw?.trim()) {
-					args = JSON.parse(mcpArgsRaw);
-				}
-				const toolResult = await executeMcpToolFromAi(
-					db,
-					mcpSource,
-					mcpTool,
-					args,
-				);
-
-				if (values.json) {
-					console.log(
-						JSON.stringify(
-							{
-								server: mcpSource,
-								tool: mcpTool,
-								result: toolResult,
-							},
-							null,
-							2,
-						),
-					);
-				} else {
-					console.log(
-						`MCP ${mcpSource}.${mcpTool} -> ${JSON.stringify(toolResult)}`,
-					);
-				}
-				return;
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				console.error(`Error invoking MCP tool: ${message}`);
-				process.exitCode = 1;
-				return;
-			} finally {
-				db.close();
-			}
-		}
-
-		const traceId = createTraceId();
-		logger.setContext({ trace_id: traceId, command: "ai" });
-
-		const engine = new AiEngine();
-		engine.register(new OllamaProvider());
-		engine.register(new OpenAiProvider());
-		engine.register(new MockProvider());
-
-		try {
-			const response = await engine.complete(
-				{
-					messages: [{ role: "user", content: prompt }],
-					model: values.model,
-					traceId,
-				},
-				{
-					provider: values.provider,
-					fallbackProvider: values.provider ? undefined : "openai",
-				},
-			);
-
-			telemetry.track(
-				{
-					event: "ai.success",
-					level: "info",
-					success: true,
-					trace_id: traceId,
-					metadata: {
-						provider: response.provider,
-						model: response.model,
-						usage: response.usage,
-					},
-				},
-				bus,
-			);
-
-			if (values.json) {
-				console.log(JSON.stringify(response, null, 2));
-			} else {
-				console.log(response.content);
-			}
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			telemetry.track(
-				{
-					event: "ai.failure",
-					level: "error",
-					success: false,
-					trace_id: traceId,
-					metadata: { error: errorMessage },
-				},
-				bus,
-			);
-			logger.error(
-				"AI command failed",
-				error instanceof Error ? error : new Error(String(error)),
-			);
-			process.exitCode = 1;
-		}
-	},
+export const aiUsage = {
+	cli: "nooa ai <prompt> [flags]",
+	sdk: "await ai.run({ prompt: \"Hello\" })",
+	tui: "AiConsole()",
 };
 
-export default aiCommand;
+export const aiSchema = {
+	prompt: { type: "string", required: true },
+	provider: { type: "string", required: false },
+	model: { type: "string", required: false },
+	json: { type: "boolean", required: false },
+	"mcp-source": { type: "string", required: false },
+	"mcp-tool": { type: "string", required: false },
+	"mcp-args": { type: "string", required: false },
+} satisfies SchemaSpec;
+
+export const aiOutputFields = [
+	{ name: "mode", type: "string" },
+	{ name: "content", type: "string" },
+	{ name: "provider", type: "string" },
+	{ name: "model", type: "string" },
+	{ name: "usage", type: "string" },
+	{ name: "server", type: "string" },
+	{ name: "tool", type: "string" },
+	{ name: "result", type: "string" },
+];
+
+export const aiErrors = [
+	{ code: "ai.missing_prompt", message: "Prompt is required." },
+	{ code: "ai.mcp_invalid_args", message: "MCP args must be valid JSON." },
+	{ code: "ai.mcp_error", message: "Error invoking MCP tool." },
+	{ code: "ai.runtime_error", message: "AI execution failed." },
+];
+
+export const aiExitCodes = [
+	{ value: "0", description: "Success" },
+	{ value: "1", description: "Runtime error" },
+	{ value: "2", description: "Validation error" },
+];
+
+export const aiExamples = [
+	{ input: 'nooa ai "Who are you?"', output: "AI response text" },
+	{ input: 'nooa ai "Tell a joke" --json', output: "{ ... }" },
+];
+
+export interface AiRunInput {
+	prompt?: string;
+	provider?: string;
+	model?: string;
+	json?: boolean;
+	"mcp-source"?: string;
+	"mcp-tool"?: string;
+	"mcp-args"?: string;
+}
+
+export type AiRunMode = "ai" | "mcp" | "help";
+
+export interface AiRunResult {
+	mode: AiRunMode;
+	content?: string;
+	provider?: string;
+	model?: string;
+	usage?: unknown;
+	server?: string;
+	tool?: string;
+	result?: unknown;
+}
+
+export async function run(input: AiRunInput): Promise<SdkResult<AiRunResult>> {
+	const prompt = input.prompt;
+	if (!prompt) {
+		return {
+			ok: false,
+			error: sdkError("ai.missing_prompt", "Prompt is required."),
+		};
+	}
+
+	const mcpSource = input["mcp-source"];
+	const mcpTool = input["mcp-tool"];
+	const mcpArgsRaw = input["mcp-args"];
+	if (mcpSource && mcpTool) {
+		const db = openMcpDatabase();
+		try {
+			let args = {};
+			if (mcpArgsRaw?.trim()) {
+				try {
+					args = JSON.parse(mcpArgsRaw);
+				} catch {
+					return {
+						ok: false,
+						error: sdkError(
+							"ai.mcp_invalid_args",
+							"MCP args must be valid JSON.",
+						),
+					};
+				}
+			}
+			const toolResult = await executeMcpToolFromAi(db, mcpSource, mcpTool, args);
+			return {
+				ok: true,
+				data: {
+					mode: "mcp",
+					server: mcpSource,
+					tool: mcpTool,
+					result: toolResult,
+				},
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				ok: false,
+				error: sdkError("ai.mcp_error", `Error invoking MCP tool: ${message}`),
+			};
+		} finally {
+			db.close();
+		}
+	}
+
+	const engine = new AiEngine();
+	engine.register(new OllamaProvider());
+	engine.register(new OpenAiProvider());
+	engine.register(new MockProvider());
+
+	try {
+		const response = await engine.complete(
+			{
+				messages: [{ role: "user", content: prompt }],
+				model: input.model,
+			},
+			{
+				provider: input.provider,
+				fallbackProvider: input.provider ? undefined : "openai",
+			},
+		);
+
+		return {
+			ok: true,
+			data: {
+				mode: "ai",
+				content: response.content,
+				provider: response.provider,
+				model: response.model,
+				usage: response.usage,
+			},
+		};
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		return {
+			ok: false,
+			error: sdkError("ai.runtime_error", errorMessage),
+		};
+	}
+}
+
+const aiBuilder = new CommandBuilder<AiRunInput, AiRunResult>()
+	.meta(aiMeta)
+	.usage(aiUsage)
+	.schema(aiSchema)
+	.help(aiHelp)
+	.sdkUsage(aiSdkUsage)
+	.outputFields(aiOutputFields)
+	.examples(aiExamples)
+	.errors(aiErrors)
+	.exitCodes(aiExitCodes)
+	.options({
+		options: {
+			...buildStandardOptions(),
+			provider: { type: "string" },
+			model: { type: "string" },
+			"mcp-source": { type: "string" },
+			"mcp-tool": { type: "string" },
+			"mcp-args": { type: "string" },
+		},
+	})
+	.parseInput(async ({ values, positionals }) => ({
+		prompt: positionals[1],
+		provider: values.provider as string | undefined,
+		model: values.model as string | undefined,
+		json: Boolean(values.json),
+		"mcp-source": values["mcp-source"] as string | undefined,
+		"mcp-tool": values["mcp-tool"] as string | undefined,
+		"mcp-args": values["mcp-args"] as string | undefined,
+	}))
+	.run(run)
+	.onSuccess((output, values) => {
+		if (output.mode === "mcp") {
+			if (values.json) {
+				renderJson({
+					server: output.server,
+					tool: output.tool,
+					result: output.result,
+				});
+			} else {
+				console.log(
+					`MCP ${output.server}.${output.tool} -> ${JSON.stringify(output.result)}`,
+				);
+			}
+			return;
+		}
+
+		if (values.json) {
+			renderJson(output);
+			return;
+		}
+		console.log(output.content ?? "");
+	})
+	.onFailure((error) => {
+		printError(error);
+		setExitCode(error, ["ai.missing_prompt", "ai.mcp_invalid_args"]);
+	});
+
+export const aiAgentDoc = aiBuilder.buildAgentDoc(false);
+export const aiFeatureDoc = (includeChangelog: boolean) =>
+	aiBuilder.buildFeatureDoc(includeChangelog);
+
+export default aiBuilder.build();

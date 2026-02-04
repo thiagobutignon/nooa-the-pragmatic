@@ -1,17 +1,23 @@
 import { readFile } from "node:fs/promises";
+import { isAbsolute, resolve } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { printError, renderJson, setExitCode } from "../../core/cli-output";
 import { buildStandardOptions } from "../../core/cli-flags";
 import { createTraceId } from "../../core/logger";
 import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";
 
 export const readMeta: AgentDocMeta = {
-    name: "read",
-    description: "Read file contents",
-    changelog: [
-        { version: "1.2.0", changes: ["Added stdin support"] },
-        { version: "1.1.0", changes: ["Added --json flag"] },
-        { version: "1.0.0", changes: ["Initial release"] },
-    ],
+	name: "read",
+	description: "Read file contents",
+	changelog: [
+		{
+			version: "1.3.0",
+			changes: ["Added basePath support to constrain reads"],
+		},
+		{ version: "1.2.0", changes: ["Added stdin support"] },
+		{ version: "1.1.0", changes: ["Added --json flag"] },
+		{ version: "1.0.0", changes: ["Initial release"] },
+	],
 };
 
 export const readHelp = `
@@ -40,25 +46,31 @@ Error Codes:
   read.missing_path: Path required or invalid
   read.not_found: File not found
   read.read_failed: Read failed
+  read.outside_root: Path is outside basePath
 `;
 
 export const readSdkUsage = `
 SDK Usage:
-  const result = await read.run({ path: "file.txt", json: false });
+  const result = await read.run({
+    path: "file.txt",
+    json: false,
+    basePath: "/path/to/project"
+  });
   if (result.ok) {
     console.log(result.data.content);
   }
 `;
 
 export const readUsage = {
-    cli: "nooa read <path> [--json]",
-    sdk: "await read.run({ path: \"file.txt\", json: false })",
-    tui: "ReadFileDialog({ initialPath })",
+	cli: "nooa read <path> [--json]",
+	sdk: "await read.run({ path: \"file.txt\", json: false, basePath: \"/path/to/project\" })",
+	tui: "ReadFileDialog({ initialPath })",
 };
 
 export const readSchema = {
-    path: { type: "string", required: true },
-    json: { type: "boolean", required: false, default: false, since: "1.1.0" },
+	path: { type: "string", required: true },
+	json: { type: "boolean", required: false, default: false, since: "1.1.0" },
+	basePath: { type: "string", required: false, since: "1.3.0" },
 } satisfies SchemaSpec;
 
 export const readOutputFields = [
@@ -78,21 +90,23 @@ export const readExamples = [
 ];
 
 export const readErrors = [
-    { code: "read.missing_path", message: "Path required or invalid" },
-    { code: "read.not_found", message: "File not found" },
-    { code: "read.read_failed", message: "Read failed" },
+	{ code: "read.missing_path", message: "Path required or invalid" },
+	{ code: "read.not_found", message: "File not found" },
+	{ code: "read.read_failed", message: "Read failed" },
+	{ code: "read.outside_root", message: "Path is outside basePath" },
 ];
 
 export const readExitCodes = [
-    { value: "0", description: "Success" },
-    { value: "1", description: "File not found or read failed" },
-    { value: "2", description: "Path required or invalid" },
+	{ value: "0", description: "Success" },
+	{ value: "1", description: "File not found or read failed" },
+	{ value: "2", description: "Path required or invalid" },
 ];
 
 
 export interface ReadRunInput {
-    path?: string;
-    json?: boolean;
+	path?: string;
+	json?: boolean;
+	basePath?: string;
 }
 
 export interface ReadRunResult {
@@ -108,6 +122,7 @@ export async function run(
 ): Promise<SdkResult<ReadRunResult>> {
 	const traceId = createTraceId();
 	const path = input.path;
+	const basePath = input.basePath;
 
 	if (!path) {
 		return {
@@ -116,18 +131,37 @@ export async function run(
 		};
 	}
 
+	const resolvedPath = basePath
+		? isAbsolute(path)
+			? resolve(path)
+			: resolve(basePath, path)
+		: path;
+
+	if (basePath) {
+		const normalizedRoot = resolve(basePath) + "/";
+		if (!resolvedPath.startsWith(normalizedRoot)) {
+			return {
+				ok: false,
+				error: sdkError("read.outside_root", "Path is outside basePath.", {
+					basePath,
+					path,
+				}),
+			};
+		}
+	}
+
 	try {
-		const content = await readFile(path, "utf-8");
-        return {
-            ok: true,
-            data: {
-                ok: true,
-                traceId,
-                path,
-                bytes: Buffer.byteLength(content),
-                content,
-            },
-        };
+		const content = await readFile(resolvedPath, "utf-8");
+		return {
+			ok: true,
+			data: {
+				ok: true,
+				traceId,
+				path: resolvedPath,
+				bytes: Buffer.byteLength(content),
+				content,
+			},
+		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		const isNotFound = message.toLowerCase().includes("no such file");
@@ -172,14 +206,16 @@ const readBuilder = new CommandBuilder<ReadRunInput, ReadRunResult>()
 			: error.message;
 		if (errorMessage.toLowerCase().includes("no such file")) {
 			console.error(`Error: File not found: ${input.path ?? ""}`);
+		} else if (error.code === "read.outside_root") {
+			console.error("Error: Path is outside basePath.");
 		} else {
-			console.error(`Error: ${error.message}`);
+			printError(error);
 		}
-		process.exitCode = error.code === "read.missing_path" ? 2 : 1;
+		setExitCode(error, ["read.missing_path", "read.outside_root"]);
 	})
     .onSuccess((output, values) => {
         if (values.json) {
-            console.log(JSON.stringify(output, null, 2));
+            renderJson(output);
             return;
         }
         process.stdout.write(output.content);
