@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { run as runInit } from "../../features/identity/cli";
-import type { InitRunInput, InitRunResult } from "../../features/identity/cli";
+import { run as runInit } from "../../features/init/cli";
+import type { InitRunInput, InitRunResult } from "../../features/init/cli";
 import type { SdkError } from "../../core/types";
 
 export type InitStatus = "idle" | "loading" | "success" | "error";
