@@ -4,7 +4,6 @@ import type {
 	AiProvider,
 	AiRequest,
 	AiResponse,
-	AiStreamChunk,
 } from "../types";
 
 export class OpenAiProvider implements AiProvider {
@@ -62,90 +61,6 @@ export class OpenAiProvider implements AiProvider {
 						totalTokens: usage.total_tokens,
 					}
 				: undefined,
-		};
-	}
-
-	async *stream(request: AiRequest): AsyncGenerator<AiStreamChunk, AiResponse, void> {
-		const apiKey = process.env.OPENAI_API_KEY;
-		if (!apiKey) {
-			throw new Error("OpenAI API key not found (OPENAI_API_KEY)");
-		}
-
-		const model = request.model || "gpt-4o-mini";
-
-		const res = await fetch("https://api.openai.com/v1/chat/completions", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${apiKey}`,
-			},
-			body: JSON.stringify({
-				model,
-				messages: request.messages,
-				temperature: request.temperature,
-				max_tokens: request.maxTokens,
-				stream: true,
-				stream_options: { include_usage: true },
-			}),
-		});
-
-		if (!res.ok || !res.body) {
-			const error = await res.text();
-			throw new Error(`OpenAI error (${res.status}): ${error}`);
-		}
-
-		const reader = res.body.getReader();
-		const decoder = new TextDecoder();
-		let buffer = "";
-		let content = "";
-		let usage: AiResponse["usage"] | undefined;
-
-		while (true) {
-			const { value, done } = await reader.read();
-			if (done) break;
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split("\n");
-			buffer = lines.pop() ?? "";
-			for (const line of lines) {
-				const trimmed = line.trim();
-				if (!trimmed.startsWith("data:")) continue;
-				const payload = trimmed.slice(5).trim();
-				if (payload === "[DONE]") {
-					return {
-						content,
-						model,
-						provider: this.name,
-						usage,
-					};
-				}
-				const data = JSON.parse(payload) as {
-					choices?: { delta?: { content?: string } }[];
-					usage?: {
-						prompt_tokens: number;
-						completion_tokens: number;
-						total_tokens: number;
-					};
-				};
-				if (data.usage) {
-					usage = {
-						promptTokens: data.usage.prompt_tokens,
-						completionTokens: data.usage.completion_tokens,
-						totalTokens: data.usage.total_tokens,
-					};
-				}
-				const delta = data.choices?.[0]?.delta?.content;
-				if (delta) {
-					content += delta;
-					yield { content: delta };
-				}
-			}
-		}
-
-		return {
-			content,
-			model,
-			provider: this.name,
-			usage,
 		};
 	}
 

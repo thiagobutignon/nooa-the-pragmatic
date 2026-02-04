@@ -24,12 +24,6 @@ export interface AiResponse {
 	};
 }
 
-export interface AiStreamChunk {
-	content?: string;
-	done?: boolean;
-	usage?: AiResponse["usage"];
-}
-
 export interface AiEmbeddingRequest {
 	input: string | string[];
 	model?: string;
@@ -44,7 +38,6 @@ export interface AiEmbeddingResponse {
 export interface AiProvider {
 	readonly name: string;
 	complete(request: AiRequest): Promise<AiResponse>;
-	stream?(request: AiRequest): AsyncGenerator<AiStreamChunk, AiResponse, void>;
 	embed(request: AiEmbeddingRequest): Promise<AiEmbeddingResponse>;
 }
 

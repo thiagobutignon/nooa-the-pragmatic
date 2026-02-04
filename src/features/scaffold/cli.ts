@@ -1,18 +1,25 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
-import type { AgentDocMeta, SdkResult } from "../../core/types";
-import { sdkError } from "../../core/types";
-import { createTraceId } from "../../core/logger";
+import { parseArgs } from "node:util";
+import type { Command, CommandContext } from "../../core/command";
+import type { EventBus } from "../../core/event-bus";
+import { logger } from "../../core/logger";
 import { executeScaffold } from "./execute";
 
-export const scaffoldMeta: AgentDocMeta = {
-	name: "scaffold",
-	description: "Standardize creation of new features and prompts",
-	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
-};
+export async function scaffoldCli(args: string[], bus?: EventBus) {
+	const { values, positionals } = parseArgs({
+		args,
+		options: {
+			json: { type: "boolean" },
+			"dry-run": { type: "boolean" },
+			force: { type: "boolean" },
+			out: { type: "string" },
+			"with-docs": { type: "boolean" },
+			help: { type: "boolean", short: "h" },
+		},
+		allowPositionals: true,
+		strict: false,
+	});
 
-export const scaffoldHelp = `
+	const scaffoldHelp = `
 Usage: nooa scaffold <command|prompt> <name> [flags]
 
 Standardize creation of new features and prompts.
@@ -32,319 +39,119 @@ Flags:
 Examples:
   nooa scaffold command authentication
   nooa scaffold prompt review --with-docs
-
-Exit Codes:
-  0: Success
-  1: Runtime Error (file IO failure)
-  2: Validation Error (invalid arguments or name)
-
-Error Codes:
-  scaffold.invalid_args: Missing or invalid arguments
-  scaffold.invalid_type: Type must be command or prompt
-  scaffold.invalid_name: Name must be kebab-case and not reserved
-  scaffold.already_exists: Destination file exists
-  scaffold.runtime_error: Unexpected error
 `;
 
-export const scaffoldSdkUsage = `
-SDK Usage:
-  await scaffold.run({ type: "command", name: "my-feature", dryRun: true });
-  await scaffold.run({ type: "prompt", name: "review", withDocs: true });
-`;
-
-export const scaffoldUsage = {
-	cli: "nooa scaffold <command|prompt> <name> [flags]",
-	sdk: "await scaffold.run({ type: \"command\", name: \"my-feature\" })",
-	tui: "ScaffoldWizard()",
-};
-
-export const scaffoldSchema = {
-	type: { type: "string", required: true },
-	name: { type: "string", required: true },
-	force: { type: "boolean", required: false },
-	"dry-run": { type: "boolean", required: false },
-	"with-docs": { type: "boolean", required: false },
-	json: { type: "boolean", required: false },
-	out: { type: "string", required: false },
-} satisfies SchemaSpec;
-
-export const scaffoldOutputFields = [
-	{ name: "ok", type: "boolean" },
-	{ name: "traceId", type: "string" },
-	{ name: "kind", type: "string" },
-	{ name: "name", type: "string" },
-	{ name: "files", type: "string" },
-	{ name: "dryRun", type: "boolean" },
-];
-
-export const scaffoldErrors = [
-	{ code: "scaffold.invalid_args", message: "Missing or invalid arguments." },
-	{
-		code: "scaffold.invalid_type",
-		message: "Type must be command or prompt.",
-	},
-	{
-		code: "scaffold.invalid_name",
-		message: "Name must be kebab-case and not reserved.",
-	},
-	{ code: "scaffold.already_exists", message: "Destination file exists." },
-	{ code: "scaffold.runtime_error", message: "Unexpected error." },
-];
-
-export const scaffoldExitCodes = [
-	{ value: "0", description: "Success" },
-	{ value: "1", description: "Runtime error" },
-	{ value: "2", description: "Validation error" },
-];
-
-export const scaffoldExamples = [
-	{ input: "nooa scaffold command authentication", output: "Creates a feature" },
-	{
-		input: "nooa scaffold prompt review --with-docs",
-		output: "Creates a prompt template",
-	},
-];
-
-export type ScaffoldKind = "command" | "prompt";
-
-export interface ScaffoldRunInput {
-	type?: ScaffoldKind;
-	name?: string;
-	force?: boolean;
-	dryRun?: boolean;
-	withDocs?: boolean;
-	json?: boolean;
-	out?: string;
-}
-
-export interface ScaffoldRunResult {
-	ok: boolean;
-	traceId: string;
-	kind: ScaffoldKind;
-	name: string;
-	files: string[];
-	dryRun: boolean;
-}
-
-function isValidationMessage(message: string) {
-	return (
-		message.includes("Invalid name") ||
-		message.includes("reserved word") ||
-		message.includes("already exists")
-	);
-}
-
-export async function run(
-	input: ScaffoldRunInput,
-): Promise<SdkResult<ScaffoldRunResult>> {
-	if (!input.type || !input.name) {
-		const traceId = createTraceId();
-		return {
-			ok: false,
-			error: sdkError(
-				"scaffold.invalid_args",
-				"Missing or invalid arguments.",
-				{ traceId },
-			),
-		};
+	if (values.help) {
+		console.log(scaffoldHelp);
+		return;
 	}
 
-	if (input.type !== "command" && input.type !== "prompt") {
-		const traceId = createTraceId();
-		return {
-			ok: false,
-			error: sdkError("scaffold.invalid_type", "Type must be command or prompt.", {
-				traceId,
-			}),
-		};
+	const type = positionals[0] as "command" | "prompt";
+	const name = positionals[1];
+
+	if (!type || !name || !["command", "prompt"].includes(type)) {
+		console.error("Error: Missing or invalid arguments.");
+		console.log(scaffoldHelp);
+		process.exitCode = 2;
+		return;
 	}
 
 	try {
-		const { results, traceId } = await executeScaffold({
-			type: input.type,
-			name: input.name,
-			force: input.force,
-			dryRun: input.dryRun,
-			withDocs: input.withDocs,
-		});
-
-		return {
-			ok: true,
-			data: {
-				ok: true,
-				traceId,
-				kind: input.type,
-				name: input.name,
-				files: results,
-				dryRun: Boolean(input.dryRun),
+		const { results, traceId } = await executeScaffold(
+			{
+				type,
+				name,
+				force: !!values.force,
+				dryRun: !!values["dry-run"],
+				withDocs: !!values["with-docs"],
 			},
+			bus,
+		);
+
+		const output = {
+			schemaVersion: "1.0",
+			ok: true,
+			traceId,
+			command: "scaffold",
+			timestamp: new Date().toISOString(),
+			kind: type,
+			name: name,
+			files: results,
+			dryRun: !!values["dry-run"],
 		};
+
+		if (values.json) {
+			const jsonOutput = JSON.stringify(output, null, 2);
+			if (values.out) {
+				const { writeFile } = await import("node:fs/promises");
+				await writeFile(values.out as string, jsonOutput);
+			} else {
+				console.log(jsonOutput);
+			}
+		} else {
+			console.log(`\n✅ Scaffold success (${traceId})`);
+			if (values["dry-run"])
+				console.log("[DRY RUN CALLBACK] No files were actually written.");
+			console.log(`Created ${type}: ${name}`);
+			results.forEach((f) => {
+				console.log(`  - ${f}`);
+			});
+
+			if (!values["dry-run"]) {
+				console.log("\nNext Steps:");
+				if (type === "command") {
+					console.log(`  1. Run tests: bun test src/features/${name}`);
+					console.log(`  2. Check help: bun index.ts ${name} --help`);
+				} else {
+					console.log(
+						`  1. Validate prompt: bun index.ts prompt validate ${name}`,
+					);
+				}
+			}
+		}
 	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		const traceId = createTraceId();
-		if (message.includes("already exists")) {
-			return {
-				ok: false,
-				error: sdkError("scaffold.already_exists", message, { traceId }),
-			};
+		const err = error instanceof Error ? error : new Error(String(error));
+		const { trace_id: traceId } = logger.getContext();
+		if (values.json) {
+			console.log(
+				JSON.stringify(
+					{
+						schemaVersion: "1.0",
+						ok: false,
+						traceId,
+						command: "scaffold",
+						timestamp: new Date().toISOString(),
+						error: err.message,
+					},
+					null,
+					2,
+				),
+			);
+		} else {
+			if (
+				err.message.includes("Invalid name") ||
+				err.message.includes("already exists")
+			) {
+				console.error(`❌ Validation Error: ${err.message}`);
+			} else {
+				console.error(`❌ Runtime Error: ${err.message}`);
+			}
 		}
-		if (message.includes("Invalid name") || message.includes("reserved word")) {
-			return {
-				ok: false,
-				error: sdkError("scaffold.invalid_name", message, { traceId }),
-			};
-		}
-		return {
-			ok: false,
-			error: sdkError(
-				isValidationMessage(message)
-					? "scaffold.invalid_name"
-					: "scaffold.runtime_error",
-				message,
-				{ traceId },
-			),
-		};
+		process.exitCode =
+			err.message.includes("Invalid name") ||
+			err.message.includes("already exists")
+				? 2
+				: 1;
 	}
 }
 
-const scaffoldBuilder = new CommandBuilder<ScaffoldRunInput, ScaffoldRunResult>()
-	.meta(scaffoldMeta)
-	.usage(scaffoldUsage)
-	.schema(scaffoldSchema)
-	.help(scaffoldHelp)
-	.sdkUsage(scaffoldSdkUsage)
-	.outputFields(scaffoldOutputFields)
-	.examples(scaffoldExamples)
-	.errors(scaffoldErrors)
-	.exitCodes(scaffoldExitCodes)
-	.options({
-		options: {
-			...buildStandardOptions(),
-			"dry-run": { type: "boolean" },
-			force: { type: "boolean" },
-			out: { type: "string" },
-			"with-docs": { type: "boolean" },
-		},
-	})
-	.parseInput(async ({ positionals, values }) => ({
-		type: positionals[1] as ScaffoldKind | undefined,
-		name: positionals[2],
-		force: Boolean(values.force),
-		dryRun: Boolean(values["dry-run"]),
-		withDocs: Boolean(values["with-docs"]),
-		json: Boolean(values.json),
-		out: typeof values.out === "string" ? values.out : undefined,
-	}))
-	.run(run)
-	.onSuccess(async (output, values) => {
-		const jsonMode = Boolean(values.json);
-		if (jsonMode) {
-			const payload = {
-				schemaVersion: "1.0",
-				ok: true,
-				traceId: output.traceId,
-				command: "scaffold",
-				timestamp: new Date().toISOString(),
-				kind: output.kind,
-				name: output.name,
-				files: output.files,
-				dryRun: output.dryRun,
-			};
-
-			if (typeof values.out === "string" && values.out) {
-				const { writeFile } = await import("node:fs/promises");
-				await writeFile(values.out, JSON.stringify(payload, null, 2));
-				return;
-			}
-			renderJson(payload);
-			return;
-		}
-
-		console.log(`\n✅ Scaffold success (${output.traceId})`);
-		if (output.dryRun) {
-			console.log("[DRY RUN CALLBACK] No files were actually written.");
-		}
-		console.log(`Created ${output.kind}: ${output.name}`);
-		output.files.forEach((file) => {
-			console.log(`  - ${file}`);
-		});
-
-		if (!output.dryRun) {
-			console.log("\nNext Steps:");
-			if (output.kind === "command") {
-				console.log(`  1. Run tests: bun test src/features/${output.name}`);
-				console.log(`  2. Check help: bun index.ts ${output.name} --help`);
-			} else {
-				console.log(
-					`  1. Validate prompt: bun index.ts prompt validate ${output.name}`,
-				);
-			}
-		}
-	})
-	.onFailure(async (error, input) => {
-		if (input.json) {
-			const payload = {
-				schemaVersion: "1.0",
-				ok: false,
-				traceId:
-					typeof error.details?.traceId === "string"
-						? error.details.traceId
-						: undefined,
-				command: "scaffold",
-				timestamp: new Date().toISOString(),
-				error: error.message,
-			};
-			if (input.out) {
-				const { writeFile } = await import("node:fs/promises");
-				await writeFile(input.out ?? "", JSON.stringify(payload, null, 2));
-			} else {
-				renderJson(payload);
-			}
-			setExitCode(error, [
-				"scaffold.invalid_args",
-				"scaffold.invalid_type",
-				"scaffold.invalid_name",
-				"scaffold.already_exists",
-			]);
-			return;
-		}
-		if (error.code.startsWith("scaffold.")) {
-			const label = error.code.includes("invalid")
-				? "Validation Error"
-				: error.code.includes("already_exists")
-					? "Validation Error"
-					: "Runtime Error";
-			console.error(`❌ ${label}: ${error.message}`);
-		} else {
-			printError(error);
-		}
-		setExitCode(error, [
-			"scaffold.invalid_args",
-			"scaffold.invalid_type",
-			"scaffold.invalid_name",
-			"scaffold.already_exists",
-		]);
-	})
-	.telemetry({
-		eventPrefix: "scaffold",
-		successMetadata: (input, output) => ({
-			name: output.name,
-			kind: output.kind,
-			files_written: output.dryRun ? 0 : output.files.length,
-			dry_run: output.dryRun,
-			with_docs: Boolean(input.withDocs),
-		}),
-		failureMetadata: (input, error) => ({
-			name: input.name,
-			kind: input.type,
-			error: error.message,
-		}),
-	});
-
-export const scaffoldAgentDoc = scaffoldBuilder.buildAgentDoc(false);
-export const scaffoldFeatureDoc = (includeChangelog: boolean) =>
-	scaffoldBuilder.buildFeatureDoc(includeChangelog);
-
-const scaffoldCommand = scaffoldBuilder.build();
+const scaffoldCommand: Command = {
+	name: "scaffold",
+	description: "Standardize creation of new features and prompts",
+	async execute({ rawArgs, bus }: CommandContext) {
+		const index = rawArgs.indexOf("scaffold");
+		await scaffoldCli(rawArgs.slice(index + 1), bus);
+	},
+};
 
 export default scaffoldCommand;

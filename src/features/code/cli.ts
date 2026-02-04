@@ -1,22 +1,8 @@
-import { readFile, writeFile } from "node:fs/promises";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import type { AgentDocMeta, SdkResult } from "../../core/types";
-import { sdkError } from "../../core/types";
-import { renderJson, printError, setExitCode } from "../../core/cli-output";
-import { executeDiff } from "./diff";
-import { executeFormat } from "./format";
-import { applyPatch } from "./patch";
-import { executeRefactor } from "./refactor";
-import { writeCodeFile } from "./write";
+import type { Command, CommandContext } from "../../core/command";
+import { createTraceId, logger } from "../../core/logger";
+import { telemetry } from "../../core/telemetry";
 
-export const codeMeta: AgentDocMeta = {
-	name: "code",
-	description: "Code operations (write, patch, diff, format, refactor)",
-	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
-};
-
-export const codeHelp = `
+const codeHelp = `
 Usage: nooa code <subcommand> [args] [flags]
 
 Code operations.
@@ -45,339 +31,343 @@ Examples:
   nooa code refactor src/utils.ts "rename process to handler"
 `;
 
-export const codeSdkUsage = `
-SDK Usage:
-  await code.run({ action: "write", path: "app.ts", content: "hello" });
-  await code.run({ action: "patch", path: "app.ts", patchText: "diff..." });
-  await code.run({ action: "diff", path: "src/index.ts" });
-`;
-
-export const codeUsage = {
-	cli: "nooa code <subcommand> [args] [flags]",
-	sdk: "await code.run({ action: \"write\", path: \"app.ts\", content: \"...\" })",
-	tui: "CodeConsole()",
-};
-
-export const codeSchema = {
-	action: { type: "string", required: true },
-	path: { type: "string", required: false },
-	instruction: { type: "string", required: false },
-	from: { type: "string", required: false },
-	content: { type: "string", required: false },
-	overwrite: { type: "boolean", required: false },
-	"dry-run": { type: "boolean", required: false },
-	patch: { type: "boolean", required: false },
-	"patch-from": { type: "string", required: false },
-	patchText: { type: "string", required: false },
-	json: { type: "boolean", required: false },
-} satisfies SchemaSpec;
-
-export const codeOutputFields = [
-	{ name: "mode", type: "string" },
-	{ name: "path", type: "string" },
-	{ name: "bytes", type: "number" },
-	{ name: "overwritten", type: "boolean" },
-	{ name: "dryRun", type: "boolean" },
-	{ name: "patched", type: "boolean" },
-	{ name: "output", type: "string" },
-];
-
-export const codeErrors = [
-	{ code: "code.missing_action", message: "Action is required." },
-	{ code: "code.missing_path", message: "Destination path is required." },
-	{ code: "code.missing_input", message: "Missing input. Use --from or stdin." },
-	{
-		code: "code.missing_patch_input",
-		message: "Missing patch input. Use --patch-from or stdin.",
+const codeCommand: Command = {
+	name: "code",
+	description: "Code operations (write, patch)",
+	options: {
+		from: { type: "string" },
+		overwrite: { type: "boolean" },
+		"dry-run": { type: "boolean" },
+		patch: { type: "boolean" },
+		"patch-from": { type: "string" },
 	},
-	{
-		code: "code.patch_with_from",
-		message: "--patch is mutually exclusive with --from.",
-	},
-	{
-		code: "code.format_missing_path",
-		message: "Path required for format.",
-	},
-	{
-		code: "code.refactor_missing_args",
-		message: "Path and instructions required for refactor.",
-	},
-	{ code: "code.runtime_error", message: "Runtime error." },
-];
-
-export const codeExitCodes = [
-	{ value: "0", description: "Success" },
-	{ value: "1", description: "Runtime error" },
-	{ value: "2", description: "Validation error" },
-];
-
-export const codeExamples = [
-	{ input: "nooa code write app.ts --from template.ts", output: "Writes file" },
-	{ input: "nooa code patch app.ts --patch-from fix.patch", output: "Patches file" },
-	{ input: "nooa code diff src/", output: "Git diff output" },
-];
-
-export type CodeAction = "write" | "patch" | "diff" | "format" | "refactor" | "help";
-
-export interface CodeRunInput {
-	action?: CodeAction;
-	path?: string;
-	instruction?: string;
-	from?: string;
-	content?: string;
-	overwrite?: boolean;
-	"dry-run"?: boolean;
-	patch?: boolean;
-	"patch-from"?: string;
-	patchText?: string;
-	json?: boolean;
-}
-
-export interface CodeRunResult {
-	mode: CodeAction;
-	path?: string;
-	bytes?: number;
-	overwritten?: boolean;
-	dryRun?: boolean;
-	patched?: boolean;
-	output?: string;
-}
-
-export async function run(
-	input: CodeRunInput,
-): Promise<SdkResult<CodeRunResult>> {
-	const action = input.action;
-
-	if (!action) {
-		return { ok: false, error: sdkError("code.missing_action", "Action is required.") };
-	}
-
-	if (!["write", "patch", "diff", "format", "refactor"].includes(action)) {
-		return { ok: true, data: { mode: "help", output: codeHelp } };
-	}
-
-	if (action === "diff") {
-		const diff = await executeDiff(input.path);
-		return { ok: true, data: { mode: "diff", path: input.path, output: diff } };
-	}
-
-	if (action === "format") {
-		if (!input.path) {
-			return {
-				ok: false,
-				error: sdkError("code.format_missing_path", "Path required for format."),
-			};
-		}
-		const output = await executeFormat(input.path);
-		return { ok: true, data: { mode: "format", path: input.path, output } };
-	}
-
-	if (action === "refactor") {
-		if (!input.path || !input.instruction) {
-			return {
-				ok: false,
-				error: sdkError(
-					"code.refactor_missing_args",
-					"Path and instructions required for refactor.",
-				),
-			};
-		}
-		const output = await executeRefactor(input.path, input.instruction);
-		return { ok: true, data: { mode: "refactor", path: input.path, output } };
-	}
-
-	if (!input.path) {
-		return {
-			ok: false,
-			error: sdkError("code.missing_path", "Destination path is required."),
-		};
-	}
-
-	const isPatchMode =
-		action === "patch" || Boolean(input.patch || input["patch-from"]);
-
-	if (isPatchMode && input.from) {
-		return {
-			ok: false,
-			error: sdkError(
-				"code.patch_with_from",
-				"--patch is mutually exclusive with --from.",
-			),
-		};
-	}
-
-	const { getStdinText } = await import("../../core/io");
-
-	try {
-		if (isPatchMode) {
-			let patchText = input.patchText ?? "";
-			if (!patchText) {
-				if (input["patch-from"]) {
-					patchText = await readFile(String(input["patch-from"]), "utf-8");
-				} else {
-					patchText = await getStdinText();
-				}
-			}
-
-			if (!patchText) {
-				return {
-					ok: false,
-					error: sdkError(
-						"code.missing_patch_input",
-						"Missing patch input. Use --patch-from or stdin.",
-					),
-				};
-			}
-
-			const originalText = await readFile(input.path, "utf-8");
-			const content = applyPatch(originalText, patchText);
-			if (!input["dry-run"]) {
-				await writeFile(input.path, content, "utf-8");
-			}
-
-			return {
-				ok: true,
-				data: {
-					mode: "patch",
-					path: input.path,
-					bytes: Buffer.byteLength(content),
-					overwritten: true,
-					dryRun: Boolean(input["dry-run"]),
-					patched: true,
-				},
-			};
-		}
-
-		let content = input.content ?? "";
-		if (!content && input.from) {
-			content = await readFile(String(input.from), "utf-8");
-		}
-		if (!content) {
-			content = await getStdinText();
-		}
-		if (!content) {
-			return {
-				ok: false,
-				error: sdkError("code.missing_input", "Missing input. Use --from or stdin."),
-			};
-		}
-
-		const result = await writeCodeFile({
-			path: input.path,
-			content,
-			overwrite: Boolean(input.overwrite),
-			dryRun: Boolean(input["dry-run"]),
-		});
-
-		return {
-			ok: true,
-			data: {
-				mode: "write",
-				path: result.path,
-				bytes: result.bytes,
-				overwritten: result.overwritten,
-				dryRun: Boolean(input["dry-run"]),
-				patched: false,
+	execute: async ({ rawArgs, values: _globalValues, bus }: CommandContext) => {
+		const { parseArgs } = await import("node:util");
+		const parsed = parseArgs({
+			args: rawArgs,
+			options: {
+				...codeCommand.options,
+				help: { type: "boolean", short: "h" },
+				json: { type: "boolean" }, // shared
 			},
+			strict: true,
+			allowPositionals: true,
+		});
+		const values = parsed.values as {
+			from?: string;
+			overwrite?: boolean;
+			"dry-run"?: boolean;
+			patch?: boolean;
+			"patch-from"?: string;
+			json?: boolean;
+			help?: boolean;
 		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		return {
-			ok: false,
-			error: sdkError("code.runtime_error", message, { error: message }),
-		};
-	}
-}
+		const positionals = parsed.positionals as string[];
 
-const codeBuilder = new CommandBuilder<CodeRunInput, CodeRunResult>()
-	.meta(codeMeta)
-	.usage(codeUsage)
-	.schema(codeSchema)
-	.help(codeHelp)
-	.sdkUsage(codeSdkUsage)
-	.outputFields(codeOutputFields)
-	.examples(codeExamples)
-	.errors(codeErrors)
-	.exitCodes(codeExitCodes)
-	.options({
-		options: {
-			...buildStandardOptions(),
-			from: { type: "string" },
-			overwrite: { type: "boolean" },
-			"dry-run": { type: "boolean" },
-			patch: { type: "boolean" },
-			"patch-from": { type: "string" },
-		},
-	})
-	.parseInput(async ({ values, positionals }) => {
-		const action = positionals[1] as CodeAction | undefined;
-		return {
-			action,
-			path: positionals[2],
-			instruction: positionals[3],
-			from: values.from as string | undefined,
-			overwrite: Boolean(values.overwrite),
-			"dry-run": Boolean(values["dry-run"]),
-			patch: Boolean(values.patch),
-			"patch-from": values["patch-from"] as string | undefined,
-			json: Boolean(values.json),
-		};
-	})
-	.run(run)
-	.onSuccess((output, values) => {
-		if (output.mode === "help") {
-			console.log(output.output ?? codeHelp);
+		const { getStdinText } = await import("../../core/io");
+		const action = positionals[1];
+		const traceId = createTraceId();
+		const startTime = Date.now();
+
+		if (values.help) {
+			console.log(codeHelp);
 			return;
 		}
 
-		if (values.json) {
-			if (output.mode === "write" || output.mode === "patch") {
-				renderJson({
-					path: output.path,
-					bytes: output.bytes,
-					overwritten: output.overwritten,
-					dryRun: output.dryRun,
-					mode: output.mode,
-					patched: Boolean(output.patched),
-				});
+		if (action === "diff") {
+			const { executeDiff } = await import("./diff");
+			const path = positionals[2];
+			const diff = await executeDiff(path);
+			console.log(diff);
+			return;
+		}
+
+		if (action === "format") {
+			const { executeFormat } = await import("./format");
+			const path = positionals[2];
+			if (!path) {
+				console.error("Error: Path required for format.");
+				process.exitCode = 2;
 				return;
 			}
-			renderJson(output);
+			const result = await executeFormat(path);
+			console.log(result);
 			return;
 		}
 
-		if (output.output) {
-			console.log(output.output);
+		if (action === "refactor") {
+			const { executeRefactor } = await import("./refactor");
+			const path = positionals[2];
+			const instructions = positionals[3];
+			if (!path || !instructions) {
+				console.error("Error: Path and instructions required for refactor.");
+				process.exitCode = 2;
+				return;
+			}
+			const result = await executeRefactor(path, instructions);
+			console.log(result);
+			return;
 		}
-	})
-	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, [
-			"code.missing_action",
-			"code.missing_path",
-			"code.missing_input",
-			"code.missing_patch_input",
-			"code.patch_with_from",
-			"code.format_missing_path",
-			"code.refactor_missing_args",
-		]);
-	})
-	.telemetry({
-		eventPrefix: "code",
-		successMetadata: (input, output) => ({
-			action: input.action,
-			mode: output.mode,
-			path: output.path,
-		}),
-		failureMetadata: (input, error) => ({
-			action: input.action,
-			path: input.path,
-			error: error.message,
-		}),
-	});
+		// The extra `}` was here, closing the `execute` function prematurely.
+		// It has been removed.
 
-export const codeAgentDoc = codeBuilder.buildAgentDoc(false);
-export const codeFeatureDoc = (includeChangelog: boolean) =>
-	codeBuilder.buildFeatureDoc(includeChangelog);
+		if (action === "write" || action === "patch") {
+			const targetPath = positionals[2];
+			if (!targetPath) {
+				console.error("Error: Destination path is required.");
+				telemetry.track(
+					{
+						event: "code.write.failure",
+						level: "error",
+						success: false,
+						duration_ms: Date.now() - startTime,
+						trace_id: traceId,
+						metadata: { reason: "missing_path" },
+					},
+					bus,
+				);
+				logger.warn("code.write.missing_path", {
+					duration_ms: Date.now() - startTime,
+				});
+				process.exitCode = 2;
+				return;
+			}
 
-export default codeBuilder.build();
+			try {
+				const { readFile, writeFile } = await import("node:fs/promises");
+				const isPatchMode =
+					action === "patch" || Boolean(values.patch || values["patch-from"]);
+				let content = "";
+				let patched = false;
+
+				if (isPatchMode && values.from) {
+					console.error("Error: --patch is mutually exclusive with --from.");
+					telemetry.track(
+						{
+							event: "code.patch.failure",
+							level: "error",
+							success: false,
+							duration_ms: Date.now() - startTime,
+							trace_id: traceId,
+							metadata: { reason: "patch_with_from" },
+						},
+						bus,
+					);
+					logger.warn("code.patch.invalid_flags", {
+						duration_ms: Date.now() - startTime,
+					});
+					logger.clearContext();
+					process.exitCode = 2;
+					return;
+				}
+
+				if (isPatchMode) {
+					let patchText = "";
+					if (values["patch-from"]) {
+						patchText = await readFile(String(values["patch-from"]), "utf-8");
+					} else {
+						patchText = await getStdinText();
+					}
+
+					if (!patchText) {
+						console.error(
+							"Error: Missing patch input. Use --patch-from or stdin.",
+						);
+						telemetry.track(
+							{
+								event: "code.patch.failure",
+								level: "error",
+								success: false,
+								duration_ms: Date.now() - startTime,
+								trace_id: traceId,
+								metadata: { reason: "missing_patch_input" },
+							},
+							bus,
+						);
+						logger.warn("code.patch.missing_input", {
+							duration_ms: Date.now() - startTime,
+						});
+						process.exitCode = 2;
+						return;
+					}
+
+					const { applyPatch } = await import("./patch.js");
+					const originalText = await readFile(targetPath, "utf-8");
+					content = applyPatch(originalText, patchText);
+					patched = true;
+					if (!values["dry-run"]) {
+						await writeFile(targetPath, content, "utf-8");
+					}
+				} else {
+					if (!values.from) {
+						content = await getStdinText();
+					}
+
+					if (!content && values.from) {
+						content = await readFile(String(values.from), "utf-8");
+					}
+
+					if (!content) {
+						console.error("Error: Missing input. Use --from or stdin.");
+						telemetry.track(
+							{
+								event: "code.write.failure",
+								level: "error",
+								success: false,
+								duration_ms: Date.now() - startTime,
+								trace_id: traceId,
+								metadata: { reason: "missing_input" },
+							},
+							bus,
+						);
+						logger.warn("code.write.missing_input", {
+							duration_ms: Date.now() - startTime,
+						});
+						process.exitCode = 2;
+						return;
+					}
+
+					const { writeCodeFile } = await import("./write.js");
+					const result = await writeCodeFile({
+						path: targetPath,
+						content,
+						overwrite: Boolean(values.overwrite),
+						dryRun: Boolean(values["dry-run"]),
+					});
+
+					if (values.json) {
+						console.log(
+							JSON.stringify(
+								{
+									path: result.path,
+									bytes: result.bytes,
+									overwritten: result.overwritten,
+									dryRun: Boolean(values["dry-run"]),
+									mode: "write",
+									patched: false,
+								},
+								null,
+								2,
+							),
+						);
+					}
+
+					const duration = Date.now() - startTime;
+					telemetry.track(
+						{
+							event: "code.write.success",
+							level: "info",
+							success: true,
+							duration_ms: duration,
+							trace_id: traceId,
+							metadata: {
+								path: result.path,
+								bytes: result.bytes,
+								overwritten: result.overwritten,
+								dry_run: Boolean(values["dry-run"]),
+							},
+						},
+						bus,
+					);
+					logger.info("code.write.success", {
+						path: result.path,
+						bytes: result.bytes,
+						overwritten: result.overwritten,
+						dry_run: Boolean(values["dry-run"]),
+						duration_ms: duration,
+					});
+					bus?.emit("code.completed", {
+						action: "write",
+						path: result.path,
+						bytes: result.bytes,
+						duration_ms: duration,
+						trace_id: traceId,
+						success: true,
+					});
+					return;
+				}
+
+				if (values.json) {
+					console.log(
+						JSON.stringify(
+							{
+								path: targetPath,
+								bytes: Buffer.byteLength(content),
+								overwritten: true,
+								dryRun: Boolean(values["dry-run"]),
+								mode: "patch",
+								patched,
+							},
+							null,
+							2,
+						),
+					);
+				}
+
+				const duration = Date.now() - startTime;
+				telemetry.track(
+					{
+						event: "code.patch.success",
+						level: "info",
+						success: true,
+						duration_ms: duration,
+						trace_id: traceId,
+						metadata: {
+							path: targetPath,
+							bytes: Buffer.byteLength(content),
+							dry_run: Boolean(values["dry-run"]),
+						},
+					},
+					bus,
+				);
+				logger.info("code.patch.success", {
+					path: targetPath,
+					bytes: Buffer.byteLength(content),
+					dry_run: Boolean(values["dry-run"]),
+					duration_ms: duration,
+				});
+				bus?.emit("code.completed", {
+					action: "patch",
+					path: targetPath,
+					bytes: Buffer.byteLength(content),
+					duration_ms: duration,
+					trace_id: traceId,
+					success: true,
+				});
+				logger.clearContext();
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				const duration = Date.now() - startTime;
+				console.error(`Error: ${message}`);
+				telemetry.track(
+					{
+						event: "code.write.failure",
+						level: "error",
+						success: false,
+						duration_ms: duration,
+						trace_id: traceId,
+						metadata: { error: message },
+					},
+					bus,
+				);
+				logger.error("code.write.failure", error as Error, {
+					duration_ms: duration,
+				});
+				bus?.emit("code.completed", {
+					action,
+					duration_ms: duration,
+					trace_id: traceId,
+					success: false,
+					error: message,
+				});
+				process.exitCode = 1;
+			}
+			return;
+		}
+
+		// Fallback for unknown action
+		console.log(codeHelp);
+	},
+};
+
+export default codeCommand;

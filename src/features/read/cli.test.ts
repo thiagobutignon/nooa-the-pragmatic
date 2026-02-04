@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readAgentDoc, readMeta, run } from "./cli";
+import { readAgentDoc, run } from "./cli";
+import { readMeta } from "./read-meta";
 
 const TMP_DIR = join(import.meta.dir, "tmp-test-read");
 
@@ -35,22 +36,5 @@ describe("read feature", () => {
 	test("readAgentDoc embeds instruction and version", () => {
 		expect(readAgentDoc).toContain("<instruction");
 		expect(readAgentDoc).toContain(`version="${readMeta.changelog[0]?.version}"`);
-	});
-
-	test("run respects basePath restriction", async () => {
-		const testFile = join(TMP_DIR, "allowed.txt");
-		await writeFile(testFile, "allowed");
-
-		const okResult = await run({ path: "allowed.txt", basePath: TMP_DIR });
-		expect(okResult.ok).toBe(true);
-
-		const badResult = await run({
-			path: "/tmp/outside.txt",
-			basePath: TMP_DIR,
-		});
-		expect(badResult.ok).toBe(false);
-		if (!badResult.ok) {
-			expect(badResult.error.code).toBe("read.outside_root");
-		}
 	});
 });

@@ -1,8 +1,5 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
-import type { AgentDocMeta, SdkResult } from "../../core/types";
-import { sdkError } from "../../core/types";
+import type { Command, CommandContext } from "../../core/command";
+import { createTraceId } from "../../core/logger";
 import {
 	WorktreeError,
 	createWorktree,
@@ -13,33 +10,16 @@ import {
 	worktreeInfo,
 } from "./execute";
 
-export type WorktreeAction =
+type WorktreeAction =
 	| "create"
 	| "list"
 	| "remove"
 	| "prune"
 	| "lock"
 	| "unlock"
-	| "info"
-	| "help";
+	| "info";
 
-const ACTIONS: WorktreeAction[] = [
-	"create",
-	"list",
-	"remove",
-	"prune",
-	"lock",
-	"unlock",
-	"info",
-];
-
-export const worktreeMeta: AgentDocMeta = {
-	name: "worktree",
-	description: "Manage git worktrees for isolated development",
-	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
-};
-
-export const worktreeHelp = `
+const worktreeHelp = `
 Usage: nooa worktree <subcommand> [args] [flags]
 
 Manage git worktrees for isolated development.
@@ -73,322 +53,155 @@ Exit Codes:
   2: Validation Error (invalid inputs or context)
 `;
 
-export const worktreeSdkUsage = `
-SDK Usage:
-  await worktree.run({ action: "create", branch: "feat/login" });
-  await worktree.run({ action: "list" });
-`;
-
-export const worktreeUsage = {
-	cli: "nooa worktree <subcommand> [args] [flags]",
-	sdk: "await worktree.run({ action: \"create\", branch: \"feat/login\" })",
-	tui: "WorktreeConsole()",
-};
-
-export const worktreeSchema = {
-	action: { type: "string", required: true },
-	branch: { type: "string", required: false },
-	base: { type: "string", required: false },
-	"no-install": { type: "boolean", required: false },
-	"no-test": { type: "boolean", required: false },
-	json: { type: "boolean", required: false },
-} satisfies SchemaSpec;
-
-export const worktreeOutputFields = [
-	{ name: "mode", type: "string" },
-	{ name: "branch", type: "string" },
-	{ name: "base", type: "string" },
-	{ name: "worktree_path", type: "string" },
-	{ name: "skip_install", type: "boolean" },
-	{ name: "skip_test", type: "boolean" },
-	{ name: "entries", type: "string" },
-	{ name: "path", type: "string" },
-	{ name: "status", type: "string" },
-	{ name: "duration_ms", type: "number" },
-	{ name: "raw", type: "string" },
+const ACTIONS: WorktreeAction[] = [
+	"create",
+	"list",
+	"remove",
+	"prune",
+	"lock",
+	"unlock",
+	"info",
 ];
 
-export const worktreeErrors = [
-	{ code: "worktree.missing_action", message: "Subcommand is required." },
-	{ code: "worktree.invalid_input", message: "Invalid input." },
-	{ code: "worktree.runtime_error", message: "Runtime error." },
-];
-
-export const worktreeExitCodes = [
-	{ value: "0", description: "Success" },
-	{ value: "1", description: "Runtime error" },
-	{ value: "2", description: "Validation error" },
-];
-
-export const worktreeExamples = [
-	{ input: "nooa worktree create feat/login", output: "Worktree created" },
-	{ input: "nooa worktree list --json", output: "{ worktrees: [...] }" },
-];
-
-export interface WorktreeRunInput {
-	action?: WorktreeAction;
-	branch?: string;
-	base?: string;
-	"no-install"?: boolean;
-	"no-test"?: boolean;
-	json?: boolean;
-}
-
-export interface WorktreeRunResult {
-	mode: WorktreeAction;
-	branch?: string;
-	base?: string;
-	worktree_path?: string;
-	skip_install?: boolean;
-	skip_test?: boolean;
-	entries?: unknown;
-	path?: string;
-	status?: string;
-	duration_ms?: number;
-	raw?: string;
-}
-
-export async function run(
-	input: WorktreeRunInput,
-): Promise<SdkResult<WorktreeRunResult>> {
-	const action = input.action;
-	if (!action) {
-		return {
-			ok: false,
-			error: sdkError("worktree.missing_action", "Subcommand is required."),
-		};
-	}
-
-	if (action === "help") {
-		return { ok: true, data: { mode: "help", raw: worktreeHelp } };
-	}
-
-	try {
-		switch (action) {
-			case "create": {
-				const result = await createWorktree({
-					branch: input.branch,
-					base: input.base,
-					noInstall: Boolean(input["no-install"]),
-					noTest: Boolean(input["no-test"]),
-					cwd: process.cwd(),
-				});
-				return {
-					ok: true,
-					data: {
-						mode: "create",
-						branch: result.branch,
-						base: result.base,
-						worktree_path: result.path,
-						skip_install: result.skipInstall,
-						skip_test: result.skipTest,
-						duration_ms: result.durationMs,
-					},
-				};
-			}
-			case "list": {
-				const result = await listWorktrees({ cwd: process.cwd() });
-				return {
-					ok: true,
-					data: {
-						mode: "list",
-						entries: result.entries,
-						raw: result.raw,
-					},
-				};
-			}
-			case "remove": {
-				const result = await removeWorktree({
-					branch: input.branch,
-					cwd: process.cwd(),
-				});
-				return {
-					ok: true,
-					data: { mode: "remove", path: result.path, branch: input.branch },
-				};
-			}
-			case "prune": {
-				await pruneWorktrees({ cwd: process.cwd() });
-				return { ok: true, data: { mode: "prune" } };
-			}
-			case "lock": {
-				const result = await lockWorktree({
-					branch: input.branch,
-					lock: true,
-					cwd: process.cwd(),
-				});
-				return {
-					ok: true,
-					data: { mode: "lock", path: result.path, branch: input.branch },
-				};
-			}
-			case "unlock": {
-				const result = await lockWorktree({
-					branch: input.branch,
-					lock: false,
-					cwd: process.cwd(),
-				});
-				return {
-					ok: true,
-					data: { mode: "unlock", path: result.path, branch: input.branch },
-				};
-			}
-			case "info": {
-				const result = await worktreeInfo({
-					branch: input.branch,
-					cwd: process.cwd(),
-				});
-				return {
-					ok: true,
-					data: { mode: "info", ...result.entry },
-				};
-			}
-			default:
-				return { ok: true, data: { mode: "help", raw: worktreeHelp } };
+const worktreeCommand: Command = {
+	name: "worktree",
+	description: "Manage git worktrees for isolated development",
+	execute: async ({ args, values, bus }: CommandContext) => {
+		if (values.help) {
+			console.log(worktreeHelp);
+			return;
 		}
-	} catch (error) {
-		if (error instanceof WorktreeError) {
-			return {
-				ok: false,
-				error: sdkError(
-					error.exitCode === 2
-						? "worktree.invalid_input"
-						: "worktree.runtime_error",
-					error.message,
-				),
-			};
-		}
-		const message = error instanceof Error ? error.message : String(error);
-		return {
-			ok: false,
-			error: sdkError("worktree.runtime_error", message),
-		};
-	}
-}
 
-const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>()
-	.meta(worktreeMeta)
-	.usage(worktreeUsage)
-	.schema(worktreeSchema)
-	.help(worktreeHelp)
-	.sdkUsage(worktreeSdkUsage)
-	.outputFields(worktreeOutputFields)
-	.examples(worktreeExamples)
-	.errors(worktreeErrors)
-	.exitCodes(worktreeExitCodes)
-	.options({
-		options: {
-			...buildStandardOptions(),
-			base: { type: "string" },
-			"no-install": { type: "boolean" },
-			"no-test": { type: "boolean" },
-		},
-	})
-	.parseInput(async ({ values, positionals }) => {
-		const requested = positionals[1];
+		const requested = args[1];
 		if (!requested) {
-			return {
-				action: undefined,
-				branch: undefined,
-				base: values.base as string | undefined,
-				"no-install": Boolean(values["no-install"]),
-				"no-test": Boolean(values["no-test"]),
-				json: Boolean(values.json),
-			};
-		}
-
-		const action: WorktreeAction = ACTIONS.includes(requested as WorktreeAction)
-			? (requested as WorktreeAction)
-			: "create";
-		const branch =
-			action === "create" && action !== requested ? requested : positionals[2];
-
-		return {
-			action,
-			branch,
-			base: values.base as string | undefined,
-			"no-install": Boolean(values["no-install"]),
-			"no-test": Boolean(values["no-test"]),
-			json: Boolean(values.json),
-		};
-	})
-	.run(run)
-	.onSuccess((output, values) => {
-		if (output.mode === "help") {
-			console.log(output.raw ?? worktreeHelp);
+			console.log(worktreeHelp);
 			process.exitCode = 2;
 			return;
 		}
 
-		if (values.json) {
-			if (output.mode === "create") {
-				renderJson({
-					branch: output.branch,
-					base: output.base,
-					worktree_path: output.worktree_path,
-					skip_install: output?.skip_install,
-					skip_test: output?.skip_test,
-					duration_ms: output.duration_ms,
-				});
-				return;
-			}
-			if (output.mode === "list") {
-				renderJson({ worktrees: output.entries });
-				return;
-			}
-			if (output.mode === "info") {
-				renderJson(output);
-				return;
-			}
-		}
+		const action = ACTIONS.includes(requested as WorktreeAction)
+			? requested
+			: "create";
+		const branchArg =
+			action === "create" && action !== requested ? requested : args[2];
+		const traceId = createTraceId();
 
-		switch (output.mode) {
-			case "create":
-				console.error(`Worktree created: ${output.worktree_path}`);
-				console.error(`Branch: ${output.branch} (from ${output.base})`);
-				console.error(
-					`Install: ${output?.skip_install ? "skipped" : "done"}`,
-				);
-				console.error(`Tests: ${output?.skip_test ? "skipped" : "passed"}`);
-				return;
-			case "list":
-				if (output.raw) console.log(String(output.raw).trim());
-				return;
-			case "remove":
-				console.error(`Worktree removed: ${output.path}`);
-				return;
-			case "prune":
-				console.error("Worktrees pruned.");
-				return;
-			case "lock":
-				console.error(`Worktree locked: ${output.path}`);
-				return;
-			case "unlock":
-				console.error(`Worktree unlocked: ${output.path}`);
-				return;
-			case "info":
-				console.log(`Worktree: ${output.path}`);
-				console.log(`Branch: ${output.branch ?? "unknown"}`);
-				if (output.status) {
-					console.log(`Status: ${output.status}`);
+		try {
+			switch (action) {
+				case "create": {
+					const result = await createWorktree({
+						branch: branchArg,
+						base: values.base as string | undefined,
+						noInstall: Boolean(values["no-install"]),
+						noTest: Boolean(values["no-test"]),
+						cwd: process.cwd(),
+						traceId,
+						bus,
+					});
+					if (values.json) {
+						console.log(
+							JSON.stringify({
+								branch: result.branch,
+								base: result.base,
+								worktree_path: result.path,
+								skip_install: result.skipInstall,
+								skip_test: result.skipTest,
+								duration_ms: result.durationMs,
+							}),
+						);
+					} else {
+						console.error(`Worktree created: ${result.path}`);
+						console.error(`Branch: ${result.branch} (from ${result.base})`);
+						console.error(`Install: ${result.skipInstall ? "skipped" : "done"}`);
+						console.error(`Tests: ${result.skipTest ? "skipped" : "passed"}`);
+					}
+					return;
 				}
+				case "list": {
+					const result = await listWorktrees({
+						cwd: process.cwd(),
+						traceId,
+						bus,
+					});
+					if (values.json) {
+						console.log(JSON.stringify({ worktrees: result.entries }));
+					} else {
+						console.log(result.raw.trim());
+					}
+					return;
+				}
+				case "remove": {
+					const result = await removeWorktree({
+						branch: branchArg,
+						cwd: process.cwd(),
+						traceId,
+						bus,
+					});
+					console.error(`Worktree removed: ${result.path}`);
+					return;
+				}
+				case "prune": {
+					await pruneWorktrees({ cwd: process.cwd(), traceId, bus });
+					console.error("Worktrees pruned.");
+					return;
+				}
+				case "lock": {
+					const result = await lockWorktree({
+						branch: branchArg,
+						lock: true,
+						cwd: process.cwd(),
+						traceId,
+						bus,
+					});
+					console.error(`Worktree locked: ${result.path}`);
+					return;
+				}
+				case "unlock": {
+					const result = await lockWorktree({
+						branch: branchArg,
+						lock: false,
+						cwd: process.cwd(),
+						traceId,
+						bus,
+					});
+					console.error(`Worktree unlocked: ${result.path}`);
+					return;
+				}
+				case "info": {
+					const result = await worktreeInfo({
+						branch: branchArg,
+						cwd: process.cwd(),
+						traceId,
+						bus,
+					});
+					if (values.json) {
+						console.log(JSON.stringify(result.entry));
+					} else {
+						console.log(`Worktree: ${result.entry.path}`);
+						console.log(`Branch: ${result.entry.branch ?? "unknown"}`);
+						if (result.entry.status) {
+							console.log(`Status: ${result.entry.status}`);
+						}
+					}
+					return;
+				}
+				default:
+					throw new WorktreeError(`Unknown action '${action}'.`, 2);
+			}
+		} catch (error) {
+			if (error instanceof WorktreeError) {
+				const message = error.message.startsWith("Error:")
+					? error.message
+					: `Error: ${error.message}`;
+				console.error(message);
+				process.exitCode = error.exitCode;
 				return;
-			default:
-				console.log(worktreeHelp);
+			}
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(`Error: ${message}`);
+			process.exitCode = 1;
 		}
-	})
-	.onFailure((error) => {
-		if (error.code === "worktree.missing_action") {
-			console.log(worktreeHelp);
-			setExitCode(error, ["worktree.missing_action"]);
-			return;
-		}
-		printError(error);
-		setExitCode(error, ["worktree.invalid_input"]);
-	});
+	},
+};
 
-export const worktreeAgentDoc = worktreeBuilder.buildAgentDoc(false);
-export const worktreeFeatureDoc = (includeChangelog: boolean) =>
-	worktreeBuilder.buildFeatureDoc(includeChangelog);
-
-export default worktreeBuilder.build();
+export default worktreeCommand;

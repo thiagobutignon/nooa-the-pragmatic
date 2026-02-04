@@ -11,8 +11,6 @@ This skill standardizes how to refactor a command into the CommandBuilder patter
 
 **Core principle:** One feature should have **one source of truth** for schema, errors, output, and changelog, with the builder generating consistent CLI/help/docs/agentDoc behavior.
 
-**Agent-first:** The primary consumer is an AI agent calling functions. CLI text is secondary. Favor structured outputs, stable error codes, and schema-driven contracts over human-facing formatting.
-
 **REQUIRED BACKGROUND:** You MUST understand test-driven-development before using this skill.
 
 ## When to Use
