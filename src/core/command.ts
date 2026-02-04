@@ -15,4 +15,5 @@ export interface Command {
 		{ type: "string" | "boolean"; short?: string; multiple?: boolean }
 	>;
 	execute: (context: CommandContext) => Promise<void>;
+	agentDoc?: string;
 }

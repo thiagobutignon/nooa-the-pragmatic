@@ -56,6 +56,7 @@ export class MockProvider implements AiProvider {
 				totalTokens: 30,
 			},
 		};
+
 	}
 
 	async *stream(request: AiRequest): AsyncGenerator<AiStreamChunk, AiResponse, void> {
