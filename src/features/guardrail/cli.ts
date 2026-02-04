@@ -1,9 +1,8 @@
-import { access, mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { stringify as stringifyYaml } from "yaml";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson } from "../../core/cli-output";
+import {
+	printError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { getBuiltinProfilesDir, loadBuiltinProfile } from "./builtin";

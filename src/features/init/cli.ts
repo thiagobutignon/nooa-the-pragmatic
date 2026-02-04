@@ -1,7 +1,9 @@
-import * as readline from "node:readline/promises";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJsonOrWrite
+} from "../../core/cli-output";
+import * as readline from "node:readline/promises";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executeInit } from "./execute";
@@ -238,14 +240,10 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 				files: output.results,
 				dryRun: output.dryRun,
 			};
-			const jsonOutput = JSON.stringify(payload, null, 2);
-			if (values.out) {
-				const { writeFile } = await import("node:fs/promises");
-				await writeFile(String(values.out), jsonOutput);
-				console.log(`✅ Results written to ${values.out}`);
-				return;
-			}
-			renderJson(payload);
+			await renderJsonOrWrite(
+				payload,
+				typeof values.out === "string" ? values.out : undefined,
+			);
 			return;
 		}
 
@@ -256,8 +254,7 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 		});
 	})
 	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, ["init.already_exists"]);
+		handleCommandError(error, ["init.already_exists"]);
 	})
 	.telemetry({
 		eventPrefix: "init",

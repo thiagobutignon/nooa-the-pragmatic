@@ -1,6 +1,9 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	printError,
+	renderJsonOrWrite,
+	setExitCode
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { createTraceId } from "../../core/logger";
@@ -251,12 +254,10 @@ const scaffoldBuilder = new CommandBuilder<ScaffoldRunInput, ScaffoldRunResult>(
 				dryRun: output.dryRun,
 			};
 
-			if (typeof values.out === "string" && values.out) {
-				const { writeFile } = await import("node:fs/promises");
-				await writeFile(values.out, JSON.stringify(payload, null, 2));
-				return;
-			}
-			renderJson(payload);
+			await renderJsonOrWrite(
+				payload,
+				typeof values.out === "string" ? values.out : undefined,
+			);
 			return;
 		}
 
@@ -294,12 +295,7 @@ const scaffoldBuilder = new CommandBuilder<ScaffoldRunInput, ScaffoldRunResult>(
 				timestamp: new Date().toISOString(),
 				error: error.message,
 			};
-			if (input.out) {
-				const { writeFile } = await import("node:fs/promises");
-				await writeFile(input.out ?? "", JSON.stringify(payload, null, 2));
-			} else {
-				renderJson(payload);
-			}
+			await renderJsonOrWrite(payload, input.out ?? undefined);
 			setExitCode(error, [
 				"scaffold.invalid_args",
 				"scaffold.invalid_type",

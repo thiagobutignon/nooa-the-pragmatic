@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -182,8 +184,7 @@ const doctorBuilder = new CommandBuilder<DoctorRunInput, DoctorRunResult>()
 			process.exitCode = 1;
 			return;
 		}
-		printError(error);
-		setExitCode(error, []);
+		handleCommandError(error, []);
 	})
 	.telemetry({
 		eventPrefix: "doctor",

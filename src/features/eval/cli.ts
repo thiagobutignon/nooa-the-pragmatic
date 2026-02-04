@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -518,8 +519,7 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			return;
 		}
 
-		printError(error);
-		setExitCode(error, ["eval.missing_args"]);
+		handleCommandError(error, ["eval.missing_args"]);
 	})
 	.telemetry({
 		eventPrefix: "eval",

@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJsonOrWrite
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { EventBus } from "../../core/event-bus";
@@ -173,14 +175,10 @@ const ciBuilder = new CommandBuilder<CiRunInput, CiRunResult>()
 			},
 			duration_ms: output.duration_ms,
 		};
-		const jsonOutput = JSON.stringify(payload, null, 2);
-		if (values.out) {
-			const { writeFile } = await import("node:fs/promises");
-			await writeFile(String(values.out), jsonOutput);
-			console.log(`✅ Results written to ${values.out}`);
-		} else {
-			console.log(jsonOutput);
-		}
+		await renderJsonOrWrite(
+			payload,
+			typeof values.out === "string" ? values.out : undefined,
+		);
 		process.exitCode = output.ok ? 0 : 1;
 	})
 	.onFailure((error) => {
@@ -188,8 +186,7 @@ const ciBuilder = new CommandBuilder<CiRunInput, CiRunResult>()
 			process.exitCode = 1;
 			return;
 		}
-		printError(error);
-		setExitCode(error, []);
+		handleCommandError(error, []);
 	})
 	.telemetry({
 		eventPrefix: "ci",

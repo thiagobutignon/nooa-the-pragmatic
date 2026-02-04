@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executeSearch } from "../index/execute";
@@ -149,8 +151,7 @@ const askBuilder = new CommandBuilder<AskRunInput, AskRunResult>()
 			process.exitCode = 2;
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["ask.missing_query"]);
+		handleCommandError(error, ["ask.missing_query"]);
 	})
 	.telemetry({
 		eventPrefix: "ask",

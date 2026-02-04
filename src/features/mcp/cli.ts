@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { dropSubcommandPositionals } from "./helpers";
@@ -173,8 +175,7 @@ const mcpBuilder = new CommandBuilder<McpRunInput, McpRunResult>()
 			process.exitCode = 1;
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["mcp.missing_subcommand", "mcp.unknown_subcommand"]);
+		handleCommandError(error, ["mcp.missing_subcommand", "mcp.unknown_subcommand"]);
 	})
 	.telemetry({
 		eventPrefix: "mcp",

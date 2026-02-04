@@ -1,6 +1,9 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson,
+	setExitCode
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executePipeline } from "./executor";
@@ -281,8 +284,7 @@ const runBuilder = new CommandBuilder<RunRunInput, RunRunResult>()
 			}
 		}
 
-		printError(error);
-		setExitCode(error, ["run.missing_steps"]);
+		handleCommandError(error, ["run.missing_steps"]);
 	})
 	.telemetry({
 		eventPrefix: "run",

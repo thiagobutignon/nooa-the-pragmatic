@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { clearGoal, getGoal, setGoal } from "./execute";
@@ -189,8 +191,7 @@ const goalBuilder = new CommandBuilder<GoalRunInput, GoalRunResult>()
 			process.exitCode = 2;
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["goal.missing_goal", "goal.invalid_command"]);
+		handleCommandError(error, ["goal.missing_goal", "goal.invalid_command"]);
 	})
 	.telemetry({
 		eventPrefix: "goal",

@@ -1,7 +1,8 @@
-import { relative, resolve } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -227,8 +228,7 @@ const indexBuilder = new CommandBuilder<IndexRunInput, IndexRunResult>()
 			process.exitCode = 2;
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["index.missing_command", "index.missing_path"]);
+		handleCommandError(error, ["index.missing_command", "index.missing_path"]);
 	})
 	.telemetry({
 		eventPrefix: "index",

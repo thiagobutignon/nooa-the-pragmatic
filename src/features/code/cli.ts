@@ -1,9 +1,8 @@
-import { readFile, writeFile } from "node:fs/promises";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import type { AgentDocMeta, SdkResult } from "../../core/types";
-import { sdkError } from "../../core/types";
-import { renderJson, printError, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import { executeDiff } from "./diff";
 import { executeFormat } from "./format";
 import { applyPatch } from "./patch";
@@ -351,8 +350,7 @@ const codeBuilder = new CommandBuilder<CodeRunInput, CodeRunResult>()
 		}
 	})
 	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, [
+		handleCommandError(error, [
 			"code.missing_action",
 			"code.missing_path",
 			"code.missing_input",

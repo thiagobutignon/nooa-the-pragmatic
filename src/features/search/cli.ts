@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { hasRipgrep, runSearch, type SearchResult } from "./engine";
@@ -279,8 +281,7 @@ const searchBuilder = new CommandBuilder<SearchRunInput, SearchRunResult>()
 		console.error(`Found ${output.results.length} matches`);
 	})
 	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, ["search.missing_query", "search.invalid_max_results"]);
+		handleCommandError(error, ["search.missing_query", "search.invalid_max_results"]);
 	})
 	.telemetry({
 		eventPrefix: "search",

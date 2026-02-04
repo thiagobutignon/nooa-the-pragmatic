@@ -1,9 +1,8 @@
-import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import { logger } from "../../core/logger";
 import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";
 import type { McpResource } from "../../core/mcp/types";
@@ -201,8 +200,7 @@ const contextBuilder = new CommandBuilder<ContextRunInput, ContextRunResult>()
 			process.exitCode = 2;
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["context.missing_target"]);
+		handleCommandError(error, ["context.missing_target"]);
 	})
 	.telemetry({
 		eventPrefix: "context",

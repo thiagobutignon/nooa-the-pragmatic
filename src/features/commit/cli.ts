@@ -1,7 +1,8 @@
-import { execa } from "execa";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import { createTraceId, logger } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
@@ -330,8 +331,7 @@ const commitBuilder = new CommandBuilder<CommitRunInput, CommitRunResult>()
 			process.exitCode = 1;
 			return;
 		}
-		printError(error);
-		setExitCode(error, [
+		handleCommandError(error, [
 			"commit.missing_message",
 			"commit.not_git_repo",
 			"commit.no_changes",

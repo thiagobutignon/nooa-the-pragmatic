@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import { openMcpDatabase } from "../../core/mcp/db";
 import { executeMcpToolFromAi } from "../../core/mcp/integrations/ai";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -316,8 +318,7 @@ const aiBuilder = new CommandBuilder<AiRunInput, AiRunResult>()
 		console.log(output.content ?? "");
 	})
 	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, ["ai.missing_prompt", "ai.mcp_invalid_args"]);
+		handleCommandError(error, ["ai.missing_prompt", "ai.mcp_invalid_args"]);
 	});
 
 export const aiAgentDoc = aiBuilder.buildAgentDoc(false);

@@ -1,7 +1,9 @@
-import { readFile } from "node:fs/promises";
-import { isAbsolute, resolve } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	printError,
+	renderJson,
+	setExitCode
+} from "../../core/cli-output";
 import { buildStandardOptions } from "../../core/cli-flags";
 import { createTraceId } from "../../core/logger";
 import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";

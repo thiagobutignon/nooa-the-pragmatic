@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
@@ -330,8 +332,7 @@ const ignoreBuilder = new CommandBuilder<IgnoreRunInput, IgnoreRunResult>()
 			process.exitCode = 2;
 			return;
 		}
-		printError(error);
-		setExitCode(error, [
+		handleCommandError(error, [
 			"ignore.missing_command",
 			"ignore.missing_pattern",
 			"ignore.missing_path",

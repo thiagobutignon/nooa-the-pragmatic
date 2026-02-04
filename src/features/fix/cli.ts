@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { runFix } from "./execute";
@@ -185,8 +187,7 @@ const fixBuilder = new CommandBuilder<FixRunInput, FixRunResult>()
 			process.exitCode = 2;
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["fix.missing_issue"]);
+		handleCommandError(error, ["fix.missing_issue"]);
 	})
 	.telemetry({
 		eventPrefix: "fix",

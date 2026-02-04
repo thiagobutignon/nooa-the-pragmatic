@@ -1,6 +1,9 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson,
+	setExitCode
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
@@ -383,8 +386,7 @@ const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>(
 			setExitCode(error, ["worktree.missing_action"]);
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["worktree.invalid_input"]);
+		handleCommandError(error, ["worktree.invalid_input"]);
 	});
 
 export const worktreeAgentDoc = worktreeBuilder.buildAgentDoc(false);

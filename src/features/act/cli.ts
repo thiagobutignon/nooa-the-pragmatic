@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { ActEngine } from "./engine";
@@ -167,8 +169,7 @@ const actBuilder = new CommandBuilder<ActRunInput, ActRunResult>()
 		console.log(`\n🏁 Result: ${output.finalAnswer}`);
 	})
 	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, ["act.missing_goal", "act.max_turns_exceeded"]);
+		handleCommandError(error, ["act.missing_goal", "act.max_turns_exceeded"]);
 	})
 	.telemetry({
 		eventPrefix: "act",

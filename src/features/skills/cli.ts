@@ -1,7 +1,8 @@
-import { join } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	setExitCode
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { SkillManager } from "./manager";
@@ -254,8 +255,7 @@ const skillsBuilder = new CommandBuilder<SkillsRunInput, SkillsRunResult>()
 			setExitCode(error, ["skills.missing_action", "skills.missing_name"]);
 			return;
 		}
-		printError(error);
-		setExitCode(error, ["skills.missing_name"]);
+		handleCommandError(error, ["skills.missing_name"]);
 	});
 
 export const skillsAgentDoc = skillsBuilder.buildAgentDoc(false);

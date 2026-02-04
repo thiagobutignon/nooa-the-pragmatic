@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { EventBus } from "../../core/event-bus";
 import { getCurrentBranch } from "../../core/integrations/git";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -385,8 +387,7 @@ const prBuilder = new CommandBuilder<PrRunInput, PrRunResult>()
 		}
 	})
 	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, [
+		handleCommandError(error, [
 			"pr.missing_action",
 			"pr.missing_number",
 			"pr.missing_title",

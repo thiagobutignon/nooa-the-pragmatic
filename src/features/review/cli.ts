@@ -1,6 +1,10 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJsonOrWrite,
+	renderJson,
+	setExitCode
+} from "../../core/cli-output";
 import { createTraceId, logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -193,25 +197,24 @@ const reviewBuilder = new CommandBuilder<ReviewRunInput, ReviewRunResult>()
 	.run(run)
 	.onSuccess(async (output, values) => {
 		const jsonMode = Boolean(values.json);
-		const payload = jsonMode
-			? JSON.stringify(
-					{
-						schemaVersion: "1.0",
-						ok: output.ok,
-						traceId: output.traceId,
-						command: "review",
-						timestamp: new Date().toISOString(),
-						...(output.result ?? {}),
-					},
-					null,
-					2,
-				)
-			: output.content;
-		if (values.out) {
+		if (jsonMode) {
+			const payload = {
+				schemaVersion: "1.0",
+				ok: output.ok,
+				traceId: output.traceId,
+				command: "review",
+				timestamp: new Date().toISOString(),
+				...(output.result ?? {}),
+			};
+			await renderJsonOrWrite(
+				payload,
+				typeof values.out === "string" ? values.out : undefined,
+			);
+		} else if (values.out) {
 			const { writeFile } = await import("node:fs/promises");
-			await writeFile(values.out as string, payload, "utf-8");
+			await writeFile(values.out as string, output.content, "utf-8");
 		} else {
-			console.log(payload);
+			console.log(output.content);
 		}
 
 		if (jsonMode && !output.result) {
@@ -269,8 +272,7 @@ const reviewBuilder = new CommandBuilder<ReviewRunInput, ReviewRunResult>()
 			process.exitCode = 2;
 			return;
 		}
-		printError(error);
-		setExitCode(error, [
+		handleCommandError(error, [
 			"review.no_input",
 			"review.not_found",
 			"review.invalid_severity",

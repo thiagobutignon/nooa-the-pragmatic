@@ -1,7 +1,8 @@
-import { join } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { PromptEngine } from "./engine";
@@ -456,8 +457,7 @@ const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
 		}
 	})
 	.onFailure((error) => {
-		printError(error);
-		setExitCode(error, [
+		handleCommandError(error, [
 			"prompt.missing_action",
 			"prompt.missing_name",
 			"prompt.missing_description",

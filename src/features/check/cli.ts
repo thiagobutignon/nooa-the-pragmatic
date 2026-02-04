@@ -1,9 +1,8 @@
-import { lstat, readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { execa } from "execa";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
@@ -264,8 +263,7 @@ const checkBuilder = new CommandBuilder<CheckRunInput, CheckRunResult>()
 			return;
 		}
 
-		printError(error);
-		setExitCode(error, ["check.policy_violation", "check.git_error"]);
+		handleCommandError(error, ["check.policy_violation", "check.git_error"]);
 	})
 	.telemetry({
 		eventPrefix: "check",

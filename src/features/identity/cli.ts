@@ -1,6 +1,8 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson
+} from "../../core/cli-output";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { initIdentity } from "./init";
@@ -121,8 +123,7 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 	})
 	.onFailure((error) => {
 		console.error(`❌ Init failed: ${error.message}`);
-		printError(error);
-		setExitCode(error, []);
+		handleCommandError(error, []);
 	})
 	.telemetry({
 		eventPrefix: "init",

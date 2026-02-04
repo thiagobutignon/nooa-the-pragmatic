@@ -1,6 +1,9 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import { buildStandardOptions } from "../../core/cli-flags";
-import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJsonOrWrite,
+	setExitCode
+} from "../../core/cli-output";
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -306,13 +309,10 @@ const embedBuilder = new CommandBuilder<EmbedRunInput, EmbedRunResult>()
 	}))
 	.run(run)
 	.onSuccess(async (output, values) => {
-		const jsonOutput = JSON.stringify(output, null, 2);
-		if (values.out) {
-			const { writeFile } = await import("node:fs/promises");
-			await writeFile(String(values.out), jsonOutput);
-			return;
-		}
-		console.log(jsonOutput);
+		await renderJsonOrWrite(
+			output,
+			typeof values.out === "string" ? values.out : undefined,
+		);
 	})
 	.onFailure((error) => {
 		if (error.code.startsWith("embed.")) {
@@ -325,8 +325,7 @@ const embedBuilder = new CommandBuilder<EmbedRunInput, EmbedRunResult>()
 			]);
 			return;
 		}
-		printError(error);
-		setExitCode(error, [
+		handleCommandError(error, [
 			"embed.missing_action",
 			"embed.missing_text",
 			"embed.missing_path",
