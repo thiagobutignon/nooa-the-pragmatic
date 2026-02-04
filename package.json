@@ -20,6 +20,7 @@
 	},
 	"scripts": {
 		"start": "bun run index.ts",
+		"tui:read": "bun run src/tui/read/app.tsx",
 		"test": "bun test",
 		"test:coverage": "bun test --coverage",
 		"check": "biome check .",
