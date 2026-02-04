@@ -1,22 +1,18 @@
-import { parseArgs } from "node:util";
-import type { Command, CommandContext } from "../../core/command";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import type { AgentDocMeta, SdkResult } from "../../core/types";
+import { sdkError } from "../../core/types";
 import type { EventBus } from "../../core/event-bus";
-import { logger } from "../../core/logger";
 import { executeCi } from "./execute";
 
-export async function ciCli(args: string[], bus?: EventBus) {
-	const { values } = parseArgs({
-		args,
-		options: {
-			json: { type: "boolean" },
-			out: { type: "string" },
-			help: { type: "boolean", short: "h" },
-		},
-		allowPositionals: true,
-		strict: false,
-	});
+export const ciMeta: AgentDocMeta = {
+	name: "ci",
+	description: "Run local CI pipeline (test + lint + check)",
+	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
+};
 
-	const ciHelp = `
+export const ciHelp = `
 Usage: nooa ci [flags]
 
 Run local CI pipeline (test + lint + policy check).
@@ -30,80 +26,186 @@ Examples:
   nooa ci
   nooa ci --json
   nooa ci --json --out .nooa/reports/ci.json
+
+Exit Codes:
+  0: Success
+  1: Runtime Error (CI failed)
+
+Error Codes:
+  ci.failed: CI pipeline failed
+  ci.runtime_error: CI execution failed
 `;
 
-	if (values.help) {
-		console.log(ciHelp);
-		return;
-	}
+export const ciSdkUsage = `
+SDK Usage:
+  const result = await ci.run({ json: true });
+  if (result.ok) console.log(result.data.ok);
+`;
 
+export const ciUsage = {
+	cli: "nooa ci [flags]",
+	sdk: "await ci.run({ json: true })",
+	tui: "CiConsole()",
+};
+
+export const ciSchema = {
+	json: { type: "boolean", required: false },
+	out: { type: "string", required: false },
+} satisfies SchemaSpec;
+
+export const ciOutputFields = [
+	{ name: "ok", type: "boolean" },
+	{ name: "traceId", type: "string" },
+	{ name: "stages", type: "string" },
+	{ name: "duration_ms", type: "number" },
+];
+
+export const ciErrors = [
+	{ code: "ci.failed", message: "CI pipeline failed." },
+	{ code: "ci.runtime_error", message: "CI execution failed." },
+];
+
+export const ciExitCodes = [
+	{ value: "0", description: "Success" },
+	{ value: "1", description: "Runtime error" },
+];
+
+export const ciExamples = [
+	{ input: "nooa ci", output: "Runs CI" },
+	{ input: "nooa ci --json", output: "JSON report" },
+];
+
+export interface CiRunInput {
+	json?: boolean;
+	out?: string;
+	bus?: EventBus;
+}
+
+export interface CiRunResult {
+	ok: boolean;
+	traceId: string;
+	test: { passed: boolean; exitCode: number };
+	lint: { passed: boolean; exitCode: number };
+	check: { passed: boolean; violations: number };
+	duration_ms: number;
+}
+
+export async function run(
+	input: CiRunInput,
+): Promise<SdkResult<CiRunResult>> {
 	try {
-		if (!values.json) {
-			console.log("🔍 Running CI pipeline...\n");
-		}
-		const result = await executeCi({ json: !!values.json }, bus);
-
-		if (values.json) {
-			const output = {
-				schemaVersion: "1.0",
-				ok: result.ok,
-				traceId: result.traceId,
-				command: "ci",
-				timestamp: new Date().toISOString(),
-				stages: {
-					test: result.test,
-					lint: result.lint,
-					check: result.check,
-				},
-				duration_ms: result.duration_ms,
+		const result = await executeCi({ json: Boolean(input.json) }, input.bus);
+		if (!result.ok) {
+			return {
+				ok: false,
+				error: sdkError("ci.failed", "CI pipeline failed.", { result }),
 			};
-			const jsonOutput = JSON.stringify(output, null, 2);
-			if (values.out) {
-				const { writeFile } = await import("node:fs/promises");
-				await writeFile(String(values.out), jsonOutput);
-				console.log(`✅ Results written to ${values.out}`);
-			} else {
-				console.log(jsonOutput);
-			}
-		} else {
-			// Human-readable output
-			console.log(
-				result.test.passed
-					? "✅ Tests passed"
-					: `❌ Tests failed (exit: ${result.test.exitCode})`,
-			);
-			console.log(
-				result.lint.passed
-					? "✅ Lint passed"
-					: `❌ Lint failed (exit: ${result.lint.exitCode})`,
-			);
-			console.log(
-				result.check.passed
-					? "✅ Policy check passed"
-					: `❌ Policy violations: ${result.check.violations}`,
-			);
-			console.log(`\n⏱️  Duration: ${result.duration_ms}ms`);
-			console.log(
-				result.ok
-					? `\n✅ CI passed [${result.traceId}]`
-					: `\n❌ CI failed [${result.traceId}]`,
-			);
 		}
-
-		process.exitCode = result.ok ? 0 : 1;
-	} catch (e) {
-		logger.error("ci.error", e as Error);
-		process.exitCode = 1;
+		return { ok: true, data: result };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return {
+			ok: false,
+			error: sdkError("ci.runtime_error", message),
+		};
 	}
 }
 
-const ciCommand: Command = {
-	name: "ci",
-	description: "Run local CI pipeline (test + lint + check)",
-	async execute({ rawArgs, bus }: CommandContext) {
-		const index = rawArgs.indexOf("ci");
-		await ciCli(rawArgs.slice(index + 1), bus);
-	},
-};
+const ciBuilder = new CommandBuilder<CiRunInput, CiRunResult>()
+	.meta(ciMeta)
+	.usage(ciUsage)
+	.schema(ciSchema)
+	.help(ciHelp)
+	.sdkUsage(ciSdkUsage)
+	.outputFields(ciOutputFields)
+	.examples(ciExamples)
+	.errors(ciErrors)
+	.exitCodes(ciExitCodes)
+	.options({
+		options: {
+			...buildStandardOptions(),
+			out: { type: "string" },
+		},
+	})
+	.parseInput(async ({ values, bus }) => ({
+		json: Boolean(values.json),
+		out: typeof values.out === "string" ? values.out : undefined,
+		bus,
+	}))
+	.run(run)
+	.onSuccess(async (output, values) => {
+		if (!values.json) {
+			console.log("🔍 Running CI pipeline...\n");
+			console.log(
+				output.test.passed
+					? "✅ Tests passed"
+					: `❌ Tests failed (exit: ${output.test.exitCode})`,
+			);
+			console.log(
+				output.lint.passed
+					? "✅ Lint passed"
+					: `❌ Lint failed (exit: ${output.lint.exitCode})`,
+			);
+			console.log(
+				output.check.passed
+					? "✅ Policy check passed"
+					: `❌ Policy violations: ${output.check.violations}`,
+			);
+			console.log(`\n⏱️  Duration: ${output.duration_ms}ms`);
+			console.log(
+				output.ok
+					? `\n✅ CI passed [${output.traceId}]`
+					: `\n❌ CI failed [${output.traceId}]`,
+			);
+			process.exitCode = output.ok ? 0 : 1;
+			return;
+		}
+		const payload = {
+			schemaVersion: "1.0",
+			ok: output.ok,
+			traceId: output.traceId,
+			command: "ci",
+			timestamp: new Date().toISOString(),
+			stages: {
+				test: output.test,
+				lint: output.lint,
+				check: output.check,
+			},
+			duration_ms: output.duration_ms,
+		};
+		const jsonOutput = JSON.stringify(payload, null, 2);
+		if (values.out) {
+			const { writeFile } = await import("node:fs/promises");
+			await writeFile(String(values.out), jsonOutput);
+			console.log(`✅ Results written to ${values.out}`);
+		} else {
+			console.log(jsonOutput);
+		}
+		process.exitCode = output.ok ? 0 : 1;
+	})
+	.onFailure((error) => {
+		if (error.code === "ci.failed") {
+			process.exitCode = 1;
+			return;
+		}
+		printError(error);
+		setExitCode(error, []);
+	})
+	.telemetry({
+		eventPrefix: "ci",
+		successMetadata: (_, output) => ({
+			ok: output.ok,
+			duration_ms: output.duration_ms,
+		}),
+		failureMetadata: (_, error) => ({
+			error: error.message,
+		}),
+	});
+
+export const ciAgentDoc = ciBuilder.buildAgentDoc(false);
+export const ciFeatureDoc = (includeChangelog: boolean) =>
+	ciBuilder.buildFeatureDoc(includeChangelog);
+
+const ciCommand = ciBuilder.build();
 
 export default ciCommand;
