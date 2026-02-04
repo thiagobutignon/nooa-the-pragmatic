@@ -6,6 +6,7 @@ import type {
 	AiProvider,
 	AiRequest,
 	AiResponse,
+	AiStreamChunk,
 } from "./types";
 
 export class AiEngine {
@@ -47,6 +48,41 @@ export class AiEngine {
 			}
 			throw error;
 		}
+	}
+
+	stream(
+		request: AiRequest,
+		options: AiEngineOptions = {},
+	): AsyncGenerator<AiStreamChunk, AiResponse, void> {
+		const self = this;
+		async function* run() {
+			const providerName =
+				options.provider || process.env.NOOA_AI_PROVIDER || "ollama";
+			const provider = self.providers.get(providerName);
+
+			if (!provider) {
+				throw new Error(`AI Provider not found: ${providerName}`);
+			}
+
+			if (provider.stream) {
+				try {
+					return yield* provider.stream(request);
+				} catch (error) {
+					if (options.fallbackProvider) {
+						const fallback = self.providers.get(options.fallbackProvider);
+						if (fallback?.stream) {
+							return yield* fallback.stream(request);
+						}
+					}
+					throw error;
+				}
+			}
+
+			const response = await self.complete(request, options);
+			yield { content: response.content };
+			return response;
+		}
+		return run();
 	}
 
 	async embed(
