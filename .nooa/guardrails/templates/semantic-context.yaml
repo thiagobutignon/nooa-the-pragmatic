@@ -1,0 +1,95 @@
+# OAuth Migration Security Context
+# ------------------------------------------------------------------
+# This example shows how to classify SECURITY findings with semantic
+# context YAML. Use it to tell TheAuditor which findings are obsolete,
+# which are current, and which are temporarily acceptable while you
+# migrate from JWT to OAuth2 / OpenID Connect.
+
+context_name: "oauth_migration_security"
+description: "Classifies JWT findings vs OAuth2 adoption state"
+version: "2025-10-26"
+
+patterns:
+  # ==================================================================
+  # OBSOLETE PATTERNS — security issues that should be ignored or
+  # downgraded because the underlying feature is being removed.
+  # ==================================================================
+  obsolete:
+    - id: "jwt_issue_calls"
+      pattern: "(jwt\\.sign|AuthService\\.(?:issueJwt|signToken)|jsonwebtoken\\.verify)"
+      reason: "JWT signing pipeline scheduled for removal; findings should be deprioritized"
+      replacement: "AuthService.issueOAuthToken"
+      severity: "medium"
+      scope:
+        include: ["backend/src/auth/", "backend/src/routes/"]
+        exclude: ["tests/", "migrations/"]
+
+    - id: "deprecated_bearer_headers"
+      pattern: "Authorization:\\s*Bearer\\s+[A-Za-z0-9._-]+"
+      reason: "Static bearer tokens replaced with OAuth2 authorization code flow"
+      replacement: "Authorization: OAuth {token}"
+      severity: "low"
+      scope:
+        include: ["docs/", "examples/", "frontend/src/network/"]
+
+  # ==================================================================
+  # CURRENT PATTERNS — findings that should remain high priority because
+  # they touch the new OAuth2 pipeline or security controls.
+  # ==================================================================
+  current:
+    - id: "oauth_exchange"
+      pattern: "(oauth2Client\\.|OIDCProvider\\.|authorization_code|pkce_verifier)"
+      reason: "Findings involving OAuth2/OIDC must be treated as current"
+      scope:
+        include: ["backend/src/auth/", "frontend/src/auth/"]
+
+    - id: "token_introspection"
+      pattern: "(introspectToken|token_endpoint|oauth_service)"
+      reason: "New security surface that must remain scrutinized"
+      scope:
+        include: ["services/", "backend/src/auth/"]
+
+  # ==================================================================
+  # TRANSITIONAL PATTERNS — dual-stack code that is temporarily OK
+  # while rollout happens. The expires date ensures they convert later.
+  # ==================================================================
+  transitional:
+    - id: "jwt_oauth_bridge"
+      pattern: "bridgeJwtToOAuth"
+      reason: "Bridge layer until OAuth rollout completes"
+      expires: "2025-12-31"
+      scope:
+        include: ["backend/src/auth/bridges/"]
+
+    - id: "legacy_token_fallback"
+      pattern: "tokenProvider\\.getLegacyToken"
+      reason: "Legacy fallback allowed during phased migration"
+      expires: "2025-11-30"
+      scope:
+        include: ["frontend/src/auth/", "mobile/"]
+
+# ------------------------------------------------------------------
+# RELATIONSHIPS — map obsolete -> current patterns for better context.
+# ------------------------------------------------------------------
+relationships:
+  - type: "replaces"
+    from: "jwt_issue_calls"
+    to: "oauth_exchange"
+    note: "JWT generation replaced by OAuth2 code exchange"
+
+  - type: "replaces"
+    from: "deprecated_bearer_headers"
+    to: "token_introspection"
+    note: "Static bearer tokens replaced with OAuth tokens verified via introspection"
+
+# ------------------------------------------------------------------
+# METADATA — optional but useful for documentation + tooling.
+# ------------------------------------------------------------------
+metadata:
+  author: "security_platform_team"
+  created: "2025-10-26"
+  last_updated: "2025-10-26"
+  tags: ["security", "oauth", "jwt-deprecation"]
+  jira_ticket: "SEC-2045"
+  documentation: "https://wiki.company.com/security/oauth-migration"
+  rollout_phase: "2-of-3"

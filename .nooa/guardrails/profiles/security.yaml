@@ -1,0 +1,365 @@
+# NOOA Built-in Profile: Security
+# Detects common security anti-patterns
+# Severity: high/critical (security issues require attention)
+
+refactor_name: security
+description: Security-focused rules for detecting secrets and dangerous patterns
+version: "1.0.0"
+
+rules:
+  - id: hardcoded-secret
+    description: Hardcoded secrets or API keys detected
+    severity: critical
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "(?:api[_-]?key|apikey|secret|password|token|auth)\\s*[:=]\\s*[\"'][^\"']{8,}[\"']"
+          flags: "i"
+        - type: regex
+          value: "(?:AWS_SECRET_ACCESS_KEY|GITHUB_TOKEN|OPENAI_API_KEY)\\s*[:=]\\s*[\"'][^\"']+[\"']"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/.env.example"
+        - "**/README.md"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  - id: exposed-credentials
+    description: Credentials exposed in connection strings
+    severity: critical
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "(?:mysql|postgres|mongodb)://[^:]+:[^@]+@"
+        - type: regex
+          value: "redis://:[^@]+@"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/.env.example"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  - id: sql-injection-risk
+    description: Potential SQL injection vulnerability
+    severity: high
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "\\$\\{.*\\}.*(?:SELECT|INSERT|UPDATE|DELETE|DROP)"
+          flags: "i"
+        - type: regex
+          value: "query\\s*\\(\\s*`[^`]*\\$\\{"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  - id: eval-usage
+    description: Usage of eval() is dangerous
+    severity: high
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "\\beval\\s*\\("
+        - type: regex
+          value: "new\\s+Function\\s*\\("
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+        - "**/scripts/**"
+
+  - id: dangerous-innerHTML
+    description: innerHTML can lead to XSS vulnerabilities
+    severity: high
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "\\.innerHTML\\s*="
+        - type: regex
+          value: "dangerouslySetInnerHTML"
+    scope:
+      include:
+        - "**/*.tsx"
+        - "**/*.jsx"
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  - id: insecure-random
+    description: Math.random() should not be used for security-sensitive operations
+    severity: medium
+    category: security
+    match:
+      anyOf:
+        - type: regex
+          value: "Math\\.random\\(\\).*(?:token|secret|key|password|id)"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  # ============================================
+  # RACE CONDITIONS & CONCURRENCY
+  # ============================================
+
+  - id: async-without-await
+    description: Async function call without await may cause race condition
+    severity: high
+    category: concurrency
+    match:
+      anyOf:
+        - type: regex
+          value: "(?<!await\\s)\\w+Async\\s*\\("
+        - type: regex
+          value: "(?<!await\\s)\\w+\\.query\\s*\\("
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.d.ts"
+
+  - id: global-mutable-state
+    description: Global mutable state can cause race conditions
+    severity: medium
+    category: concurrency
+    match:
+      anyOf:
+        - type: regex
+          value: "^(let|var)\\s+\\w+\\s*=\\s*\\{\\}"
+        - type: regex
+          value: "^(let|var)\\s+\\w+\\s*=\\s*\\[\\]"
+        - type: regex
+          value: "^(let|var)\\s+\\w+\\s*=\\s*new Map"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+        - "**/constants/**"
+        - "**/config/**"
+
+  # ============================================
+  # ENHANCED SQL INJECTION
+  # ============================================
+
+  - id: sql-string-concat
+    description: SQL query with string concatenation is vulnerable
+    severity: critical
+    category: sql-injection
+    match:
+      anyOf:
+        - type: regex
+          value: "SELECT.*\\+\\s*\\w+"
+        - type: regex
+          value: "INSERT.*\\+\\s*\\w+"
+        - type: regex
+          value: "UPDATE.*\\+\\s*\\w+"
+        - type: regex
+          value: "DELETE.*\\+\\s*\\w+"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  - id: sql-template-literal
+    description: SQL with template literal interpolation is vulnerable
+    severity: critical
+    category: sql-injection
+    match:
+      anyOf:
+        - type: regex
+          value: "query\\(`.*\\$\\{"
+        - type: regex
+          value: "execute\\(`.*\\$\\{"
+        - type: regex
+          value: "raw\\(`.*\\$\\{"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  - id: sql-fstring
+    description: Python f-string SQL injection
+    severity: critical
+    category: sql-injection
+    match:
+      anyOf:
+        - type: regex
+          value: "f[\"']SELECT.*\\{"
+        - type: regex
+          value: "f[\"']INSERT.*\\{"
+        - type: regex
+          value: "f[\"']UPDATE.*\\{"
+        - type: regex
+          value: "f[\"']DELETE.*\\{"
+    scope:
+      include:
+        - "**/*.py"
+
+  # ============================================
+  # COMMAND INJECTION
+  # ============================================
+
+  - id: command-injection
+    description: Command execution with user input is vulnerable
+    severity: critical
+    category: command-injection
+    match:
+      anyOf:
+        - type: regex
+          value: "exec\\(\\s*[`\"'].*\\$\\{"
+        - type: regex
+          value: "execSync\\(.*\\$\\{"
+        - type: regex
+          value: "spawn\\(.*\\$\\{"
+        - type: regex
+          value: "system\\(.*\\$\\{"
+        - type: literal
+          value: "child_process.exec(`"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  - id: shell-true
+    description: shell=True in subprocess is dangerous
+    severity: high
+    category: command-injection
+    match:
+      anyOf:
+        - type: literal
+          value: "shell=True"
+        - type: literal
+          value: "shell: true"
+    scope:
+      include:
+        - "**/*.py"
+        - "**/*.ts"
+        - "**/*.js"
+
+  # ============================================
+  # PATH TRAVERSAL
+  # ============================================
+
+  - id: path-traversal
+    description: Path traversal vulnerability risk
+    severity: high
+    category: path-traversal
+    match:
+      anyOf:
+        - type: regex
+          value: "readFile\\(.*\\+.*\\)"
+        - type: regex
+          value: "writeFile\\(.*\\+.*\\)"
+        - type: regex
+          value: "path\\.join\\(.*req\\."
+        - type: regex
+          value: "fs\\.(read|write).*\\$\\{"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  # ============================================
+  # SSRF (Server-Side Request Forgery)
+  # ============================================
+
+  - id: ssrf-risk
+    description: Unvalidated URL in HTTP request (SSRF risk)
+    severity: high
+    category: ssrf
+    match:
+      anyOf:
+        - type: regex
+          value: "fetch\\(.*\\$\\{"
+        - type: regex
+          value: "axios\\.(get|post)\\(.*\\$\\{"
+        - type: regex
+          value: "http\\.request\\(.*\\$\\{"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.js"
+      exclude:
+        - "**/*.test.ts"
+
+  # ============================================
+  # DESERIALIZATION
+  # ============================================
+
+  - id: unsafe-deserialization
+    description: Unsafe deserialization can lead to RCE
+    severity: critical
+    category: deserialization
+    match:
+      anyOf:
+        - type: literal
+          value: "pickle.loads"
+        - type: literal
+          value: "yaml.load("
+        - type: regex
+          value: "JSON\\.parse\\(.*req\\."
+        - type: literal
+          value: "unserialize("
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.test.py"
+
+  # ============================================
+  # LOGGING SENSITIVE DATA
+  # ============================================
+
+  - id: log-sensitive-data
+    description: Logging sensitive data exposes credentials
+    severity: high
+    category: logging
+    match:
+      anyOf:
+        - type: regex
+          value: "console\\.(log|info|debug).*password"
+          flags: "i"
+        - type: regex
+          value: "console\\.(log|info|debug).*secret"
+          flags: "i"
+        - type: regex
+          value: "console\\.(log|info|debug).*token"
+          flags: "i"
+        - type: regex
+          value: "logger\\.(info|debug).*password"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+

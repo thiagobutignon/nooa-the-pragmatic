@@ -282,12 +282,11 @@ ${outputXml}
 		const meta = this.metaValue;
 
 		const execute = async ({ rawArgs, bus }: CommandContext) => {
-			console.log("DEBUG: CommandBuilder options keys:", Object.keys(parseOptions.options));
 			const { parseArgs } = await import("node:util");
 			const parsed = parseArgs({
 				args: rawArgs,
 				options: parseOptions.options,
-				strict: parseOptions.strict ?? true,
+				strict: (parseOptions as any).strict ?? true,
 				allowPositionals: true,
 			});
 
