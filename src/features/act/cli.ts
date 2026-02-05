@@ -1,10 +1,7 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-    handleCommandError,
-    renderJson
-} from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { ActEngine } from "./engine";
@@ -97,6 +94,8 @@ export interface ActRunInput {
     provider?: string;
     turns?: number;
     json?: boolean;
+    bus?: EventBus;
+    traceId?: string;
 }
 
 export interface ActRunResult {
@@ -151,27 +150,55 @@ const actBuilder = new CommandBuilder<ActRunInput, ActRunResult>()
             turns: { type: "string" },
         },
     })
-    .parseInput(async ({ positionals, values }) => {
+    .parseInput(async ({ positionals, values, bus, traceId }) => {
         const turnsRaw = typeof values.turns === "string" ? values.turns : undefined;
         const turnsParsed = turnsRaw ? Number.parseInt(turnsRaw, 10) : undefined;
+        const goal = positionals[1];
+        if (bus && traceId) {
+            bus.emit("act.started", {
+                type: "act.started",
+                traceId,
+                goal: goal ?? "",
+            });
+        }
         return {
-            goal: positionals[1],
+            goal,
             model: typeof values.model === "string" ? values.model : undefined,
             provider: typeof values.provider === "string" ? values.provider : undefined,
             turns: Number.isNaN(turnsParsed) ? undefined : turnsParsed,
             json: Boolean(values.json),
+            bus,
+            traceId,
         };
     })
     .run(run)
-    .onSuccess((output, values) => {
+    .onSuccess((output, values, input) => {
         if (values.json) {
             console.log(JSON.stringify(output));
+            input.bus?.emit("act.completed", {
+                type: "act.completed",
+                traceId: input.traceId ?? "",
+                goal: input.goal ?? "",
+                result: "success",
+            });
             return;
         }
         console.log(`\n🏁 Result: ${output.finalAnswer}`);
+        input.bus?.emit("act.completed", {
+            type: "act.completed",
+            traceId: input.traceId ?? "",
+            goal: input.goal ?? "",
+            result: "success",
+        });
     })
-    .onFailure((error) => {
+    .onFailure((error, input) => {
         handleCommandError(error, ["act.missing_goal", "act.max_turns_exceeded"]);
+        input.bus?.emit("act.failed", {
+            type: "act.failed",
+            traceId: input.traceId ?? "",
+            goal: input.goal ?? "",
+            error: error.message,
+        });
     })
     .telemetry({
         eventPrefix: "act",

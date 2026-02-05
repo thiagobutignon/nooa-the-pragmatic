@@ -1,11 +1,7 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson,
-	setExitCode
-} from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+import { handleCommandError, renderJson, setExitCode } from "../../core/cli-output";
+import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
@@ -137,6 +133,8 @@ export interface WorktreeRunInput {
 	"no-install"?: boolean;
 	"no-test"?: boolean;
 	json?: boolean;
+	bus?: EventBus;
+	traceId?: string;
 }
 
 export interface WorktreeRunResult {
@@ -289,7 +287,7 @@ const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>(
 			"no-test": { type: "boolean" },
 		},
 	})
-	.parseInput(async ({ values, positionals }) => {
+	.parseInput(async ({ values, positionals, bus, traceId }) => {
 		const requested = positionals[1];
 		if (!requested) {
 			return {
@@ -299,6 +297,8 @@ const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>(
 				"no-install": Boolean(values["no-install"]),
 				"no-test": Boolean(values["no-test"]),
 				json: Boolean(values.json),
+				bus,
+				traceId,
 			};
 		}
 
@@ -315,10 +315,12 @@ const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>(
 			"no-install": Boolean(values["no-install"]),
 			"no-test": Boolean(values["no-test"]),
 			json: Boolean(values.json),
+			bus,
+			traceId,
 		};
 	})
 	.run(run)
-	.onSuccess((output, values) => {
+	.onSuccess((output, values, input) => {
 		if (output.mode === "help") {
 			console.log(output.raw ?? worktreeHelp);
 			process.exitCode = 2;
@@ -335,6 +337,14 @@ const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>(
 					skip_test: output?.skip_test,
 					duration_ms: output.duration_ms,
 				});
+				if (output.worktree_path && output.branch) {
+					input.bus?.emit("worktree.acquired", {
+						type: "worktree.acquired",
+						traceId: input.traceId ?? "",
+						path: output.worktree_path,
+						branch: output.branch,
+					});
+				}
 				return;
 			}
 			if (output.mode === "list") {
@@ -355,12 +365,27 @@ const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>(
 					`Install: ${output?.skip_install ? "skipped" : "done"}`,
 				);
 				console.error(`Tests: ${output?.skip_test ? "skipped" : "passed"}`);
+				if (output.worktree_path && output.branch) {
+					input.bus?.emit("worktree.acquired", {
+						type: "worktree.acquired",
+						traceId: input.traceId ?? "",
+						path: output.worktree_path,
+						branch: output.branch,
+					});
+				}
 				return;
 			case "list":
 				if (output.raw) console.log(String(output.raw).trim());
 				return;
 			case "remove":
 				console.error(`Worktree removed: ${output.path}`);
+				if (output.path) {
+					input.bus?.emit("worktree.released", {
+						type: "worktree.released",
+						traceId: input.traceId ?? "",
+						path: output.path,
+					});
+				}
 				return;
 			case "prune":
 				console.error("Worktrees pruned.");

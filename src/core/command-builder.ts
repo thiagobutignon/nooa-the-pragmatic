@@ -42,6 +42,7 @@ type InputContext = {
 	positionals: string[];
 	bus?: EventBus;
 	rawArgs?: string[];
+	traceId?: string;
 };
 
 type TelemetryConfig<Input, Output> = {
@@ -62,6 +63,7 @@ export class CommandBuilder<Input, Output> {
 	private renderSuccess?: (
 		output: Output,
 		values: Record<string, unknown>,
+		input: Input,
 	) => void | Promise<void>;
 	private renderFailure?: (error: SdkError, input: Input) => void | Promise<void>;
 	private telemetryConfig?: TelemetryConfig<Input, Output>;
@@ -115,6 +117,7 @@ export class CommandBuilder<Input, Output> {
 		fn: (
 			output: Output,
 			values: Record<string, unknown>,
+			input: Input,
 		) => void | Promise<void>,
 	) {
 		this.renderSuccess = fn;
@@ -302,7 +305,13 @@ ${outputXml}
 			const traceId = createTraceId();
 			const startTime = Date.now();
 
-			const input = await inputParser({ values, positionals, bus, rawArgs });
+			const input = await inputParser({
+				values,
+				positionals,
+				bus,
+				rawArgs,
+				traceId,
+			});
 			const result = await runFn(input);
 
 			if (!result.ok) {
@@ -331,7 +340,7 @@ ${outputXml}
 			}
 
 			if (this.renderSuccess) {
-				await this.renderSuccess(result.data, values);
+				await this.renderSuccess(result.data, values, input);
 			}
 
 			const successMeta =

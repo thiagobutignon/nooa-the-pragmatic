@@ -1,10 +1,7 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { runFix } from "./execute";
@@ -87,6 +84,8 @@ export interface FixRunInput {
 	issue?: string;
 	dryRun?: boolean;
 	json?: boolean;
+	bus?: EventBus;
+	traceId?: string;
 }
 
 export interface FixRunResult {
@@ -146,16 +145,34 @@ const fixBuilder = new CommandBuilder<FixRunInput, FixRunResult>()
 			"dry-run": { type: "boolean" },
 		},
 	})
-	.parseInput(async ({ positionals, values }) => ({
-		issue: positionals[1],
-		dryRun: Boolean(values["dry-run"]),
-		json: Boolean(values.json),
-	}))
+	.parseInput(async ({ positionals, values, bus, traceId }) => {
+		const issue = positionals[1];
+		if (bus && traceId) {
+			bus.emit("fix.started", {
+				type: "fix.started",
+				traceId,
+				issue: issue ?? "",
+			});
+		}
+		return {
+			issue,
+			dryRun: Boolean(values["dry-run"]),
+			json: Boolean(values.json),
+			bus,
+			traceId,
+		};
+	})
 	.run(run)
-	.onSuccess((output, values) => {
+	.onSuccess((output, values, input) => {
 		if (values.json) {
 			renderJson(output);
 			process.exitCode = output.ok ? 0 : 1;
+			input.bus?.emit("fix.completed", {
+				type: "fix.completed",
+				traceId: input.traceId ?? output.traceId,
+				issue: input.issue ?? "",
+				ok: output.ok,
+			});
 			return;
 		}
 
@@ -182,8 +199,20 @@ const fixBuilder = new CommandBuilder<FixRunInput, FixRunResult>()
 			console.error(`\n❌ Fix failed: ${output.error || "unknown error"}`);
 		}
 		process.exitCode = output.ok ? 0 : 1;
+		input.bus?.emit("fix.completed", {
+			type: "fix.completed",
+			traceId: input.traceId ?? output.traceId,
+			issue: input.issue ?? "",
+			ok: output.ok,
+		});
 	})
-	.onFailure((error) => {
+	.onFailure((error, input) => {
+		input.bus?.emit("fix.failed", {
+			type: "fix.failed",
+			traceId: input.traceId ?? "",
+			issue: input.issue ?? "",
+			error: error.message,
+		});
 		if (error.code === "fix.missing_issue") {
 			console.error("Error: Issue description required.");
 			process.exitCode = 2;
