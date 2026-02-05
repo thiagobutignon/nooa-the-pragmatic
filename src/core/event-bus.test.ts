@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { EventBus } from "./event-bus";
 
-describe.skip("EventBus", () => {
+describe("EventBus", () => {
 	test("publishes events to subscribers", () => {
 		const bus = new EventBus();
 		const events: string[] = [];
@@ -21,6 +21,15 @@ describe.skip("EventBus", () => {
 		bus.emit("test", { id: "2" });
 
 		expect(events).toEqual(["1"]);
+	});
+
+	test("removes event entry when last handler is removed", () => {
+		const bus = new EventBus();
+		const handler = (_payload: { id: string }) => { };
+		bus.on("cleanup", handler);
+		bus.off("cleanup", handler);
+		// Should not throw even after removing the last handler
+		bus.emit("cleanup", { id: "1" });
 	});
 
 	test("handles off with non-existent event", () => {
