@@ -8,7 +8,8 @@ describe("OllamaProvider", () => {
 		// @ts-expect-error
 		global.fetch = mock((_url, init) => {
 			const body = JSON.parse(init.body);
-			expect(body.model).toBe("qwen2.5-coder:14b");
+			const expectedModel = process.env.NOOA_AI_MODEL || "qwen2.5-coder:14b";
+			expect(body.model).toBe(expectedModel);
 			return Promise.resolve(
 				new Response(
 					JSON.stringify({
