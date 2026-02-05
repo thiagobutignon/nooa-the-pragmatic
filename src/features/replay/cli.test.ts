@@ -30,4 +30,34 @@ describe("replay.run", () => {
     expect(data.nodes.length).toBe(1);
     expect(data.nodes[0].label).toBe("A");
   });
+
+  test("link creates next edge and prevents cycles", async () => {
+    await rm(tmpRoot, { recursive: true, force: true });
+    await mkdir(join(tmpRoot, ".nooa"), { recursive: true });
+
+    const a = await run({ action: "add", label: "A", root: tmpRoot });
+    const b = await run({ action: "add", label: "B", root: tmpRoot });
+    if (!a.ok || !b.ok) {
+      throw new Error("setup failed");
+    }
+
+    const link = await run({
+      action: "link",
+      from: a.data.message.replace("Added ", ""),
+      to: b.data.message.replace("Added ", ""),
+      root: tmpRoot,
+    });
+    expect(link.ok).toBe(true);
+
+    const cycle = await run({
+      action: "link",
+      from: b.data.message.replace("Added ", ""),
+      to: a.data.message.replace("Added ", ""),
+      root: tmpRoot,
+    });
+    expect(cycle.ok).toBe(false);
+    if (!cycle.ok) {
+      expect(cycle.error.code).toBe("replay.cycle_detected");
+    }
+  });
 });

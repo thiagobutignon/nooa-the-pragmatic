@@ -50,6 +50,8 @@ export const replayUsage = {
 export const replaySchema = {
     action: { type: "string", required: true },
     label: { type: "string", required: false },
+    from: { type: "string", required: false },
+    to: { type: "string", required: false },
     root: { type: "string", required: false },
     json: { type: "boolean", required: false, default: false },
 } satisfies SchemaSpec;
@@ -63,6 +65,10 @@ export const replayOutputFields = [
 export const replayErrors = [
     { code: "replay.missing_action", message: "Action is required." },
     { code: "replay.missing_input", message: "Input is required." },
+    { code: "replay.missing_from", message: "From id is required." },
+    { code: "replay.missing_to", message: "To id is required." },
+    { code: "replay.not_found", message: "Node not found." },
+    { code: "replay.cycle_detected", message: "Cycle detected." },
     { code: "replay.runtime_error", message: "Unexpected error." },
 ];
 
@@ -80,6 +86,8 @@ export const replayExamples = [
 export interface ReplayRunInput {
     action?: string;
     label?: string;
+    from?: string;
+    to?: string;
     root?: string;
     json?: boolean;
 }
@@ -105,6 +113,20 @@ export async function run(
             error: sdkError("replay.missing_input", "Input is required."),
         };
     }
+    if (input.action === "link") {
+        if (!input.from) {
+            return {
+                ok: false,
+                error: sdkError("replay.missing_from", "From id is required."),
+            };
+        }
+        if (!input.to) {
+            return {
+                ok: false,
+                error: sdkError("replay.missing_to", "To id is required."),
+            };
+        }
+    }
 
     const traceId = createTraceId();
     if (input.action === "add") {
@@ -124,6 +146,57 @@ export async function run(
                 ok: true,
                 traceId,
                 message: `Added ${node.id}`,
+            },
+        };
+    }
+    if (input.action === "link") {
+        const root = input.root ?? process.cwd();
+        const data = await loadReplay(root);
+        const from = input.from ?? "";
+        const to = input.to ?? "";
+
+        const fromExists = data.nodes.some((node) => node.id === from);
+        const toExists = data.nodes.some((node) => node.id === to);
+        if (!fromExists || !toExists) {
+            return {
+                ok: false,
+                error: sdkError("replay.not_found", "Node not found."),
+            };
+        }
+
+        const nextEdges = data.edges.filter((edge) => edge.kind === "next");
+        const adjacency = new Map<string, string[]>();
+        for (const edge of nextEdges) {
+            if (!adjacency.has(edge.from)) {
+                adjacency.set(edge.from, []);
+            }
+            adjacency.get(edge.from)?.push(edge.to);
+        }
+
+        const stack = [to];
+        const visited = new Set<string>();
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (!current || visited.has(current)) continue;
+            if (current === from) {
+                return {
+                    ok: false,
+                    error: sdkError("replay.cycle_detected", "Cycle detected."),
+                };
+            }
+            visited.add(current);
+            const neighbors = adjacency.get(current) ?? [];
+            neighbors.forEach((neighbor) => stack.push(neighbor));
+        }
+
+        data.edges.push({ from, to, kind: "next" });
+        await saveReplay(root, data);
+        return {
+            ok: true,
+            data: {
+                ok: true,
+                traceId,
+                message: `Linked ${from} -> ${to}`,
             },
         };
     }
@@ -148,6 +221,8 @@ const replayBuilder = new CommandBuilder<ReplayRunInput, ReplayRunResult>()
     .parseInput(async ({ positionals, values }) => ({
         action: positionals[1],
         label: positionals[2],
+        from: positionals[2],
+        to: positionals[3],
         root: typeof values.root === "string" ? values.root : undefined,
         json: Boolean(values.json),
     }))
