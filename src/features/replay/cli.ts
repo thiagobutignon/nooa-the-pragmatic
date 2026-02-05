@@ -3,47 +3,54 @@ import { buildStandardOptions } from "../../core/cli-flags";
 import { handleCommandError, renderJson } from "../../core/cli-output";
 import { createTraceId } from "../../core/logger";
 import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";
+import type { ReplayEdge, ReplayNode } from "./storage";
 import { loadReplay, saveReplay } from "./storage";
 
 export const replayMeta: AgentDocMeta = {
     name: "replay",
-    description: "New feature: replay",
+    description: "Track agent steps as a replayable graph",
     changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
 };
 
 export const replayHelp = `
-Usage: nooa replay <input> [flags]
+Usage: nooa replay <subcommand> [args] [flags]
 
-Describe what replay does.
+Track a step graph and fixes for agent workflows.
 
-Arguments:
-  <input>     Input value.
+Subcommands:
+  add <label>                Create a step node.
+  link <from> <to>           Create a next edge.
+  fix <targetId> <label>     Create a fix node and impact edges.
+  show [id]                  Show graph summary or node details.
 
 Flags:
   --json      Output result as JSON.
+  --root      Override repository root (default: cwd).
   -h, --help  Show help message.
 
 Examples:
-  nooa replay hello
-  nooa replay hello --json
+  nooa replay add A
+  nooa replay link node_a node_b
+  nooa replay fix node_b "Fix B"
+  nooa replay show --json
 
 Exit Codes:
   0: Success
   1: Runtime Error
-  2: Validation Error (missing input)
+  2: Validation Error
 `;
 
 export const replaySdkUsage = `
 SDK Usage:
-  const result = await replay.run({ input: "hello" });
+  const result = await replay.run({ action: "add", label: "A" });
   if (result.ok) {
-    console.log(result.data.message);
+    console.log(result.data.node);
   }
 `;
 
 export const replayUsage = {
-    cli: "nooa replay <input> [--json]",
-    sdk: "await replay.run({ input: \"hello\" })",
+    cli: "nooa replay <subcommand> [args] [--json]",
+    sdk: "await replay.run({ action: \"add\", label: \"A\" })",
     tui: "ReplayDialog()",
 };
 
@@ -53,6 +60,7 @@ export const replaySchema = {
     from: { type: "string", required: false },
     to: { type: "string", required: false },
     targetId: { type: "string", required: false },
+    id: { type: "string", required: false },
     root: { type: "string", required: false },
     json: { type: "boolean", required: false, default: false },
 } satisfies SchemaSpec;
@@ -60,7 +68,9 @@ export const replaySchema = {
 export const replayOutputFields = [
     { name: "ok", type: "boolean" },
     { name: "traceId", type: "string" },
-    { name: "message", type: "string" },
+    { name: "node", type: "string" },
+    { name: "edge", type: "string" },
+    { name: "summary", type: "string" },
 ];
 
 export const replayErrors = [
@@ -81,8 +91,10 @@ export const replayExitCodes = [
 ];
 
 export const replayExamples = [
-    { input: "nooa replay hello", output: "Success output" },
-    { input: "nooa replay hello --json", output: "{ ... }" },
+    { input: "nooa replay add A", output: "Creates a node" },
+    { input: "nooa replay link node_a node_b", output: "Creates an edge" },
+    { input: "nooa replay fix node_b \"Fix B\"", output: "Creates a fix node" },
+    { input: "nooa replay show --json", output: "{ ... }" },
 ];
 
 export interface ReplayRunInput {
@@ -91,6 +103,7 @@ export interface ReplayRunInput {
     from?: string;
     to?: string;
     targetId?: string;
+    id?: string;
     root?: string;
     json?: boolean;
 }
@@ -98,7 +111,12 @@ export interface ReplayRunInput {
 export interface ReplayRunResult {
     ok: boolean;
     traceId: string;
-    message: string;
+    node?: ReplayNode;
+    edge?: ReplayEdge;
+    summary?: {
+        nodes: number;
+        edges: number;
+    };
 }
 
 export async function run(
@@ -149,7 +167,7 @@ export async function run(
     if (input.action === "add") {
         const root = input.root ?? process.cwd();
         const data = await loadReplay(root);
-        const node = {
+        const node: ReplayNode = {
             id: createTraceId(),
             label: input.label ?? "",
             type: "step" as const,
@@ -162,7 +180,7 @@ export async function run(
             data: {
                 ok: true,
                 traceId,
-                message: `Added ${node.id}`,
+                node,
             },
         };
     }
@@ -213,7 +231,7 @@ export async function run(
             data: {
                 ok: true,
                 traceId,
-                message: `Linked ${from} -> ${to}`,
+                edge: { from, to, kind: "next" },
             },
         };
     }
@@ -230,7 +248,7 @@ export async function run(
             };
         }
 
-        const fixNode = {
+        const fixNode: ReplayNode = {
             id: createTraceId(),
             label: input.label ?? "",
             type: "fix" as const,
@@ -271,7 +289,43 @@ export async function run(
             data: {
                 ok: true,
                 traceId,
-                message: `Fixed ${targetId}`,
+                node: fixNode,
+            },
+        };
+    }
+    if (input.action === "show") {
+        const root = input.root ?? process.cwd();
+        const data = await loadReplay(root);
+        if (input.id) {
+            const node = data.nodes.find((entry) => entry.id === input.id);
+            if (!node) {
+                return {
+                    ok: false,
+                    error: sdkError("replay.not_found", "Node not found."),
+                };
+            }
+            return {
+                ok: true,
+                data: {
+                    ok: true,
+                    traceId,
+                    node,
+                    summary: {
+                        nodes: data.nodes.length,
+                        edges: data.edges.length,
+                    },
+                },
+            };
+        }
+        return {
+            ok: true,
+            data: {
+                ok: true,
+                traceId,
+                summary: {
+                    nodes: data.nodes.length,
+                    edges: data.edges.length,
+                },
             },
         };
     }
@@ -293,15 +347,54 @@ const replayBuilder = new CommandBuilder<ReplayRunInput, ReplayRunResult>()
     .errors(replayErrors)
     .exitCodes(replayExitCodes)
     .options({ options: buildStandardOptions() })
-    .parseInput(async ({ positionals, values }) => ({
-        action: positionals[1],
-        label: positionals[2],
-        from: positionals[2],
-        to: positionals[3],
-        targetId: positionals[2],
-        root: typeof values.root === "string" ? values.root : undefined,
-        json: Boolean(values.json),
-    }))
+    .parseInput(async ({ positionals, values }) => {
+        const action = positionals[1];
+        const root = typeof values.root === "string" ? values.root : undefined;
+
+        if (action === "add") {
+            return {
+                action,
+                label: positionals[2],
+                root,
+                json: Boolean(values.json),
+            };
+        }
+
+        if (action === "link") {
+            return {
+                action,
+                from: positionals[2],
+                to: positionals[3],
+                root,
+                json: Boolean(values.json),
+            };
+        }
+
+        if (action === "fix") {
+            return {
+                action,
+                targetId: positionals[2],
+                label: positionals[3],
+                root,
+                json: Boolean(values.json),
+            };
+        }
+
+        if (action === "show") {
+            return {
+                action,
+                id: positionals[2],
+                root,
+                json: Boolean(values.json),
+            };
+        }
+
+        return {
+            action,
+            root,
+            json: Boolean(values.json),
+        };
+    })
     .run(run)
     .onSuccess((output, values) => {
         if (values.json) {

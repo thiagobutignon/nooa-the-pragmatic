@@ -25,10 +25,14 @@ describe("replay.run", () => {
     });
 
     expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("add failed");
+    }
     const raw = await readFile(join(tmpRoot, ".nooa/replay.json"), "utf-8");
     const data = JSON.parse(raw) as { nodes: { label: string }[] };
     expect(data.nodes.length).toBe(1);
     expect(data.nodes[0].label).toBe("A");
+    expect(result.data.node.label).toBe("A");
   });
 
   test("link creates next edge and prevents cycles", async () => {
@@ -43,16 +47,20 @@ describe("replay.run", () => {
 
     const link = await run({
       action: "link",
-      from: a.data.message.replace("Added ", ""),
-      to: b.data.message.replace("Added ", ""),
+      from: a.data.node.id,
+      to: b.data.node.id,
       root: tmpRoot,
     });
     expect(link.ok).toBe(true);
+    if (!link.ok) {
+      throw new Error("link failed");
+    }
+    expect(link.data.edge.from).toBe(a.data.node.id);
 
     const cycle = await run({
       action: "link",
-      from: b.data.message.replace("Added ", ""),
-      to: a.data.message.replace("Added ", ""),
+      from: b.data.node.id,
+      to: a.data.node.id,
       root: tmpRoot,
     });
     expect(cycle.ok).toBe(false);
@@ -72,9 +80,9 @@ describe("replay.run", () => {
       throw new Error("setup failed");
     }
 
-    const aId = a.data.message.replace("Added ", "");
-    const bId = b.data.message.replace("Added ", "");
-    const cId = c.data.message.replace("Added ", "");
+    const aId = a.data.node.id;
+    const bId = b.data.node.id;
+    const cId = c.data.node.id;
 
     await run({ action: "link", from: aId, to: bId, root: tmpRoot });
     await run({ action: "link", from: bId, to: cId, root: tmpRoot });
@@ -95,5 +103,18 @@ describe("replay.run", () => {
     const impactEdges = data.edges.filter((edge) => edge.kind === "impact");
     expect(impactEdges.length).toBeGreaterThanOrEqual(1);
     expect(data.nodes.some((node) => node.type === "fix")).toBe(true);
+  });
+
+  test("show returns summary", async () => {
+    await rm(tmpRoot, { recursive: true, force: true });
+    await mkdir(join(tmpRoot, ".nooa"), { recursive: true });
+
+    const add = await run({ action: "add", label: "A", root: tmpRoot });
+    expect(add.ok).toBe(true);
+
+    const result = await run({ action: "show", root: tmpRoot });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.summary.nodes).toBeGreaterThanOrEqual(1);
   });
 });
