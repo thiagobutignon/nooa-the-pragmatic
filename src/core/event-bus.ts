@@ -1,3 +1,5 @@
+import type { NOOAEvent } from "./events/schema";
+
 export type EventHandler<T = unknown> = (payload: T) => void;
 
 type HandlerMap = Map<string, Set<EventHandler>>;
@@ -18,6 +20,8 @@ export class EventBus {
 		if (set.size === 0) this.handlers.delete(event);
 	}
 
+	emit(event: NOOAEvent["type"], payload: NOOAEvent): void;
+	emit<T = unknown>(event: string, payload: T): void;
 	emit<T = unknown>(event: string, payload: T) {
 		const set = this.handlers.get(event);
 		if (!set) return;
