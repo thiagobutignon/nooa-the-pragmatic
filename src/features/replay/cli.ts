@@ -3,6 +3,7 @@ import { buildStandardOptions } from "../../core/cli-flags";
 import { handleCommandError, renderJson } from "../../core/cli-output";
 import { createTraceId } from "../../core/logger";
 import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";
+import { loadReplay, saveReplay } from "./storage";
 
 export const replayMeta: AgentDocMeta = {
     name: "replay",
@@ -47,7 +48,9 @@ export const replayUsage = {
 };
 
 export const replaySchema = {
-    input: { type: "string", required: true },
+    action: { type: "string", required: true },
+    label: { type: "string", required: false },
+    root: { type: "string", required: false },
     json: { type: "boolean", required: false, default: false },
 } satisfies SchemaSpec;
 
@@ -76,7 +79,8 @@ export const replayExamples = [
 
 export interface ReplayRunInput {
     action?: string;
-    input?: string;
+    label?: string;
+    root?: string;
     json?: boolean;
 }
 
@@ -95,7 +99,7 @@ export async function run(
             error: sdkError("replay.missing_action", "Action is required."),
         };
     }
-    if (!input.input) {
+    if (input.action === "add" && !input.label) {
         return {
             ok: false,
             error: sdkError("replay.missing_input", "Input is required."),
@@ -103,13 +107,30 @@ export async function run(
     }
 
     const traceId = createTraceId();
-    return {
-        ok: true,
-        data: {
+    if (input.action === "add") {
+        const root = input.root ?? process.cwd();
+        const data = await loadReplay(root);
+        const node = {
+            id: createTraceId(),
+            label: input.label ?? "",
+            type: "step" as const,
+            createdAt: new Date().toISOString(),
+        };
+        data.nodes.push(node);
+        await saveReplay(root, data);
+        return {
             ok: true,
-            traceId,
-            message: "Replay received: " + input.input,
-        },
+            data: {
+                ok: true,
+                traceId,
+                message: `Added ${node.id}`,
+            },
+        };
+    }
+
+    return {
+        ok: false,
+        error: sdkError("replay.runtime_error", "Unexpected error."),
     };
 }
 
@@ -126,7 +147,8 @@ const replayBuilder = new CommandBuilder<ReplayRunInput, ReplayRunResult>()
     .options({ options: buildStandardOptions() })
     .parseInput(async ({ positionals, values }) => ({
         action: positionals[1],
-        input: positionals[2],
+        label: positionals[2],
+        root: typeof values.root === "string" ? values.root : undefined,
         json: Boolean(values.json),
     }))
     .run(run)
