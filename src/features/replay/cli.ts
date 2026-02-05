@@ -52,6 +52,7 @@ export const replaySchema = {
     label: { type: "string", required: false },
     from: { type: "string", required: false },
     to: { type: "string", required: false },
+    targetId: { type: "string", required: false },
     root: { type: "string", required: false },
     json: { type: "boolean", required: false, default: false },
 } satisfies SchemaSpec;
@@ -67,6 +68,7 @@ export const replayErrors = [
     { code: "replay.missing_input", message: "Input is required." },
     { code: "replay.missing_from", message: "From id is required." },
     { code: "replay.missing_to", message: "To id is required." },
+    { code: "replay.missing_target", message: "Target id is required." },
     { code: "replay.not_found", message: "Node not found." },
     { code: "replay.cycle_detected", message: "Cycle detected." },
     { code: "replay.runtime_error", message: "Unexpected error." },
@@ -88,6 +90,7 @@ export interface ReplayRunInput {
     label?: string;
     from?: string;
     to?: string;
+    targetId?: string;
     root?: string;
     json?: boolean;
 }
@@ -124,6 +127,20 @@ export async function run(
             return {
                 ok: false,
                 error: sdkError("replay.missing_to", "To id is required."),
+            };
+        }
+    }
+    if (input.action === "fix") {
+        if (!input.targetId) {
+            return {
+                ok: false,
+                error: sdkError("replay.missing_target", "Target id is required."),
+            };
+        }
+        if (!input.label) {
+            return {
+                ok: false,
+                error: sdkError("replay.missing_input", "Input is required."),
             };
         }
     }
@@ -200,6 +217,64 @@ export async function run(
             },
         };
     }
+    if (input.action === "fix") {
+        const root = input.root ?? process.cwd();
+        const data = await loadReplay(root);
+        const targetId = input.targetId ?? "";
+
+        const targetExists = data.nodes.some((node) => node.id === targetId);
+        if (!targetExists) {
+            return {
+                ok: false,
+                error: sdkError("replay.not_found", "Node not found."),
+            };
+        }
+
+        const fixNode = {
+            id: createTraceId(),
+            label: input.label ?? "",
+            type: "fix" as const,
+            createdAt: new Date().toISOString(),
+            fixOf: targetId,
+        };
+        data.nodes.push(fixNode);
+
+        const nextEdges = data.edges.filter((edge) => edge.kind === "next");
+        const adjacency = new Map<string, string[]>();
+        for (const edge of nextEdges) {
+            if (!adjacency.has(edge.from)) {
+                adjacency.set(edge.from, []);
+            }
+            adjacency.get(edge.from)?.push(edge.to);
+        }
+
+        const impacted = new Set<string>();
+        const stack = [targetId];
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (!current) continue;
+            const neighbors = adjacency.get(current) ?? [];
+            for (const neighbor of neighbors) {
+                if (!impacted.has(neighbor)) {
+                    impacted.add(neighbor);
+                    stack.push(neighbor);
+                }
+            }
+        }
+
+        impacted.forEach((nodeId) => {
+            data.edges.push({ from: fixNode.id, to: nodeId, kind: "impact" });
+        });
+        await saveReplay(root, data);
+        return {
+            ok: true,
+            data: {
+                ok: true,
+                traceId,
+                message: `Fixed ${targetId}`,
+            },
+        };
+    }
 
     return {
         ok: false,
@@ -223,6 +298,7 @@ const replayBuilder = new CommandBuilder<ReplayRunInput, ReplayRunResult>()
         label: positionals[2],
         from: positionals[2],
         to: positionals[3],
+        targetId: positionals[2],
         root: typeof values.root === "string" ? values.root : undefined,
         json: Boolean(values.json),
     }))
