@@ -4,6 +4,14 @@ import actCommand from "../../src/features/act/cli";
 
 describe("Integration: Act Events", () => {
     it("should emit act.started and act.completed events", async () => {
+        const previousMockContent = process.env.NOOA_AI_MOCK_CONTENT;
+        process.env.NOOA_AI_MOCK_CONTENT = JSON.stringify({
+            thought: "Plan complete",
+            command: null,
+            done: true,
+            answer: "ok",
+        });
+
         const bus = new EventBus();
         const emitSpy = mock((event: string, payload: any) => { });
         // We can't spy on bus.emit directly if it's not a method call we control easily from outside in the same way,
@@ -16,11 +24,17 @@ describe("Integration: Act Events", () => {
         // actCommand uses 'mock' provider by default if configured? We can pass provider: 'mock'.
 
         await actCommand.execute({
-            args: ["act", "test goal"],
+            args: ["act", "test goal", "--provider", "mock", "--turns", "1"],
             values: { provider: "mock", turns: "1" },
-            rawArgs: ["act", "test goal"],
+            rawArgs: ["act", "test goal", "--provider", "mock", "--turns", "1"],
             bus
         });
+
+        if (previousMockContent === undefined) {
+            delete process.env.NOOA_AI_MOCK_CONTENT;
+        } else {
+            process.env.NOOA_AI_MOCK_CONTENT = previousMockContent;
+        }
 
         // Check for act.started
         expect(emitSpy).toHaveBeenCalledWith(
