@@ -346,7 +346,12 @@ const replayBuilder = new CommandBuilder<ReplayRunInput, ReplayRunResult>()
     .examples(replayExamples)
     .errors(replayErrors)
     .exitCodes(replayExitCodes)
-    .options({ options: buildStandardOptions() })
+    .options({
+        options: {
+            ...buildStandardOptions(),
+            root: { type: "string" },
+        },
+    })
     .parseInput(async ({ positionals, values }) => {
         const action = positionals[1];
         const root = typeof values.root === "string" ? values.root : undefined;
