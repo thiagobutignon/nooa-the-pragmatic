@@ -66,23 +66,15 @@ describe("Logger", () => {
 		const lines: string[] = [];
 		const log = new Logger(l => lines.push(l));
 
-		log.setContext({ user: "u1" });
-		// AsyncLocalStorage enterWith is scoped to subsequent async calls, but here synchronous.
-		// Node/Bun enterWith behavior implies it sticks for the rest of synchronous execution too in the same resource scope.
+		log.runWithContext({}, () => {
+			log.setContext({ user: "u1" });
+			log.info("test");
+			expect(JSON.parse(lines[0]).user).toBe("u1");
 
-		log.info("test");
-		// Since we didn't run inside runWithContext, setContext might attach to root store or do nothing if storage not active?
-		// AsyncLocalStorage works even at top level if enterWith is called.
-
-		// Wait, AsyncLocalStorage documentation says enterWith disables automatic context loss for some cases.
-		// Let's verify behavior.
-
-		// Actually, if I use `enterWith`, subsequent calls should see it.
-		expect(JSON.parse(lines[0]).user).toBe("u1");
-
-		log.clearContext();
-		log.info("cleared");
-		expect(JSON.parse(lines[1]).user).toBeUndefined();
+			log.clearContext();
+			log.info("cleared");
+			expect(JSON.parse(lines[1]).user).toBeUndefined();
+		});
 	});
 
 	test("sync context fallback", () => {

@@ -50,19 +50,23 @@ export class Logger {
 
 	setContext(ctx: LoggerContext) {
 		if (this.storage) {
-			const current = this.storage.getStore() || {};
-			this.storage.enterWith({ ...current, ...ctx });
-			return;
+			const current = this.storage.getStore();
+			if (current) {
+				this.storage.enterWith({ ...current, ...ctx });
+				return;
+			}
 		}
 		this.context = { ...this.context, ...ctx };
 	}
 
 	clearContext(_keys?: string[]) {
 		if (this.storage) {
-			// AsyncLocalStorage doesn't support partial clearing easily in one-shot
-			// but we can enter an empty store.
-			this.storage.enterWith({});
-			return;
+			if (this.storage.getStore()) {
+				// AsyncLocalStorage doesn't support partial clearing easily in one-shot
+				// but we can enter an empty store.
+				this.storage.enterWith({});
+				return;
+			}
 		}
 		this.context = {};
 	}
