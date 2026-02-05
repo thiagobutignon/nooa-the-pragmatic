@@ -4,25 +4,19 @@
 
 ## Usage
 ```bash
-nooa {{name}} [flags] [args]
+nooa {{name}} <input> [flags]
 ```
 
 ## Flags
 - `--json`: Output results in structured JSON format.
-- `--out <file>`: Write results to a specific file.
 - `-h, --help`: Show this help message.
 
 ## JSON Output Schema
 ```json
 {
-  "schemaVersion": "1.0",
   "ok": true,
   "traceId": "string",
-  "command": "{{name}}",
-  "timestamp": "ISO8601",
-  "result": {
-    "message": "string"
-  }
+  "message": "string"
 }
 ```
 
@@ -39,8 +33,8 @@ This command tracks:
 ## Examples
 ```bash
 # Basic usage
-nooa {{name}}
+nooa {{name}} hello
 
-# Exporting JSON result
-nooa {{name}} --json --out result.json
+# JSON output
+nooa {{name}} hello --json
 ```

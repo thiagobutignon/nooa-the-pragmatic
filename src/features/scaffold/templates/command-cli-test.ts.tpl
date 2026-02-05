@@ -4,15 +4,14 @@ import { execa } from "execa";
 describe("{{name}} CLI", () => {
     it("should show help", async () => {
         const { stdout } = await execa("bun", ["index.ts", "{{name}}", "--help"]);
-        expect(stdout).toContain("Usage:");
+        expect(stdout).toContain("Usage: nooa {{name}}");
     });
 
     it("should output JSON", async () => {
-        const { stdout } = await execa("bun", ["index.ts", "{{name}}", "--json"], {
-            env: { ...process.env, NOOA_AI_PROVIDER: "mock" }
-        });
+        const { stdout } = await execa("bun", ["index.ts", "{{name}}", "hello", "--json"]);
         const output = JSON.parse(stdout);
-        expect(output.command).toBe("{{name}}");
         expect(output.ok).toBe(true);
+        expect(output.traceId).toBeDefined();
+        expect(output.message).toContain("hello");
     });
 });

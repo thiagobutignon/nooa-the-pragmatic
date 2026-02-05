@@ -53,12 +53,7 @@ export async function executeScaffold(
 
 		const files = [
 			{ tpl: "command-cli.ts", path: join(featureDir, "cli.ts") },
-			{ tpl: "command-execute.ts", path: join(featureDir, "execute.ts") },
 			{ tpl: "command-cli-test.ts", path: join(featureDir, "cli.test.ts") },
-			{
-				tpl: "command-execute-test.ts",
-				path: join(featureDir, "execute.test.ts"),
-			},
 		];
 
 		if (options.withDocs) {
