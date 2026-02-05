@@ -33,7 +33,8 @@
 		"auto-lint-fix": "bun run lint:fix",
 		"docs": "bun run scripts/generate-docs.ts",
 		"tui:proto": "bun run src/tui/prototype/app.tsx",
-		"tui:proto2": "bun run src/tui/prototype-2/app.tsx"
+		"tui:proto2": "bun run src/tui/prototype-2/app.tsx",
+		"tui:test": "bun run src/tui/test-suite/app.tsx"
 	},
 	"dependencies": {
 		"ink": "^6.6.0",

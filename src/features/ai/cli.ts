@@ -10,7 +10,12 @@ import { executeMcpToolFromAi } from "../../core/mcp/integrations/ai";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { AiEngine } from "./engine";
-import { MockProvider, OllamaProvider, OpenAiProvider } from "./providers/mod";
+import {
+	GroqProvider,
+	MockProvider,
+	OllamaProvider,
+	OpenAiProvider,
+} from "./providers/mod";
 import type { AiStreamChunk, AiResponse } from "./types";
 
 export const aiMeta: AgentDocMeta = {
@@ -126,6 +131,7 @@ function createEngine() {
 	const engine = new AiEngine();
 	engine.register(new OllamaProvider());
 	engine.register(new OpenAiProvider());
+	engine.register(new GroqProvider());
 	engine.register(new MockProvider());
 	return engine;
 }

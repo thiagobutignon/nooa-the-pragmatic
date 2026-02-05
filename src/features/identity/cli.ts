@@ -4,14 +4,13 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { initIdentity } from "./init";
 
 export const initMeta: AgentDocMeta = {
-	name: "init",
-	description: "Initialize agent identity artifacts",
+	name: "identity",
+	description: "Initialize agent identity artifacts (Legacy)",
 	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
 };
 
