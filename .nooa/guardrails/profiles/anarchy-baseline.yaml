@@ -1,0 +1,147 @@
+# NOOA Guardrail Profile: Anarchy Baseline
+# Adversarial patterns inspired by project_anarchy benchmark
+# These patterns detect common security and quality issues
+
+refactor_name: anarchy-baseline
+description: Adversarial detection patterns for security and code quality
+version: "1.0.0"
+
+rules:
+  # ============================================
+  # ENHANCED SECRET DETECTION
+  # ============================================
+
+  - id: aws-access-key
+    description: AWS Access Key ID detected (AKIA pattern)
+    severity: critical
+    category: secrets
+    match:
+      anyOf:
+        - type: regex
+          value: "AKIA[0-9A-Z]{16}"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.md"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  - id: aws-secret-key
+    description: AWS Secret Access Key pattern detected
+    severity: critical
+    category: secrets
+    match:
+      anyOf:
+        - type: regex
+          value: "aws_secret_access_key\\s*[:=]\\s*[\"'][A-Za-z0-9/+=]{40}[\"']"
+          flags: "i"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  - id: private-key-header
+    description: Private key content detected
+    severity: critical
+    category: secrets
+    match:
+      anyOf:
+        - type: literal
+          value: "-----BEGIN PRIVATE KEY-----"
+        - type: literal
+          value: "-----BEGIN RSA PRIVATE KEY-----"
+        - type: literal
+          value: "-----BEGIN EC PRIVATE KEY-----"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.md"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  - id: stripe-secret-key
+    description: Stripe secret key detected (sk_live/sk_test)
+    severity: critical
+    category: secrets
+    match:
+      anyOf:
+        - type: regex
+          value: "sk_(live|test)_[0-9a-zA-Z]{24,}"
+    scope:
+      exclude:
+        - "**/*.test.ts"
+        - "**/docs/**"
+        - "**/.agent/**"
+        - "**/.nooa/guardrails/**"
+
+  # ============================================
+  # DEPENDENCY RISKS
+  # ============================================
+
+  - id: git-dependency
+    description: Git URL dependency is mutable and risky
+    severity: high
+    category: dependencies
+    match:
+      anyOf:
+        - type: literal
+          value: "git+https://"
+        - type: literal
+          value: "git://"
+        - type: regex
+          value: "\\.git#"
+    scope:
+      include:
+        - "**/package.json"
+
+  - id: github-branch-dependency
+    description: GitHub dependency pointing to mutable branch
+    severity: medium
+    category: dependencies
+    match:
+      anyOf:
+        - type: literal
+          value: "github:"
+    scope:
+      include:
+        - "**/package.json"
+
+  # ============================================
+  # TEST QUALITY
+  # ============================================
+
+  - id: test-external-api
+    description: Test file makes external HTTP calls (flaky test risk)
+    severity: medium
+    category: test-quality
+    match:
+      anyOf:
+        - type: regex
+          value: "fetch\\(.*https?://"
+        - type: regex
+          value: "axios\\.(get|post).*https?://"
+    scope:
+      include:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/*.test.js"
+        - "**/*.spec.js"
+
+  - id: test-hardcoded-path
+    description: Test uses hardcoded absolute path
+    severity: low
+    category: test-quality
+    match:
+      anyOf:
+        - type: literal
+          value: "/home/"
+        - type: literal
+          value: "/Users/"
+    scope:
+      include:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
