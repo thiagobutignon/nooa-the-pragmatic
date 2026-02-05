@@ -3,21 +3,51 @@ import { join } from "node:path";
 import type { AgentDocMeta } from "../src/core/types";
 
 export type FeatureModule = {
-	readMeta?: AgentDocMeta;
-	readHelp?: string;
-	readAgentDoc?: string;
-	readSdkUsage?: string;
-	readFeatureDoc?: (includeChangelog: boolean) => string;
 	default?: { name?: string; description?: string; agentDoc?: string };
+	[key: string]: unknown;
 };
 
-export function generateFeatureDoc(feature: FeatureModule, includeChangelog: boolean) {
-	if (feature.readFeatureDoc) return feature.readFeatureDoc(includeChangelog);
+function findMeta(feature: FeatureModule): AgentDocMeta | undefined {
+	for (const value of Object.values(feature)) {
+		if (
+			value &&
+			typeof value === "object" &&
+			"name" in value &&
+			"description" in value &&
+			"changelog" in value
+		) {
+			return value as AgentDocMeta;
+		}
+	}
+	return undefined;
+}
 
-	const meta = feature.readMeta;
-	const help = feature.readHelp ?? "";
-	const agentDoc = feature.readAgentDoc ?? feature.default?.agentDoc ?? "";
-	const sdkUsage = feature.readSdkUsage ?? "";
+function findExportBySuffix<T>(
+	feature: FeatureModule,
+	suffix: string,
+): T | undefined {
+	for (const [key, value] of Object.entries(feature)) {
+		if (key.endsWith(suffix)) {
+			return value as T;
+		}
+	}
+	return undefined;
+}
+
+export function generateFeatureDoc(feature: FeatureModule, includeChangelog: boolean) {
+	const featureDoc = findExportBySuffix<(include: boolean) => string>(
+		feature,
+		"FeatureDoc",
+	);
+	if (featureDoc) return featureDoc(includeChangelog);
+
+	const meta = findMeta(feature);
+	const help = (findExportBySuffix<string>(feature, "Help") ?? "").trim();
+	const agentDoc =
+		(findExportBySuffix<string>(feature, "AgentDoc") ??
+			feature.default?.agentDoc ??
+			"").trim();
+	const sdkUsage = (findExportBySuffix<string>(feature, "SdkUsage") ?? "").trim();
 
 	return `# ${meta?.name ?? "unknown"}\n\n${
 		meta?.description ?? ""
@@ -30,8 +60,11 @@ export function generateManifest(features: FeatureModule[]) {
 		version: "1.0.0",
 		features: features
 			.map((feature) => {
-				const meta = feature.readMeta;
-				const agentDoc = feature.readAgentDoc ?? feature.default?.agentDoc ?? "";
+				const meta = findMeta(feature);
+				const agentDoc =
+					findExportBySuffix<string>(feature, "AgentDoc") ??
+					feature.default?.agentDoc ??
+					"";
 				if (!meta) return null;
 				return {
 					name: meta.name,
@@ -58,12 +91,12 @@ async function main() {
 		try {
 			await access(featurePath);
 			const feature = (await import(featurePath)) as FeatureModule;
-			if (!feature.readMeta) continue;
+			if (!findMeta(feature)) continue;
 			features.push(feature);
 
 			await mkdir(join(root, "docs/features"), { recursive: true });
 			await writeFile(
-				join(root, "docs/features", `${feature.readMeta.name}.md`),
+				join(root, "docs/features", `${findMeta(feature)?.name ?? entry.name}.md`),
 				generateFeatureDoc(feature, includeChangelog),
 			);
 		} catch (error) {

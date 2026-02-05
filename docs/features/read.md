@@ -32,22 +32,24 @@ Error Codes:
   read.missing_path: Path required or invalid
   read.not_found: File not found
   read.read_failed: Read failed
+  read.outside_root: Path is outside basePath
 ```
 
 ## Agent Instructions
 
 ```xml
-<instruction version="1.2.0" name="read">
+<instruction version="1.3.0" name="read">
   <purpose>Read file contents</purpose>
   <usage>
     <cli>nooa read &lt;path&gt; [--json]</cli>
-    <sdk>await read.run({ path: "file.txt", json: false })</sdk>
+    <sdk>await read.run({ path: "file.txt", json: false, basePath: "/path/to/project" })</sdk>
     <tui>ReadFileDialog({ initialPath })</tui>
   </usage>
   <contract>
     <input>
       <field name="path" type="string" required="true" />
       <field name="json" type="boolean" required="false" default="false" since="1.1.0" />
+      <field name="basePath" type="string" required="false" since="1.3.0" />
     </input>
 
     <output>
@@ -77,8 +79,12 @@ Error Codes:
     <error code="read.missing_path">Path required or invalid</error>
     <error code="read.not_found">File not found</error>
     <error code="read.read_failed">Read failed</error>
+    <error code="read.outside_root">Path is outside basePath</error>
   </errors>
   <changelog>
+    <version number="1.3.0">
+      <change>Added basePath support to constrain reads</change>
+    </version>
     <version number="1.2.0">
       <change>Added stdin support</change>
     </version>
@@ -96,13 +102,19 @@ Error Codes:
 
 ```text
 SDK Usage:
-  const result = await read.run({ path: "file.txt", json: false });
+  const result = await read.run({
+    path: "file.txt",
+    json: false,
+    basePath: "/path/to/project"
+  });
   if (result.ok) {
     console.log(result.data.content);
   }
 ```
 
 ## Changelog
+
+  1.3.0: Added basePath support to constrain reads
 
   1.2.0: Added stdin support
 
