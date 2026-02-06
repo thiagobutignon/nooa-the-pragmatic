@@ -4,12 +4,12 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { EvalEngine } from "./engine";
 import { appendHistory, loadHistory } from "./history";
+import { randomUUID } from "node:crypto";
 
 export const evalMeta: AgentDocMeta = {
 	name: "eval",
@@ -24,6 +24,7 @@ Systematic evaluation of AI prompts and outputs.
 
 Commands:
   run          Execute evaluation suite on a prompt.
+  dataset      Generate golden dataset from CLI registry.
   suggest      Analyze failures and suggest improvements.
   apply        Bump prompt version if evaluation passes.
   report       Show the latest evaluation record for a prompt/suite combo.
@@ -79,8 +80,8 @@ export const evalUsage = {
 
 export const evalSchema = {
 	command: { type: "string", required: true },
-	promptName: { type: "string", required: true },
-	suite: { type: "string", required: true },
+	promptName: { type: "string", required: false }, // Optional for dataset
+	suite: { type: "string", required: false },      // Optional for dataset
 	json: { type: "boolean", required: false },
 	baseline: { type: "string", required: false },
 	"fail-on-regression": { type: "boolean", required: false },
@@ -143,26 +144,58 @@ export async function run(
 	const promptName = input.promptName;
 	const suiteName = input.suite;
 
-	if (!command || !promptName || !suiteName) {
-		return {
-			ok: false,
-			error: sdkError("eval.missing_args", "Missing required arguments."),
-		};
+	// Validation for commands that require prompt/suite
+	if (command !== "dataset" && command !== "history" && command !== "compare" && command !== "report") {
+		if (!promptName || !suiteName) {
+			return {
+				ok: false,
+				error: sdkError("eval.missing_args", "Missing required arguments (prompt/suite)."),
+			};
+		}
 	}
+
+	const { resolve } = await import("node:path");
+	const repoRoot = resolve(import.meta.dir, "../../..");
 
 	const engine = new EvalEngine();
 	const optionsJudge = (input.judge as "deterministic" | "llm") ?? "deterministic";
 
 	try {
+		if (command === "dataset") {
+			const { generateDataset, saveDataset } = await import("./dataset");
+			const entries = await generateDataset(repoRoot);
+
+			// Filter by promptName if provided (e.g. only "tui-agent" related?)
+			// For now, dataset command ignores promptName/suite args usually?
+			// CLI usage says: nooa eval <command> <prompt_name> ...
+			// Maybe prompt_name is optional for dataset?
+			// Let's assume we save to .nooa/datasets/<suite>.json or default.
+
+			const outputPath = resolve(repoRoot, ".nooa/dataset.json");
+			await saveDataset(entries, outputPath);
+
+			return {
+				ok: true,
+				data: {
+					payload: {
+						ok: true,
+						result: `Generated ${entries.length} examples to ${outputPath}`,
+						count: entries.length,
+						path: outputPath
+					}
+				}
+			};
+		}
+
 		if (command === "run") {
-			const suite = await engine.loadSuite(suiteName);
+			const suite = await engine.loadSuite(suiteName!);
 			const judge = optionsJudge;
 			const result = await engine.runSuite(suite, { judge });
 
 			await appendHistory({
 				id: randomUUID(),
-				prompt: promptName,
-				suite: suiteName,
+				prompt: promptName!,
+				suite: suiteName!,
 				command: "run",
 				totalScore: result.totalScore,
 				judge,
@@ -195,7 +228,7 @@ export async function run(
 		}
 
 		if (command === "apply") {
-			const suite = await engine.loadSuite(suiteName);
+			const suite = await engine.loadSuite(suiteName!);
 			const level = (input.bump as "patch" | "minor" | "major") || "patch";
 			const judge = optionsJudge;
 			const result = await engine.runSuite(suite, { judge });
@@ -213,11 +246,11 @@ export async function run(
 				join(process.cwd(), "src/features/prompt/templates"),
 			);
 
-			const nextVersion = await promptEngine.bumpVersion(promptName, level);
+			const nextVersion = await promptEngine.bumpVersion(promptName!, level);
 			await appendHistory({
 				id: randomUUID(),
-				prompt: promptName,
-				suite: suiteName,
+				prompt: promptName!,
+				suite: suiteName!,
 				command: "apply",
 				totalScore: result.totalScore,
 				judge,
@@ -237,7 +270,7 @@ export async function run(
 		}
 
 		if (command === "suggest") {
-			const suite = await engine.loadSuite(suiteName);
+			const suite = await engine.loadSuite(suiteName!);
 			const judge = optionsJudge;
 			const result = await engine.runSuite(suite, { judge });
 
@@ -245,8 +278,8 @@ export async function run(
 			if (failures.length === 0) {
 				await appendHistory({
 					id: randomUUID(),
-					prompt: promptName,
-					suite: suiteName,
+					prompt: promptName!,
+					suite: suiteName!,
 					command: "suggest",
 					totalScore: result.totalScore,
 					judge,
@@ -260,8 +293,8 @@ export async function run(
 
 			await appendHistory({
 				id: randomUUID(),
-				prompt: promptName,
-				suite: suiteName,
+				prompt: promptName!,
+				suite: suiteName!,
 				command: "suggest",
 				totalScore: result.totalScore,
 				judge,
@@ -391,7 +424,7 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			baseline: { type: "string" },
 			"fail-on-regression": { type: "boolean" },
 			bump: { type: "string" },
-			judge: { type: "string", default: "deterministic" },
+			judge: { type: "string" }, // default handled in logic
 			limit: { type: "string" },
 			base: { type: "string" },
 			head: { type: "string" },

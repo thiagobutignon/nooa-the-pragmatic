@@ -1,0 +1,43 @@
+{
+    "name": "tui-agent",
+    "prompt": "tui-agent",
+    "cases": [
+        {
+            "id": "smoke-check",
+            "vars": {},
+            "input_text": "Check the project status",
+            "assertions": [
+                {
+                    "type": "contains",
+                    "value": "nooa check"
+                }
+            ]
+        },
+        {
+            "id": "smoke-act",
+            "vars": {},
+            "input_text": "Please refactor the login module",
+            "assertions": [
+                {
+                    "type": "contains",
+                    "value": "nooa act"
+                },
+                {
+                    "type": "contains",
+                    "value": "refactor"
+                }
+            ]
+        },
+        {
+            "id": "smoke-read",
+            "vars": {},
+            "input_text": "Read the README file",
+            "assertions": [
+                {
+                    "type": "contains",
+                    "value": "nooa read README.md"
+                }
+            ]
+        }
+    ]
+}
