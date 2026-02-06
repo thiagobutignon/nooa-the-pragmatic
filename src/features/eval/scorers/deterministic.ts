@@ -1,11 +1,14 @@
 export interface Assertion {
 	type:
-		| "is_valid_json"
-		| "has_property"
-		| "enum_check"
-		| "no_absolute_paths"
-		| "max_count"
-		| "property_equals";
+	| "is_valid_json"
+	| "has_property"
+	| "enum_check"
+	| "no_absolute_paths"
+	| "max_count"
+	| "no_absolute_paths"
+	| "max_count"
+	| "property_equals"
+	| "contains";
 	property?: string;
 	allowed?: string[];
 	limit?: number;
@@ -43,6 +46,29 @@ export class DeterministicScorer {
 						});
 					}
 					continue;
+				}
+
+				// Logic split for JSON vs String assertions
+				if (assertion.type === "contains") {
+					if (typeof assertion.value !== "string") {
+						results.push({ passed: false, message: "Value must be string for contains" });
+						continue;
+					}
+					results.push({
+						passed: output.includes(assertion.value),
+						message: `Output contains "${assertion.value}"`,
+					});
+					continue;
+				}
+
+				// All other assertions require JSON
+				if (!parsedJson) {
+					// Try to parse just in case (lazy parse)
+					try {
+						const jsonMatch = output.match(/\{[\s\S]*\}/);
+						const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : output);
+						parsedJson = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+					} catch { }
 				}
 
 				if (!parsedJson) {

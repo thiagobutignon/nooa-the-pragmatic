@@ -22,45 +22,65 @@ export class GroqProvider implements AiProvider {
                 ? "llama-3.3-70b-versatile"
                 : request.model || "llama-3.3-70b-versatile";
 
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model,
-                messages: request.messages,
-                stream: false,
-                temperature: request.temperature,
-                max_tokens: request.maxTokens,
-            }),
-        });
+        const maxRetries = 3;
+        let attempt = 0;
 
-        if (!res.ok) {
-            const error = await res.text();
-            throw new Error(`Groq error (${res.status}): ${error}`);
+        while (attempt < maxRetries) {
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${apiKey}`,
+                    },
+                    body: JSON.stringify({
+                        model,
+                        messages: request.messages,
+                        stream: false,
+                        temperature: request.temperature,
+                        max_tokens: request.maxTokens,
+                    }),
+                });
+
+                if (res.status === 429) {
+                    const retryAfter = res.headers.get("retry-after");
+                    const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : 2000 * Math.pow(2, attempt);
+                    console.warn(`[Groq] Rate limited. Retrying in ${waitTime}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    attempt++;
+                    continue;
+                }
+
+                if (!res.ok) {
+                    const error = await res.text();
+                    throw new Error(`Groq error (${res.status}): ${error}`);
+                }
+
+                const data = (await res.json()) as {
+                    choices: { message: { content: string } }[];
+                    usage: {
+                        prompt_tokens: number;
+                        completion_tokens: number;
+                        total_tokens: number;
+                    };
+                };
+
+                return {
+                    content: data.choices[0]?.message.content || "",
+                    model,
+                    provider: this.name,
+                    usage: {
+                        promptTokens: data.usage.prompt_tokens,
+                        completionTokens: data.usage.completion_tokens,
+                        totalTokens: data.usage.total_tokens,
+                    },
+                };
+            } catch (error) {
+                if (attempt === maxRetries - 1) throw error;
+                attempt++;
+            }
         }
-
-        const data = (await res.json()) as {
-            choices: { message: { content: string } }[];
-            usage: {
-                prompt_tokens: number;
-                completion_tokens: number;
-                total_tokens: number;
-            };
-        };
-
-        return {
-            content: data.choices[0]?.message.content || "",
-            model,
-            provider: this.name,
-            usage: {
-                promptTokens: data.usage.prompt_tokens,
-                completionTokens: data.usage.completion_tokens,
-                totalTokens: data.usage.total_tokens,
-            },
-        };
+        throw new Error("Groq max retries exceeded");
     }
 
     async *stream(request: AiRequest): AsyncGenerator<AiStreamChunk, AiResponse, void> {

@@ -5,6 +5,7 @@ import {
 	MockProvider,
 	OllamaProvider,
 	OpenAiProvider,
+	GroqProvider,
 } from "../ai/providers/mod";
 import { PromptEngine } from "../prompt/engine";
 import type { Assertion, AssertionResult } from "./scorers/deterministic";
@@ -56,6 +57,7 @@ export class EvalEngine {
 		aiEngine.register(new OllamaProvider());
 		aiEngine.register(new OpenAiProvider());
 		aiEngine.register(new MockProvider());
+		aiEngine.register(new GroqProvider());
 
 		const promptTemplate = await promptEngine.loadPrompt(suite.prompt);
 		const judgeTemplate =
@@ -75,9 +77,15 @@ export class EvalEngine {
 				repo_root: process.cwd(),
 			});
 
+
+			const messages: { role: "system" | "user" | "assistant"; content: string }[] = [{ role: "system", content: systemPrompt }];
+			if (inputText) {
+				messages.push({ role: "user", content: inputText });
+			}
+
 			const response = await aiEngine.complete(
 				{
-					messages: [{ role: "system", content: systemPrompt }],
+					messages,
 					traceId: `eval-${c.id}`,
 				},
 				{
