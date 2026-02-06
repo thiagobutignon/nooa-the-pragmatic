@@ -1,0 +1,686 @@
+[
+  {
+    "id": "act-0",
+    "input": "Orchestration result",
+    "output": "nooa act 'Check status'",
+    "meta": {
+      "source": "registry",
+      "command": "act"
+    }
+  },
+  {
+    "id": "ai-0",
+    "input": "AI response text",
+    "output": "nooa ai \"Who are you?\"",
+    "meta": {
+      "source": "registry",
+      "command": "ai"
+    }
+  },
+  {
+    "id": "ai-1",
+    "input": "{ ... }",
+    "output": "nooa ai \"Tell a joke\" --json",
+    "meta": {
+      "source": "registry",
+      "command": "ai"
+    }
+  },
+  {
+    "id": "ask-0",
+    "input": "Search results",
+    "output": "nooa ask \"find TODOs\"",
+    "meta": {
+      "source": "registry",
+      "command": "ask"
+    }
+  },
+  {
+    "id": "ask-1",
+    "input": "JSON results",
+    "output": "nooa ask init --json",
+    "meta": {
+      "source": "registry",
+      "command": "ask"
+    }
+  },
+  {
+    "id": "check-0",
+    "input": "Policy check",
+    "output": "nooa check",
+    "meta": {
+      "source": "registry",
+      "command": "check"
+    }
+  },
+  {
+    "id": "check-1",
+    "input": "JSON policy report",
+    "output": "nooa check src --json",
+    "meta": {
+      "source": "registry",
+      "command": "check"
+    }
+  },
+  {
+    "id": "check-2",
+    "input": "Guardrail report",
+    "output": "nooa check --profile .nooa/guardrails/profiles/security.yaml",
+    "meta": {
+      "source": "registry",
+      "command": "check"
+    }
+  },
+  {
+    "id": "ci-0",
+    "input": "Runs CI",
+    "output": "nooa ci",
+    "meta": {
+      "source": "registry",
+      "command": "ci"
+    }
+  },
+  {
+    "id": "ci-1",
+    "input": "JSON report",
+    "output": "nooa ci --json",
+    "meta": {
+      "source": "registry",
+      "command": "ci"
+    }
+  },
+  {
+    "id": "code-0",
+    "input": "Writes file",
+    "output": "nooa code write app.ts --from template.ts",
+    "meta": {
+      "source": "registry",
+      "command": "code"
+    }
+  },
+  {
+    "id": "code-1",
+    "input": "Patches file",
+    "output": "nooa code patch app.ts --patch-from fix.patch",
+    "meta": {
+      "source": "registry",
+      "command": "code"
+    }
+  },
+  {
+    "id": "code-2",
+    "input": "Git diff output",
+    "output": "nooa code diff src/",
+    "meta": {
+      "source": "registry",
+      "command": "code"
+    }
+  },
+  {
+    "id": "commit-0",
+    "input": "Commit",
+    "output": "nooa commit -m \"feat: user authentication\"",
+    "meta": {
+      "source": "registry",
+      "command": "commit"
+    }
+  },
+  {
+    "id": "commit-1",
+    "input": "Commit with allow-lazy",
+    "output": "nooa commit -m \"docs: api reference\" --allow-lazy",
+    "meta": {
+      "source": "registry",
+      "command": "commit"
+    }
+  },
+  {
+    "id": "context-0",
+    "input": "Context summary",
+    "output": "nooa context src/index.ts",
+    "meta": {
+      "source": "registry",
+      "command": "context"
+    }
+  },
+  {
+    "id": "context-1",
+    "input": "JSON output",
+    "output": "nooa context SymbolName --json",
+    "meta": {
+      "source": "registry",
+      "command": "context"
+    }
+  },
+  {
+    "id": "cron-0",
+    "input": "List jobs",
+    "output": "nooa cron list",
+    "meta": {
+      "source": "registry",
+      "command": "cron"
+    }
+  },
+  {
+    "id": "cron-1",
+    "input": "Add job",
+    "output": "nooa cron add job --every 5m -- index repo",
+    "meta": {
+      "source": "registry",
+      "command": "cron"
+    }
+  },
+  {
+    "id": "cron-2",
+    "input": "Remove job",
+    "output": "nooa cron remove job --force",
+    "meta": {
+      "source": "registry",
+      "command": "cron"
+    }
+  },
+  {
+    "id": "doctor-0",
+    "input": "Environment check",
+    "output": "nooa doctor",
+    "meta": {
+      "source": "registry",
+      "command": "doctor"
+    }
+  },
+  {
+    "id": "doctor-1",
+    "input": "JSON report",
+    "output": "nooa doctor --json",
+    "meta": {
+      "source": "registry",
+      "command": "doctor"
+    }
+  },
+  {
+    "id": "embed-0",
+    "input": "Embedding output",
+    "output": "nooa embed text \"hello\"",
+    "meta": {
+      "source": "registry",
+      "command": "embed"
+    }
+  },
+  {
+    "id": "embed-1",
+    "input": "Embedding output",
+    "output": "nooa embed file README.md",
+    "meta": {
+      "source": "registry",
+      "command": "embed"
+    }
+  },
+  {
+    "id": "eval-0",
+    "input": "Run suite",
+    "output": "nooa eval run review --suite standard",
+    "meta": {
+      "source": "registry",
+      "command": "eval"
+    }
+  },
+  {
+    "id": "eval-1",
+    "input": "Compare",
+    "output": "nooa eval compare review --suite standard",
+    "meta": {
+      "source": "registry",
+      "command": "eval"
+    }
+  },
+  {
+    "id": "fix-0",
+    "input": "Fix results",
+    "output": "nooa fix \"fix logger typo\"",
+    "meta": {
+      "source": "registry",
+      "command": "fix"
+    }
+  },
+  {
+    "id": "fix-1",
+    "input": "Dry run",
+    "output": "nooa fix \"auth flow\" --dry-run",
+    "meta": {
+      "source": "registry",
+      "command": "fix"
+    }
+  },
+  {
+    "id": "goal-0",
+    "input": "Goal set",
+    "output": "nooa goal set Ship it",
+    "meta": {
+      "source": "registry",
+      "command": "goal"
+    }
+  },
+  {
+    "id": "goal-1",
+    "input": "Current goal",
+    "output": "nooa goal status",
+    "meta": {
+      "source": "registry",
+      "command": "goal"
+    }
+  },
+  {
+    "id": "guardrail-0",
+    "input": "Run guardrails",
+    "output": "nooa guardrail check --spec",
+    "meta": {
+      "source": "registry",
+      "command": "guardrail"
+    }
+  },
+  {
+    "id": "guardrail-1",
+    "input": "List profiles",
+    "output": "nooa guardrail list",
+    "meta": {
+      "source": "registry",
+      "command": "guardrail"
+    }
+  },
+  {
+    "id": "identity-0",
+    "input": "Identity initialized",
+    "output": "nooa init",
+    "meta": {
+      "source": "registry",
+      "command": "identity"
+    }
+  },
+  {
+    "id": "identity-1",
+    "input": "Overwrite identity",
+    "output": "nooa init --force",
+    "meta": {
+      "source": "registry",
+      "command": "identity"
+    }
+  },
+  {
+    "id": "ignore-0",
+    "input": "Add pattern",
+    "output": "nooa ignore add secret.ts",
+    "meta": {
+      "source": "registry",
+      "command": "ignore"
+    }
+  },
+  {
+    "id": "ignore-1",
+    "input": "List patterns",
+    "output": "nooa ignore list",
+    "meta": {
+      "source": "registry",
+      "command": "ignore"
+    }
+  },
+  {
+    "id": "index-0",
+    "input": "Index repository",
+    "output": "nooa index repo",
+    "meta": {
+      "source": "registry",
+      "command": "index"
+    }
+  },
+  {
+    "id": "index-1",
+    "input": "Index file",
+    "output": "nooa index file src/index.ts",
+    "meta": {
+      "source": "registry",
+      "command": "index"
+    }
+  },
+  {
+    "id": "init-0",
+    "input": "Identity initialized",
+    "output": "nooa init",
+    "meta": {
+      "source": "registry",
+      "command": "init"
+    }
+  },
+  {
+    "id": "init-1",
+    "input": "Overwrite identity",
+    "output": "nooa init --force",
+    "meta": {
+      "source": "registry",
+      "command": "init"
+    }
+  },
+  {
+    "id": "mcp-0",
+    "input": "List MCP servers",
+    "output": "nooa mcp list",
+    "meta": {
+      "source": "registry",
+      "command": "mcp"
+    }
+  },
+  {
+    "id": "mcp-1",
+    "input": "Call tool",
+    "output": "nooa mcp call filesystem read_file --path README.md",
+    "meta": {
+      "source": "registry",
+      "command": "mcp"
+    }
+  },
+  {
+    "id": "memory-0",
+    "input": "Added entry",
+    "output": "nooa memory add \"Store key insight\"",
+    "meta": {
+      "source": "registry",
+      "command": "memory"
+    }
+  },
+  {
+    "id": "memory-1",
+    "input": "List entries",
+    "output": "nooa memory search \"auth\"",
+    "meta": {
+      "source": "registry",
+      "command": "memory"
+    }
+  },
+  {
+    "id": "memory-2",
+    "input": "Promoted entry",
+    "output": "nooa memory promote mem_123",
+    "meta": {
+      "source": "registry",
+      "command": "memory"
+    }
+  },
+  {
+    "id": "message-0",
+    "input": "Message output",
+    "output": "nooa message \"Hello\"",
+    "meta": {
+      "source": "registry",
+      "command": "message"
+    }
+  },
+  {
+    "id": "message-1",
+    "input": "System message",
+    "output": "nooa message \"Init\" --role system",
+    "meta": {
+      "source": "registry",
+      "command": "message"
+    }
+  },
+  {
+    "id": "pr-0",
+    "input": "List PRs",
+    "output": "nooa pr list",
+    "meta": {
+      "source": "registry",
+      "command": "pr"
+    }
+  },
+  {
+    "id": "pr-1",
+    "input": "Review PR",
+    "output": "nooa pr review 12",
+    "meta": {
+      "source": "registry",
+      "command": "pr"
+    }
+  },
+  {
+    "id": "pr-2",
+    "input": "Create PR",
+    "output": "nooa pr create --title T --body B",
+    "meta": {
+      "source": "registry",
+      "command": "pr"
+    }
+  },
+  {
+    "id": "prompt-0",
+    "input": "List prompts",
+    "output": "nooa prompt list",
+    "meta": {
+      "source": "registry",
+      "command": "prompt"
+    }
+  },
+  {
+    "id": "prompt-1",
+    "input": "Prompt details",
+    "output": "nooa prompt view review",
+    "meta": {
+      "source": "registry",
+      "command": "prompt"
+    }
+  },
+  {
+    "id": "prompt-2",
+    "input": "Publish prompt",
+    "output": "nooa prompt publish review --level patch --note note",
+    "meta": {
+      "source": "registry",
+      "command": "prompt"
+    }
+  },
+  {
+    "id": "push-0",
+    "input": "Pushes current branch",
+    "output": "nooa push",
+    "meta": {
+      "source": "registry",
+      "command": "push"
+    }
+  },
+  {
+    "id": "push-1",
+    "input": "Pushes without running tests",
+    "output": "nooa push origin feat/auth --no-test",
+    "meta": {
+      "source": "registry",
+      "command": "push"
+    }
+  },
+  {
+    "id": "pwd-0",
+    "input": "/path/to/project",
+    "output": "nooa pwd",
+    "meta": {
+      "source": "registry",
+      "command": "pwd"
+    }
+  },
+  {
+    "id": "pwd-1",
+    "input": "{ \"cwd\": \"/path/to/project\" }",
+    "output": "nooa pwd --json",
+    "meta": {
+      "source": "registry",
+      "command": "pwd"
+    }
+  },
+  {
+    "id": "read-0",
+    "input": "File contents to stdout",
+    "output": "nooa read README.md",
+    "meta": {
+      "source": "registry",
+      "command": "read"
+    }
+  },
+  {
+    "id": "read-1",
+    "input": "{ \"path\": \"package.json\", \"bytes\": 1234, \"content\": \"...\" }",
+    "output": "nooa read package.json --json",
+    "meta": {
+      "source": "registry",
+      "command": "read"
+    }
+  },
+  {
+    "id": "replay-0",
+    "input": "Creates a node",
+    "output": "nooa replay add A",
+    "meta": {
+      "source": "registry",
+      "command": "replay"
+    }
+  },
+  {
+    "id": "replay-1",
+    "input": "Creates an edge",
+    "output": "nooa replay link node_a node_b",
+    "meta": {
+      "source": "registry",
+      "command": "replay"
+    }
+  },
+  {
+    "id": "replay-2",
+    "input": "Creates a fix node",
+    "output": "nooa replay fix node_b \"Fix B\"",
+    "meta": {
+      "source": "registry",
+      "command": "replay"
+    }
+  },
+  {
+    "id": "replay-3",
+    "input": "{ ... }",
+    "output": "nooa replay show --json",
+    "meta": {
+      "source": "registry",
+      "command": "replay"
+    }
+  },
+  {
+    "id": "review-0",
+    "input": "Review output",
+    "output": "nooa review src/index.ts",
+    "meta": {
+      "source": "registry",
+      "command": "review"
+    }
+  },
+  {
+    "id": "review-1",
+    "input": "JSON review output",
+    "output": "nooa review --json --out review-results.json",
+    "meta": {
+      "source": "registry",
+      "command": "review"
+    }
+  },
+  {
+    "id": "review-2",
+    "input": "Exit non-zero",
+    "output": "nooa review --fail-on high",
+    "meta": {
+      "source": "registry",
+      "command": "review"
+    }
+  },
+  {
+    "id": "run-0",
+    "input": "Pipeline executed",
+    "output": "nooa run -- code write foo.ts -- commit -m \"feat: foo\"",
+    "meta": {
+      "source": "registry",
+      "command": "run"
+    }
+  },
+  {
+    "id": "run-1",
+    "input": "Pipeline executed",
+    "output": "nooa run \"code write foo.ts\" \"commit -m 'feat: foo'\"",
+    "meta": {
+      "source": "registry",
+      "command": "run"
+    }
+  },
+  {
+    "id": "scaffold-0",
+    "input": "Creates a feature",
+    "output": "nooa scaffold command authentication",
+    "meta": {
+      "source": "registry",
+      "command": "scaffold"
+    }
+  },
+  {
+    "id": "scaffold-1",
+    "input": "Creates a prompt template",
+    "output": "nooa scaffold prompt review --with-docs",
+    "meta": {
+      "source": "registry",
+      "command": "scaffold"
+    }
+  },
+  {
+    "id": "search-0",
+    "input": "Matches list",
+    "output": "nooa search \"TODO\" . --include \"*.ts\"",
+    "meta": {
+      "source": "registry",
+      "command": "search"
+    }
+  },
+  {
+    "id": "search-1",
+    "input": "JSON results",
+    "output": "nooa search \"class User\" src --json",
+    "meta": {
+      "source": "registry",
+      "command": "search"
+    }
+  },
+  {
+    "id": "skills-0",
+    "input": "List skills",
+    "output": "nooa skills list",
+    "meta": {
+      "source": "registry",
+      "command": "skills"
+    }
+  },
+  {
+    "id": "skills-1",
+    "input": "Create skill",
+    "output": "nooa skills add my-skill \"desc\"",
+    "meta": {
+      "source": "registry",
+      "command": "skills"
+    }
+  },
+  {
+    "id": "worktree-0",
+    "input": "Worktree created",
+    "output": "nooa worktree create feat/login",
+    "meta": {
+      "source": "registry",
+      "command": "worktree"
+    }
+  },
+  {
+    "id": "worktree-1",
+    "input": "{ worktrees: [...] }",
+    "output": "nooa worktree list --json",
+    "meta": {
+      "source": "registry",
+      "command": "worktree"
+    }
+  }
+]

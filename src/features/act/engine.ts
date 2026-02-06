@@ -7,6 +7,12 @@ import { GroqProvider, MockProvider, OllamaProvider, OpenAiProvider } from "../a
 import { loadCommands } from "../../core/registry";
 import { sdkError } from "../../core/types";
 import type { SdkResult } from "../../core/types";
+import { WorkflowEngine } from "../../core/workflow/Engine";
+import { SpecGate, TestGate } from "../../core/workflow/gates";
+import { createTraceId } from "../../core/logger";
+import { EventBus } from "../../core/event-bus"; // Assume global or passed?
+// If options has bus, use it. ActOptions didn't have bus type explicitly? It should. 
+// "onEvent" is old pattern. New pattern uses bus.
 
 export type ActEvent =
     | { type: "thought"; content: string }
@@ -19,7 +25,10 @@ interface ActOptions {
     model?: string;
     provider?: string;
     onEvent?: (event: ActEvent) => void;
+    bus?: any; // EventBus; using any to match untyped usages if needed, or import EventBus
+    skipVerification?: boolean;
 }
+
 
 interface ActResult {
     ok: boolean;
@@ -135,13 +144,55 @@ RULES:
             { role: "user", content: `GOAL: ${goal}` },
         ];
 
+        const traceId = createTraceId();
+        const bus = options.bus as EventBus | undefined;
+
+        bus?.emit("act.started", {
+            type: "act.started",
+            traceId,
+            goal,
+        });
+
         let turn = 0;
         const maxTurns = options.maxTurns ?? 10;
 
         // Helper to finalize and log
         const finalize = async (result: SdkResult<ActResult>) => {
             await this.saveAuditLog(root, goal, history, result);
+
+            bus?.emit("act.completed", {
+                type: "act.completed",
+                traceId,
+                result: result.ok ? "success" : "failure",
+            });
+
             return result;
+        };
+
+        // Workflow / Gates Engine
+        const workflow = new WorkflowEngine();
+
+        // Verification Function
+        const verifyWork = async (): Promise<{ ok: boolean; reason?: string }> => {
+            // For MVP, we simply run TestGate. 
+            // SpecGate might be too strict if spec is implicit? 
+            // Let's enforce TestGate at minimum for "programming agent".
+            const steps = [
+                { id: "test", gate: new TestGate(), action: async () => { } }
+            ];
+
+            const ctx = {
+                traceId,
+                command: "act",
+                args: { goal },
+                cwd: root,
+            };
+
+            const res = await workflow.run(steps, ctx);
+            if (!res.ok) {
+                return { ok: false, reason: `Verification Failed (${res.failedStepId}): ${res.reason}` };
+            }
+            return { ok: true };
         };
 
         while (turn < maxTurns) {
@@ -215,6 +266,19 @@ RULES:
 
             // 2. Handle Completion
             if (plan?.done) {
+                // BEFORE attempting to finish, we VERIFY.
+                if (!options.skipVerification) {
+                    const verification = await verifyWork();
+                    if (!verification.ok) {
+                        const errorMsg = `CANNOT FINISH: ${verification.reason}`;
+                        options.onEvent?.({ type: "error", content: errorMsg });
+                        // Push error to history so agent sees it
+                        history.push({ role: "user", content: errorMsg });
+                        // Force agent to continue and fix
+                        continue;
+                    }
+                }
+
                 const finalAnswer = plan.answer ?? plan.thought ?? "Goal achieved.";
                 return finalize({
                     ok: true,

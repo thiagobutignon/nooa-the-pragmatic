@@ -1,4 +1,5 @@
 import type { EventBus } from "./event-bus";
+import type { AgentDocExample } from "./types";
 
 export interface CommandContext {
 	args: string[]; // positionals
@@ -16,4 +17,5 @@ export interface Command {
 	>;
 	execute: (context: CommandContext) => Promise<void>;
 	agentDoc?: string;
+	examples?: AgentDocExample[];
 }

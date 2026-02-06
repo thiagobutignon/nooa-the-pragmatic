@@ -5,7 +5,6 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executeDiff } from "./diff";
@@ -311,6 +310,7 @@ const codeBuilder = new CommandBuilder<CodeRunInput, CodeRunResult>()
 			"dry-run": { type: "boolean" },
 			patch: { type: "boolean" },
 			"patch-from": { type: "string" },
+			content: { type: "string" },
 		},
 	})
 	.parseInput(async ({ values, positionals }) => {
@@ -318,8 +318,9 @@ const codeBuilder = new CommandBuilder<CodeRunInput, CodeRunResult>()
 		return {
 			action,
 			path: positionals[2],
-			instruction: positionals[3],
+			instruction: positionals[3], // Only for refactor
 			from: values.from as string | undefined,
+			content: (values.content as string | undefined) ?? (action === "write" ? positionals[3] : undefined),
 			overwrite: Boolean(values.overwrite),
 			"dry-run": Boolean(values["dry-run"]),
 			patch: Boolean(values.patch),

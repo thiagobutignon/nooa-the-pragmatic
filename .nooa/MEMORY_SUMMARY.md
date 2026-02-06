@@ -2,43 +2,43 @@
 > Context curated for high-integrity results. Precedence: Constitution.
 
 ### Recent Observations
-- [2026-02-06] Ran command: mcp mcp list --json
+- [2026-02-06] Ran command: prompt prompt
 Outcome: Failure
-- [2026-02-06] Ran command: mcp mcp list
+- [2026-02-06] Ran command: prompt prompt --json
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron status cleanup
+- [2026-02-06] Ran command: prompt prompt --help
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron remove cleanup --force
+- [2026-02-06] Ran command: prompt prompt --help
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron remove cleanup
+- [2026-02-06] Ran command: search search TODO --max-results invalid
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron edit cleanup --schedule 0 4 * * * --description updated
+- [2026-02-06] Ran command: review review
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron add cleanup --every 0 3 * * * -- echo cleanup
+- [2026-02-06] Ran command: review review --json
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron history runner --json
+- [2026-02-06] Ran command: review review --help
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron logs runner --json
+- [2026-02-06] Ran command: review review --help
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron status runner --json
+- [2026-02-06] Ran command: prompt prompt
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron run runner --force
+- [2026-02-06] Ran command: prompt prompt --json
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron add runner --every @daily -- echo ok
+- [2026-02-06] Ran command: prompt prompt --help
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron list --json
+- [2026-02-06] Ran command: prompt prompt --help
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron add status-job --every 1h -- true
+- [2026-02-06] Ran command: search search TODO --max-results invalid
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron list
+- [2026-02-06] Ran command: review review
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron add daily-index --every 6h -- echo index
+- [2026-02-06] Ran command: review review --json
 Outcome: Failure
-- [2026-02-06] Ran command: cron cron --help
+- [2026-02-06] Ran command: review review --help
 Outcome: Failure
-- [2026-02-06] Ran command: goal goal status --json
+- [2026-02-06] Ran command: review review --help
 Outcome: Failure
-- [2026-02-06] Ran command: goal goal --help
+- [2026-02-06] Ran command: prompt prompt
 Outcome: Failure
-- [2026-02-06] Ran command: replay replay add A --root /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/feat/next-fronts/src/features/replay/tmp-replay/cli-output
+- [2026-02-06] Ran command: prompt prompt --json
 Outcome: Failure

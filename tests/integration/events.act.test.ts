@@ -25,9 +25,9 @@ describe("Integration: Act Events", () => {
 
         await actCommand.execute({
             args: ["act", "test goal", "--provider", "mock", "--turns", "1"],
-            values: { provider: "mock", turns: "1" },
-            rawArgs: ["act", "test goal", "--provider", "mock", "--turns", "1"],
-            bus
+            values: { provider: "mock", turns: "1", "skip-verification": true },
+            rawArgs: ["act", "test goal", "--provider", "mock", "--turns", "1", "--skip-verification"],
+            bus,
         });
 
         if (previousMockContent === undefined) {

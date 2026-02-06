@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { TelemetryRow } from "../core/telemetry";
-import { reconstituteState } from "./dashboard";
+import { reconstituteState } from "./shared/state";
 
 describe("DashboardView state", () => {
 	it("reconstitutes workers from workflow events", () => {
@@ -49,10 +49,11 @@ describe("DashboardView state", () => {
 
 		const workers = reconstituteState(rows);
 		expect(workers.length).toBe(1);
-		expect(workers[0].goal).toBe("Ship it");
-		expect(workers[0].currentStep).toBe("spec");
-		expect(workers[0].lastGate?.id).toBe("spec");
-		expect(workers[0].lastGate?.status).toBe("pass");
-		expect(workers[0].status).toBe("completed");
+		expect(workers[0]?.goal).toBe("Ship it");
+		expect(workers[0]?.currentStep).toBe("spec");
+		expect(workers[0]?.lastGate?.id).toBe("spec");
+		expect(workers[0]?.lastGate?.status).toBe("pass");
+		expect(workers[0]?.gates).toContain("spec");
+		expect(workers[0]?.status).toBe("completed");
 	});
 });

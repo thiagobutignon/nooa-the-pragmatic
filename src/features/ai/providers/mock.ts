@@ -23,23 +23,22 @@ export class MockProvider implements AiProvider {
 		const input = lastMessage?.content || "";
 
 		let content = `Simulated response for: ${input}`;
-		if (input.toLowerCase().includes("json")) {
+
+		// Smart Mock for TUI Agent Eval
+		if (input.includes("Check the project status")) {
+			content = "Here is the status:\n```bash\nnooa check\n```";
+		} else if (input.includes("refactor")) {
+			content = "I will refactor it:\n```bash\nnooa act \"refactor code\"\n```";
+		} else if (input.includes("Read the README")) {
+			content = "Reading file:\n```bash\nnooa read README.md\n```";
+		} else if (input.toLowerCase().includes("json")) {
 			content = JSON.stringify(
 				{
 					schemaVersion: "1.0",
 					ok: true,
 					summary: "This is a simulated review summary.",
-					findings: [
-						{
-							severity: "low",
-							file: "unknown",
-							line: 1,
-							category: "style",
-							message: "Simulated finding",
-							suggestion: "Fix it",
-						},
-					],
-					stats: { files: 1, findings: 1 },
+					findings: [],
+					stats: { files: 1, findings: 0 },
 				},
 				null,
 				2,

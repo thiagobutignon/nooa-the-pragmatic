@@ -1,0 +1,50 @@
+[
+  {
+    "id": "be273d2e-d641-4077-a3cc-da063b58c60c",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T03:24:09.063Z"
+  },
+  {
+    "id": "5afdd932-888b-42c8-803b-5c0e7e8fe3a0",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T03:36:53.041Z"
+  },
+  {
+    "id": "c77c307d-3a64-4b87-8768-1ca28915bbe5",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T03:37:32.865Z"
+  },
+  {
+    "id": "2bafe604-e40a-43d1-b958-21ada71ebdc7",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 1,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T03:38:25.928Z"
+  }
+]

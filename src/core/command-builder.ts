@@ -365,6 +365,7 @@ ${outputXml}
 			options: {},
 			execute,
 			agentDoc: this.buildAgentDoc(this.agentDocIncludeChangelog),
+			examples: this.examplesValue,
 		};
 	}
 }

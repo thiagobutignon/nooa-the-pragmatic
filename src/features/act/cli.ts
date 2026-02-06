@@ -67,6 +67,7 @@ export const actSchema = {
     provider: { type: "string", required: false },
     turns: { type: "number", required: false },
     json: { type: "boolean", required: false },
+    "skip-verification": { type: "boolean", required: false },
 } satisfies SchemaSpec;
 
 export const actOutputFields = [
@@ -102,6 +103,7 @@ export interface ActRunInput {
     json?: boolean;
     bus?: EventBus;
     traceId?: string;
+    skipVerification?: boolean;
 }
 
 export interface ActRunResult {
@@ -164,11 +166,13 @@ export async function run(
             },
         });
 
-        const steps: WorkflowStep[] = [
-            { id: "spec", gate: wrapGate("spec", new SpecGate()), action: async () => {} },
-            { id: "tests", gate: wrapGate("tests", new TestGate()), action: async () => {} },
-            { id: "dogfood", gate: wrapGate("dogfood", new DogfoodGate()), action: async () => {} },
-        ];
+        const steps: WorkflowStep[] = input.skipVerification
+            ? []
+            : [
+                { id: "spec", gate: wrapGate("spec", new SpecGate()), action: async () => { } },
+                { id: "tests", gate: wrapGate("tests", new TestGate()), action: async () => { } },
+                { id: "dogfood", gate: wrapGate("dogfood", new DogfoodGate()), action: async () => { } },
+            ];
 
         const workflow = new WorkflowEngine();
         const workflowResult = await workflow.run(steps, ctx);
@@ -198,6 +202,8 @@ export async function run(
             model: input.model,
             provider: input.provider,
             maxTurns: input.turns,
+            skipVerification: input.skipVerification,
+            bus: input.bus,
         });
 
         return result;
@@ -226,12 +232,15 @@ const actBuilder = new CommandBuilder<ActRunInput, ActRunResult>()
             model: { type: "string" },
             provider: { type: "string" },
             turns: { type: "string" },
+            "skip-verification": { type: "boolean" },
         },
     })
     .parseInput(async ({ positionals, values, bus, traceId }) => {
         const turnsRaw = typeof values.turns === "string" ? values.turns : undefined;
         const turnsParsed = turnsRaw ? Number.parseInt(turnsRaw, 10) : undefined;
         const goal = positionals[1];
+        // act.started is emitted by ActEngine now
+        /*
         if (bus && traceId) {
             bus.emit("act.started", {
                 type: "act.started",
@@ -239,6 +248,7 @@ const actBuilder = new CommandBuilder<ActRunInput, ActRunResult>()
                 goal: goal ?? "",
             });
         }
+        */
         return {
             goal,
             model: typeof values.model === "string" ? values.model : undefined,
@@ -247,6 +257,7 @@ const actBuilder = new CommandBuilder<ActRunInput, ActRunResult>()
             json: Boolean(values.json),
             bus,
             traceId,
+            skipVerification: Boolean(values["skip-verification"]),
         };
     })
     .run(run)

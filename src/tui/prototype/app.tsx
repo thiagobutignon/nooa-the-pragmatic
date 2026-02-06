@@ -2,6 +2,25 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
 import Gradient from "ink-gradient";
+import TextInput from "ink-text-input";
+import { resolve } from "node:path";
+import { mkdir, readFile } from "node:fs/promises";
+import { runAiStream } from "./ai-runner";
+import { buildSystemPrompt, type AgentManifest } from "./system-prompt";
+import { runNooaCommand } from "./command-runner";
+import { buildScrollState } from "./scroll";
+import {
+	disableMouseTracking,
+	enableMouseTracking,
+	parseMouseScroll,
+} from "./mouse";
+import {
+	appendLogLine,
+	resolveDefaultLogPath,
+	type LogEvent,
+} from "./log-writer";
+import { telemetry } from "../../core/telemetry";
+import { reconstituteState, type WorkerView } from "../shared/state";
 
 const theme = {
 	background: "black",
@@ -13,21 +32,7 @@ const theme = {
 
 const HEADER = "NOOA :: Hypergrowth Console";
 const SUBHEADER = "Minimal agent-first TUI (prototype)";
-const MODEL_LABEL = "Model: claude-code / codex";
-
-const sampleMessages = [
-	{ role: "system", text: "You are NOOA. Optimize for speed and clarity." },
-	{ role: "user", text: "Show me the current project context." },
-	{
-		role: "assistant",
-		text: "Loaded context: read feature, command-builder, docs/features.",
-	},
-	{ role: "user", text: "List modified files." },
-	{
-		role: "assistant",
-		text: "package.json, src/features/pwd/cli.ts, src/tui/screens/read/ReadFileDialog.tsx",
-	},
-];
+const MODEL_LABEL = "Model: claude-code / codex (stream)";
 
 const contextItems = [
 	"Goal: ship hypergrowth CLI + TUI",
@@ -49,23 +54,25 @@ function Panel({
 	children,
 	width,
 	height,
+	borderColor = theme.muted,
 }: {
 	title: string;
 	children: React.ReactNode;
 	width?: number | string;
 	height?: number;
+	borderColor?: string;
 }) {
 	return (
 		<Box
 			borderStyle="round"
-			borderColor={theme.muted}
+			borderColor={borderColor}
 			flexDirection="column"
 			paddingX={1}
 			paddingY={0}
 			width={width}
 			height={height}
 		>
-			<Text color={theme.muted}>{title}</Text>
+			<Text color={borderColor}>{title}</Text>
 			<Box flexDirection="column" marginTop={1}>
 				{children}
 			</Box>
@@ -73,8 +80,40 @@ function Panel({
 	);
 }
 
-function ChatMessage({ role, text }: { role: string; text: string }) {
-	const roleColor = role === "user" ? theme.primary : theme.accent;
+function WorkflowStatus({ worker }: { worker: WorkerView }) {
+	const color = worker.status === "active" ? theme.accent : worker.status === "failed" ? theme.warn : theme.muted;
+	return (
+		<Box flexDirection="column">
+			<Box justifyContent="space-between">
+				<Text bold color={color}>{worker.status.toUpperCase()}</Text>
+				<Text dimColor>{worker.id.slice(0, 6)}</Text>
+			</Box>
+			<Text>Goal: {worker.goal}</Text>
+			{worker.gates.length > 0 && (
+				<Text color={theme.primary}>✔ Gates: {worker.gates.join(" → ")}</Text>
+			)}
+			{worker.lastGate?.status === "fail" && (
+				<Text color={theme.warn}>✘ Failed at: {worker.lastGate.id}</Text>
+			)}
+		</Box>
+	);
+}
+
+type ChatRole = "system" | "user" | "assistant" | "error";
+
+type ChatMessage = {
+	id: string;
+	role: ChatRole;
+	text: string;
+};
+
+function ChatMessage({ role, text }: { role: ChatRole; text: string }) {
+	const roleColor =
+		role === "user"
+			? theme.primary
+			: role === "error"
+				? theme.warn
+				: theme.accent;
 	return (
 		<Box flexDirection="column" marginBottom={1}>
 			<Text color={roleColor}>{role.toUpperCase()}</Text>
@@ -83,7 +122,19 @@ function ChatMessage({ role, text }: { role: string; text: string }) {
 	);
 }
 
-function InputBar({ value }: { value: string }) {
+function InputBar({
+	value,
+	onChange,
+	onSubmit,
+	disabled,
+	status,
+}: {
+	value: string;
+	onChange: (next: string) => void;
+	onSubmit: (next: string) => void;
+	disabled: boolean;
+	status?: string;
+}) {
 	return (
 		<Box
 			borderStyle="round"
@@ -92,8 +143,16 @@ function InputBar({ value }: { value: string }) {
 			paddingY={0}
 		>
 			<Text color={theme.primary}>›</Text>
-			<Text> {value}</Text>
-			<Text color={theme.muted}> ▋</Text>
+			<Box flexGrow={1} marginLeft={1}>
+				<TextInput
+					value={value}
+					onChange={onChange}
+					onSubmit={onSubmit}
+					placeholder={disabled ? "Streaming..." : "Escreva um comando..."}
+					focus={!disabled}
+				/>
+			</Box>
+			<Text color={theme.muted}>{status ? ` ${status}` : " ▋"}</Text>
 		</Box>
 	);
 }
@@ -101,23 +160,86 @@ function InputBar({ value }: { value: string }) {
 export function PrototypeApp() {
 	const { exit } = useApp();
 	const { stdout } = useStdout();
-	const [showContext, setShowContext] = useState(true);
-	const [showFiles, setShowFiles] = useState(true);
-	const [draft] = useState("Ask NOOA to refactor read...");
+	const [showContext] = useState(false);
+	const [showFiles] = useState(false);
+	const [draft, setDraft] = useState("");
+	const [status, setStatus] = useState<string | undefined>();
+	const stderrBuffer = useRef("");
+	const assistantBuffer = useRef("");
+	const [systemPrompt, setSystemPrompt] = useState(
+		"You are NOOA. Optimize for speed and clarity.",
+	);
+	const [messages, setMessages] = useState<ChatMessage[]>(() => [
+		{
+			id: "system",
+			role: "system",
+			text: "You are NOOA. Optimize for speed and clarity.",
+		},
+	]);
+	const [logs, setLogs] = useState<string[]>([]);
+	const logFileRef = useRef<string | null>(null);
+	const scrollStateRef = useRef(buildScrollState({ totalLines: 0, viewportLines: 10 }));
+	const [scrollOffset, setScrollOffset] = useState(0);
+	const [isStreaming, setIsStreaming] = useState(false);
 	const resizeTimer = useRef<Timer | null>(null);
+	const streamRef = useRef<ReturnType<typeof runAiStream> | null>(null);
 	const [viewport, setViewport] = useState(() => ({
 		columns: stdout?.columns ?? 80,
 		rows: stdout?.rows ?? 24,
 	}));
+	// Workflow State
+	const [workers, setWorkers] = useState<WorkerView[]>([]);
+
+	useEffect(() => {
+		const refresh = () => {
+			const rows = telemetry.list({ limit: 100 });
+			const nextWorkers = reconstituteState(rows);
+			// Filter for recent/active
+			const active = nextWorkers.filter(w => w.status === "active" || (Date.now() - w.lastEventTime < 10000));
+			setWorkers(active.reverse());
+		};
+		const timer = setInterval(refresh, 500);
+		return () => clearInterval(timer);
+	}, []);
 
 	const clearScreen = () => {
 		if (stdout) {
-			stdout.write("\u001b[2J\u001b[H");
+			stdout.write("\u001b[2J\u001b[H\u001b[3J");
 		}
 	};
 
 	useEffect(() => {
 		clearScreen();
+		const repoRoot = resolve(import.meta.dir, "../../..");
+		const logPath = resolveDefaultLogPath();
+		logFileRef.current = logPath;
+		void mkdir(resolve(logPath, ".."), { recursive: true });
+		appendLogLine(logPath, {
+			type: "session.start",
+			message: "tui prototype started",
+		}).catch(() => { });
+
+		void (async () => {
+			try {
+				const manifestText = await readFile(
+					resolve(repoRoot, ".nooa/AGENT_MANIFEST.json"),
+					"utf-8",
+				);
+				const manifest = JSON.parse(manifestText) as AgentManifest;
+				const prompt = await buildSystemPrompt(manifest);
+				setSystemPrompt(prompt);
+				setMessages((prev) => [
+					{
+						id: "system",
+						role: "system",
+						text: prompt,
+					},
+					...prev.filter((message) => message.id !== "system"),
+				]);
+			} catch {
+				// fallback to default system prompt
+			}
+		})();
 		const handleResize = () => {
 			if (resizeTimer.current) {
 				clearTimeout(resizeTimer.current);
@@ -127,12 +249,19 @@ export function PrototypeApp() {
 					columns: stdout?.columns ?? 80,
 					rows: stdout?.rows ?? 24,
 				});
+				scrollStateRef.current.setViewportLines(Math.max(6, (stdout?.rows ?? 24) - 8));
+				setScrollOffset(scrollStateRef.current.getOffset());
 				clearScreen();
 			}, 120);
 		};
 		stdout?.on("resize", handleResize);
+
+		const enable = enableMouseTracking();
+		stdout?.write(enable);
+
 		return () => {
 			stdout?.off("resize", handleResize);
+			stdout?.write(disableMouseTracking());
 			if (resizeTimer.current) {
 				clearTimeout(resizeTimer.current);
 			}
@@ -140,26 +269,216 @@ export function PrototypeApp() {
 	}, [stdout]);
 
 	useInput((input, key) => {
-		if (key.escape || input === "q") exit();
-		if (input === "c") setShowContext((v) => !v);
-		if (input === "f") setShowFiles((v) => !v);
+		if (key.ctrl && input === "c") exit();
+		if (key.upArrow) {
+			scrollStateRef.current.scrollBy(-1);
+			setScrollOffset(scrollStateRef.current.getOffset());
+		}
+		if (key.downArrow) {
+			scrollStateRef.current.scrollBy(1);
+			setScrollOffset(scrollStateRef.current.getOffset());
+		}
+		if (key.pageUp) {
+			scrollStateRef.current.pageUp();
+			setScrollOffset(scrollStateRef.current.getOffset());
+		}
+		if (key.pageDown) {
+			scrollStateRef.current.pageDown();
+			setScrollOffset(scrollStateRef.current.getOffset());
+		}
+		if (input) {
+			const direction = parseMouseScroll(input);
+			if (direction === "up") {
+				scrollStateRef.current.scrollBy(-3);
+				setScrollOffset(scrollStateRef.current.getOffset());
+			}
+			if (direction === "down") {
+				scrollStateRef.current.scrollBy(3);
+				setScrollOffset(scrollStateRef.current.getOffset());
+			}
+		}
 	});
 
-	const chat = useMemo(
-		() =>
-			sampleMessages.map((message, index) => (
-				<ChatMessage key={`${message.role}-${index}`} {...message} />
-			)),
-		[],
-	);
+	const chat = useMemo(() => {
+		const maxMessages = Math.max(6, viewport.rows - 10);
+		const visibleMessages = messages.slice(
+			scrollOffset,
+			scrollOffset + maxMessages,
+		);
+		return visibleMessages.map((message) => (
+			<ChatMessage key={message.id} role={message.role} text={message.text} />
+		));
+	}, [messages, viewport.rows, scrollOffset]);
 
-	const headerHeight = 3;
-	const footerHeight = 3;
-	const bodyHeight = Math.max(viewport.rows - headerHeight - footerHeight, 6);
+	const logPanel = useMemo(() => {
+		const lines = logs.slice(-12);
+		return lines.map((line, index) => (
+			<Text key={`${line}-${index}`} color={theme.muted}>
+				{line}
+			</Text>
+		));
+	}, [logs]);
+
+	const appendLog = (line: string, event?: LogEvent) => {
+		setLogs((prev) => [...prev, line].slice(-200));
+		const logPath = logFileRef.current;
+		if (logPath && event) {
+			appendLogLine(logPath, event).catch(() => { });
+		}
+	};
+
+	const handleSubmit = (value: string) => {
+		const prompt = value.trim();
+		if (!prompt || isStreaming) return;
+
+		setDraft("");
+		setStatus("executando...");
+		setIsStreaming(true);
+		stderrBuffer.current = "";
+
+		const userId = `user-${Date.now()}`;
+		const assistantId = `assistant-${Date.now()}`;
+
+		const isCommand = prompt.startsWith("!nooa ");
+		setMessages((prev) => [
+			...prev,
+			{ id: userId, role: "user", text: prompt },
+			{ id: assistantId, role: "assistant", text: "" },
+		]);
+		appendLog(isCommand ? "dispatch: nooa command" : "dispatch: ai", {
+			type: "dispatch",
+			message: isCommand ? "nooa command" : "ai",
+			metadata: { input: prompt },
+		});
+
+		streamRef.current?.stop();
+		const repoRoot = resolve(import.meta.dir, "../../..");
+
+		const provider = process.env.NOOA_TUI_PROVIDER ?? "groq";
+		const model = process.env.NOOA_TUI_MODEL ?? process.env.NOOA_AI_MODEL;
+
+		if (isCommand) {
+			// Robustly strip '!nooa' prefix
+			let commandText = prompt.startsWith("!nooa") ? prompt.slice(5).trim() : prompt;
+			// Also strip 'nooa' if user typed '!nooa nooa' or auto-execute added it redundantly
+			if (commandText.startsWith("nooa ")) {
+				commandText = commandText.slice(5).trim();
+			}
+
+			appendLog(`running: ${commandText}`, { type: "info", message: `running: ${commandText}` });
+
+			const repoRoot = resolve(import.meta.dir, "../../..");
+			streamRef.current?.stop();
+			streamRef.current = runNooaCommand(
+				commandText,
+				{ cwd: repoRoot },
+				{
+					onStdout: (chunk) => {
+						setMessages((prev) =>
+							prev.map((message) =>
+								message.id === assistantId
+									? { ...message, text: `${message.text}${chunk}` }
+									: message,
+							),
+						);
+					},
+					onStderr: (chunk) => {
+						const next = chunk.trim();
+						if (!next) return;
+						appendLog(next, { type: "stderr", message: next });
+						setStatus(next);
+					},
+					onExit: (code) => {
+						setIsStreaming(false);
+						setStatus(code === 0 ? undefined : `erro (${code})`);
+						appendLog(`exit: ${code}`, {
+							type: "exit",
+							message: String(code),
+						});
+						if (code !== 0) {
+							setMessages((prev) => [
+								...prev,
+								{
+									id: `error-${Date.now()}`,
+									role: "error",
+									text: "Falha ao executar nooa.",
+								},
+							]);
+						}
+					},
+				},
+			);
+			return;
+		}
+
+		const finalPrompt = `${systemPrompt}\n\nUsuário: ${prompt}\nAssistente:`;
+		assistantBuffer.current = "";
+
+		streamRef.current = runAiStream(
+			finalPrompt,
+			{ stream: true, cwd: repoRoot, provider, model },
+			{
+				onStdout: (chunk) => {
+					assistantBuffer.current += chunk;
+					setMessages((prev) =>
+						prev.map((message) =>
+							message.id === assistantId
+								? {
+									...message,
+									text: `${message.text}${chunk}`,
+								}
+								: message,
+						),
+					);
+				},
+				onStderr: (chunk) => {
+					const next = chunk.trim();
+					if (!next || next.startsWith("{\"level\"")) return;
+					if (!next) return;
+					stderrBuffer.current = `${stderrBuffer.current}\n${next}`.trim();
+					appendLog(next, { type: "stderr", message: next });
+					setStatus(next);
+				},
+				onExit: (code) => {
+					setIsStreaming(false);
+					setStatus(code === 0 ? undefined : `erro (${code})`);
+					appendLog(`exit: ${code}`, {
+						type: "exit",
+						message: String(code),
+					});
+
+					// Auto-Execute Logic
+					const fullText = assistantBuffer.current;
+					const bashMatch = fullText.match(/```(?:bash|sh)\n([\s\S]*?)```/);
+					if (bashMatch && bashMatch[1]) {
+						const commandToRun = bashMatch[1].trim();
+						// Strip leading 'nooa' if present, as runNooaCommand adds 'index.ts' 
+						// and we want 'index.ts <subcommand> ...'
+						const cleanCommand = commandToRun.replace(/^nooa\s+/, "");
+						appendLog(`Auto-executing: ${cleanCommand.slice(0, 40)}...`, { type: "info", message: "Auto-executing detected block" });
+						setTimeout(() => handleSubmit(`!nooa ${cleanCommand}`), 100);
+					}
+
+					if (code !== 0) {
+						const errorText =
+							stderrBuffer.current || "Falha ao executar nooa ai.";
+						setMessages((prev) => [
+							...prev,
+							{
+								id: `error-${Date.now()}`,
+								role: "error",
+								text: errorText,
+							},
+						]);
+					}
+				},
+			},
+		);
+	};
 
 	return (
 		<Box flexDirection="column" paddingX={1} paddingY={0} height={viewport.rows}>
-			<Box height={headerHeight} flexDirection="column" justifyContent="center">
+			<Box flexDirection="column" flexShrink={0} marginTop={0}>
 				<Box justifyContent="space-between">
 					<Gradient name="atlas">
 						<Text bold>{HEADER}</Text>
@@ -167,16 +486,11 @@ export function PrototypeApp() {
 					<Text color={theme.muted}>{MODEL_LABEL}</Text>
 				</Box>
 				<Text color={theme.muted}>{SUBHEADER}</Text>
-				<Text color={theme.muted}>
-					Shortcuts: <Text color={theme.primary}>c</Text> context{" "}
-					<Text color={theme.primary}>f</Text> files{" "}
-					<Text color={theme.primary}>q</Text> quit
-				</Text>
 			</Box>
 
-			<Box gap={1} height={bodyHeight}>
+			<Box gap={1} flexGrow={1} minHeight={6}>
 				{showContext && (
-					<Panel title="Context" width={28} height={bodyHeight}>
+					<Panel title="Context" width={28}>
 						{contextItems.map((item) => (
 							<Text key={item} color={theme.muted}>
 								• {item}
@@ -185,19 +499,26 @@ export function PrototypeApp() {
 					</Panel>
 				)}
 
-				<Box flexDirection="column" flexGrow={1} height={bodyHeight}>
-					<Panel title="Chat" height={bodyHeight}>
+				<Box flexDirection="column" flexGrow={1} minHeight={6}>
+					<Panel title="Chat">
 						{chat}
 						<Box marginTop={1}>
 							<Text color={theme.muted}>
-								Latest: ready for next command.
+								{isStreaming
+									? "Streaming…"
+									: "Pronto para o próximo comando."}
 							</Text>
 						</Box>
 					</Panel>
+					<Box marginTop={1}>
+						<Panel title="Logs">
+							{logPanel}
+						</Panel>
+					</Box>
 				</Box>
 
 				{showFiles && (
-					<Panel title="Modified Files" width={32} height={bodyHeight}>
+					<Panel title="Modified Files" width={32}>
 						{modifiedFiles.map((file) => (
 							<Text key={file} color={theme.muted}>
 								{file}
@@ -207,8 +528,14 @@ export function PrototypeApp() {
 				)}
 			</Box>
 
-			<Box height={footerHeight} justifyContent="center">
-				<InputBar value={draft} />
+			<Box flexShrink={0} marginTop={0}>
+				<InputBar
+					value={draft}
+					onChange={setDraft}
+					onSubmit={handleSubmit}
+					disabled={isStreaming}
+					status={status}
+				/>
 			</Box>
 		</Box>
 	);
