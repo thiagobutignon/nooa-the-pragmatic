@@ -154,4 +154,69 @@ export class EvalEngine {
 
 		return { results, totalScore: avgScore };
 	}
+
+	async optimizePrompt(
+		promptName: string,
+		failures: CaseResult[],
+	): Promise<string> {
+		const templatesDir = join(process.cwd(), "src/features/prompt/templates");
+		const promptEngine = new PromptEngine(templatesDir);
+		const aiEngine = new AiEngine();
+		// Register providers (ensure they are registered if not already in constructor/runSuite)
+		aiEngine.register(new OllamaProvider());
+		aiEngine.register(new OpenAiProvider());
+		aiEngine.register(new MockProvider());
+		aiEngine.register(new GroqProvider());
+
+		const originalPrompt = await promptEngine.loadPrompt(promptName);
+		const optimizerTemplate = await promptEngine.loadPrompt("optimizer-prompt");
+
+		const failuresText = failures
+			.map((f) => {
+				const assertions = f.assertions
+					.filter((a) => !a.passed)
+					.map((a) => `- ${a.message}`)
+					.join("\n");
+				return `### Case ID: ${f.id}\n**Input:**\n${f.output}\n\n**Failed Assertions:**\n${assertions}\n`;
+			})
+			.join("\n---\n");
+
+		const systemPrompt = await promptEngine.renderPrompt(
+			optimizerTemplate,
+			{
+				original_prompt: originalPrompt.body, // or full raw content if available, ideally we reconstruct it
+				failures: failuresText,
+			},
+			{ skipAgentContext: true },
+		);
+
+		// We need the raw frontmatter + body for the optimizer to rewrite the whole file
+		// promptEngine.loadPrompt returns parsed object.
+		// Let's read the raw file for the "Original Prompt" section to be perfect.
+		const rawOriginal = await readFile(
+			join(templatesDir, `${promptName}.md`),
+			"utf-8",
+		);
+
+		const optimizationPrompt = await promptEngine.renderPrompt(
+			optimizerTemplate,
+			{
+				original_prompt: rawOriginal,
+				failures: failuresText,
+			},
+			{ skipAgentContext: true },
+		);
+
+		const response = await aiEngine.complete(
+			{
+				messages: [{ role: "user", content: optimizationPrompt }],
+				traceId: `opt-${promptName}-${Date.now()}`,
+			},
+			{
+				provider: process.env.NOOA_AI_PROVIDER || "groq",
+			},
+		);
+
+		return response.content;
+	}
 }

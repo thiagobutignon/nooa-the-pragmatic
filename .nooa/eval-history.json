@@ -46,5 +46,130 @@
       "failOnRegression": false
     },
     "timestamp": "2026-02-06T03:38:25.928Z"
+  },
+  {
+    "id": "5325ff22-496b-4087-ba99-ec3dc947b470",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T03:46:03.652Z"
+  },
+  {
+    "id": "b707b924-5cac-4007-beb3-edbebc6c684d",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T03:46:24.692Z"
+  },
+  {
+    "id": "97c0ac59-e79f-45e8-b3a5-29bbfb8fa3e8",
+    "prompt": "test-prompt",
+    "suite": "test-suite",
+    "command": "suggest",
+    "totalScore": 0,
+    "judge": "deterministic",
+    "meta": {
+      "suggestions": 1,
+      "optimizedPath": "/Users/thiagobutignon/dev/nooa-the-pragmatic/src/features/prompt/templates/test-prompt.optimized.md"
+    },
+    "timestamp": "2026-02-06T03:50:52.293Z"
+  },
+  {
+    "id": "852c81e0-3039-4a4f-b96c-5a5ab6dc45b4",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "suggest",
+    "totalScore": 0.5,
+    "judge": "deterministic",
+    "meta": {
+      "suggestions": 2,
+      "optimizedPath": "/Users/thiagobutignon/dev/nooa-the-pragmatic/src/features/prompt/templates/tui-agent.optimized.md"
+    },
+    "timestamp": "2026-02-06T03:58:31.672Z"
+  },
+  {
+    "id": "f0a05c47-a4f8-4e48-b5f5-ab2a40fad9dc",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T03:59:36.361Z"
+  },
+  {
+    "id": "b302ed2b-d158-4b26-a26d-b63a88df277e",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "suggest",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "suggestions": 3,
+      "optimizedPath": "/Users/thiagobutignon/dev/nooa-the-pragmatic/src/features/prompt/templates/tui-agent.optimized.md"
+    },
+    "timestamp": "2026-02-06T03:59:48.239Z"
+  },
+  {
+    "id": "7cd15e26-c533-4eab-9518-df2f3ed490ee",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T04:00:16.280Z"
+  },
+  {
+    "id": "7e40ae24-0a48-4b05-b4c7-1be9f292d5b5",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "suggest",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "suggestions": 3,
+      "optimizedPath": "/Users/thiagobutignon/dev/nooa-the-pragmatic/src/features/prompt/templates/tui-agent.optimized.md"
+    },
+    "timestamp": "2026-02-06T04:00:29.988Z"
+  },
+  {
+    "id": "f159bb4a-647c-4009-8c5a-4c9b48d5a710",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "run",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-06T04:02:50.915Z"
+  },
+  {
+    "id": "50af4bff-5d2f-4613-9e59-050b92f10f4b",
+    "prompt": "tui-agent",
+    "suite": "tui-agent",
+    "command": "suggest",
+    "totalScore": 0.16666666666666666,
+    "judge": "deterministic",
+    "meta": {
+      "suggestions": 3,
+      "optimizedPath": "/Users/thiagobutignon/dev/nooa-the-pragmatic/src/features/prompt/templates/tui-agent.optimized.md"
+    },
+    "timestamp": "2026-02-06T04:02:58.461Z"
   }
 ]

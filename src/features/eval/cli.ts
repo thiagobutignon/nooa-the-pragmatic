@@ -9,6 +9,7 @@ import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { EvalEngine } from "./engine";
 import { appendHistory, loadHistory } from "./history";
+import { readFile, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 
 export const evalMeta: AgentDocMeta = {
@@ -291,6 +292,16 @@ export async function run(
 				};
 			}
 
+			const suggestions = await engine.optimizePrompt(promptName!, failures);
+
+			// Save the optimized prompt to a sidecar file
+			const optimizedPath = resolve(
+				process.cwd(),
+				"src/features/prompt/templates",
+				`${promptName}.optimized.md`,
+			);
+			await writeFile(optimizedPath, suggestions);
+
 			await appendHistory({
 				id: randomUUID(),
 				prompt: promptName!,
@@ -298,8 +309,23 @@ export async function run(
 				command: "suggest",
 				totalScore: result.totalScore,
 				judge,
-				meta: { suggestions: failures.length },
+				meta: {
+					suggestions: failures.length,
+					optimizedPath,
+				},
 			});
+
+			return {
+				ok: true,
+				data: {
+					payload: {
+						ok: true,
+						message: `Optimizer generated new prompt at ${optimizedPath}`,
+						failures,
+						optimizedPath,
+					},
+				},
+			};
 
 			return {
 				ok: true,
