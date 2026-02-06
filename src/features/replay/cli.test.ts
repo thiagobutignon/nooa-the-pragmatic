@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
+import { execa } from "execa";
 import { run } from "./cli";
 
 const tmpRoot = join(import.meta.dir, "tmp-replay");
@@ -116,5 +117,19 @@ describe("replay.run", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.summary.nodes).toBeGreaterThanOrEqual(1);
+  });
+
+  test("cli output is human-friendly without --json", async () => {
+    const cliRoot = join(tmpRoot, "cli-output");
+    await rm(cliRoot, { recursive: true, force: true });
+    await mkdir(cliRoot, { recursive: true });
+
+    const repoRoot = process.cwd();
+    const { stdout } = await execa("bun", ["index.ts", "replay", "add", "A", "--root", cliRoot], {
+      cwd: repoRoot,
+    });
+
+    expect(stdout).toContain("Created node");
+    expect(stdout.trim().startsWith("{")).toBe(false);
   });
 });

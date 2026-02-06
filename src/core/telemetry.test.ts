@@ -32,6 +32,16 @@ describe("TelemetryStore", () => {
 		telemetry.close();
 	});
 
+	it("applies limit when provided", () => {
+		const telemetry = new TelemetryStore(TEST_DB);
+		telemetry.track({ event: "first", level: "info", trace_id: "t1" });
+		telemetry.track({ event: "second", level: "info", trace_id: "t2" });
+
+		const rows = telemetry.list({ limit: 1 });
+		expect(rows.length).toBe(1);
+		telemetry.close();
+	});
+
 	it("filters by level and trace_id", () => {
 		const telemetry = new TelemetryStore(TEST_DB);
 		telemetry.track({ event: "a", level: "info", trace_id: "t1" });

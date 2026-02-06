@@ -5,6 +5,7 @@ import { createTraceId } from "../../core/logger";
 import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";
 import type { ReplayEdge, ReplayNode } from "./storage";
 import { loadReplay, saveReplay } from "./storage";
+import { ReplayGraph } from "./graph";
 
 export const replayMeta: AgentDocMeta = {
     name: "replay",
@@ -164,17 +165,13 @@ export async function run(
     }
 
     const traceId = createTraceId();
+    const root = input.root ?? process.cwd();
+    const data = await loadReplay(root);
+    const graph = new ReplayGraph(data);
+
     if (input.action === "add") {
-        const root = input.root ?? process.cwd();
-        const data = await loadReplay(root);
-        const node: ReplayNode = {
-            id: createTraceId(),
-            label: input.label ?? "",
-            type: "step" as const,
-            createdAt: new Date().toISOString(),
-        };
-        data.nodes.push(node);
-        await saveReplay(root, data);
+        const node = graph.addNode(input.label ?? "", "step");
+        await saveReplay(root, graph.toJSON());
         return {
             ok: true,
             data: {
@@ -185,119 +182,49 @@ export async function run(
         };
     }
     if (input.action === "link") {
-        const root = input.root ?? process.cwd();
-        const data = await loadReplay(root);
         const from = input.from ?? "";
         const to = input.to ?? "";
-
-        const fromExists = data.nodes.some((node) => node.id === from);
-        const toExists = data.nodes.some((node) => node.id === to);
-        if (!fromExists || !toExists) {
+        try {
+            graph.addEdge(from, to, "next");
+            await saveReplay(root, graph.toJSON());
+            return {
+                ok: true,
+                data: {
+                    ok: true,
+                    traceId,
+                    edge: { from, to, kind: "next" },
+                },
+            };
+        } catch (e: any) {
+            const code = e.message.includes("Cycle") ? "replay.cycle_detected" : "replay.not_found";
             return {
                 ok: false,
-                error: sdkError("replay.not_found", "Node not found."),
+                error: sdkError(code, e.message),
             };
         }
-
-        const nextEdges = data.edges.filter((edge) => edge.kind === "next");
-        const adjacency = new Map<string, string[]>();
-        for (const edge of nextEdges) {
-            if (!adjacency.has(edge.from)) {
-                adjacency.set(edge.from, []);
-            }
-            adjacency.get(edge.from)?.push(edge.to);
-        }
-
-        const stack = [to];
-        const visited = new Set<string>();
-        while (stack.length > 0) {
-            const current = stack.pop();
-            if (!current || visited.has(current)) continue;
-            if (current === from) {
-                return {
-                    ok: false,
-                    error: sdkError("replay.cycle_detected", "Cycle detected."),
-                };
-            }
-            visited.add(current);
-            const neighbors = adjacency.get(current) ?? [];
-            neighbors.forEach((neighbor) => stack.push(neighbor));
-        }
-
-        data.edges.push({ from, to, kind: "next" });
-        await saveReplay(root, data);
-        return {
-            ok: true,
-            data: {
-                ok: true,
-                traceId,
-                edge: { from, to, kind: "next" },
-            },
-        };
     }
     if (input.action === "fix") {
-        const root = input.root ?? process.cwd();
-        const data = await loadReplay(root);
-        const targetId = input.targetId ?? "";
-
-        const targetExists = data.nodes.some((node) => node.id === targetId);
-        if (!targetExists) {
+        try {
+            const fixNode = graph.addFix(input.targetId ?? "", input.label ?? "");
+            await saveReplay(root, graph.toJSON());
+            return {
+                ok: true,
+                data: {
+                    ok: true,
+                    traceId,
+                    node: fixNode,
+                },
+            };
+        } catch (e: any) {
             return {
                 ok: false,
-                error: sdkError("replay.not_found", "Node not found."),
+                error: sdkError("replay.not_found", e.message),
             };
         }
-
-        const fixNode: ReplayNode = {
-            id: createTraceId(),
-            label: input.label ?? "",
-            type: "fix" as const,
-            createdAt: new Date().toISOString(),
-            fixOf: targetId,
-        };
-        data.nodes.push(fixNode);
-
-        const nextEdges = data.edges.filter((edge) => edge.kind === "next");
-        const adjacency = new Map<string, string[]>();
-        for (const edge of nextEdges) {
-            if (!adjacency.has(edge.from)) {
-                adjacency.set(edge.from, []);
-            }
-            adjacency.get(edge.from)?.push(edge.to);
-        }
-
-        const impacted = new Set<string>();
-        const stack = [targetId];
-        while (stack.length > 0) {
-            const current = stack.pop();
-            if (!current) continue;
-            const neighbors = adjacency.get(current) ?? [];
-            for (const neighbor of neighbors) {
-                if (!impacted.has(neighbor)) {
-                    impacted.add(neighbor);
-                    stack.push(neighbor);
-                }
-            }
-        }
-
-        impacted.forEach((nodeId) => {
-            data.edges.push({ from: fixNode.id, to: nodeId, kind: "impact" });
-        });
-        await saveReplay(root, data);
-        return {
-            ok: true,
-            data: {
-                ok: true,
-                traceId,
-                node: fixNode,
-            },
-        };
     }
     if (input.action === "show") {
-        const root = input.root ?? process.cwd();
-        const data = await loadReplay(root);
         if (input.id) {
-            const node = data.nodes.find((entry) => entry.id === input.id);
+            const node = graph.getNode(input.id);
             if (!node) {
                 return {
                     ok: false,
@@ -310,10 +237,7 @@ export async function run(
                     ok: true,
                     traceId,
                     node,
-                    summary: {
-                        nodes: data.nodes.length,
-                        edges: data.edges.length,
-                    },
+                    summary: graph.getSummary(),
                 },
             };
         }
@@ -322,10 +246,7 @@ export async function run(
             data: {
                 ok: true,
                 traceId,
-                summary: {
-                    nodes: data.nodes.length,
-                    edges: data.edges.length,
-                },
+                summary: graph.getSummary(),
             },
         };
     }
@@ -406,15 +327,31 @@ const replayBuilder = new CommandBuilder<ReplayRunInput, ReplayRunResult>()
             renderJson(output);
             return;
         }
-        console.log(output.message);
+        if (output.node) {
+            if (output.node.type === "fix") {
+                console.log(`Created fix node ${output.node.id}`);
+                return;
+            }
+            console.log(`Created node ${output.node.id}`);
+            return;
+        }
+        if (output.edge) {
+            console.log(`Linked ${output.edge.from} -> ${output.edge.to} (${output.edge.kind})`);
+            return;
+        }
+        if (output.summary) {
+            console.log(`Nodes: ${output.summary.nodes}, Edges: ${output.summary.edges}`);
+            return;
+        }
+        console.log("OK");
     })
     .onFailure((error) => {
         handleCommandError(error, ["replay.missing_input"]);
     })
     .telemetry({
         eventPrefix: "replay",
-        successMetadata: (input) => ({ input: input.input }),
-        failureMetadata: (input, error) => ({ input: input.input, error: error.message }),
+        successMetadata: (input) => ({ action: input.action }),
+        failureMetadata: (input, error) => ({ action: input.action, error: error.message }),
     });
 
 export const replayAgentDoc = replayBuilder.buildAgentDoc(false);

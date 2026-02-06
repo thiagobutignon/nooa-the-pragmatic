@@ -18,7 +18,7 @@ export type ReplayNode = {
 export type ReplayEdge = {
   from: string;
   to: string;
-  kind: "next" | "impact";
+  kind: "next" | "impact" | "fixes";
 };
 
 export type ReplayGraph = {
