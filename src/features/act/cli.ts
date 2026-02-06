@@ -4,6 +4,12 @@ import { handleCommandError, renderJson } from "../../core/cli-output";
 import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
+import { createTraceId } from "../../core/logger";
+import { WorkflowEngine } from "../../core/workflow/Engine";
+import { DogfoodGate } from "../../core/workflow/gates/DogfoodGate";
+import { SpecGate } from "../../core/workflow/gates/SpecGate";
+import { TestGate } from "../../core/workflow/gates/TestGate";
+import type { Gate, WorkflowContext, WorkflowStep } from "../../core/workflow/types";
 import { ActEngine } from "./engine";
 
 export const actMeta: AgentDocMeta = {
@@ -115,6 +121,78 @@ export async function run(
     }
 
     try {
+        const traceId = createTraceId();
+        const ctx: WorkflowContext = {
+            traceId,
+            command: "act",
+            args: { goal: input.goal },
+            cwd: process.cwd(),
+        };
+
+        const bus = input.bus;
+        bus?.emit("workflow.started", {
+            type: "workflow.started",
+            traceId,
+            goal: input.goal,
+        });
+
+        const wrapGate = (stepId: string, gate: Gate): Gate => ({
+            id: gate.id,
+            description: gate.description,
+            check: async (gateCtx: WorkflowContext) => {
+                bus?.emit("workflow.step.start", {
+                    type: "workflow.step.start",
+                    traceId,
+                    stepId,
+                });
+                const result = await gate.check(gateCtx);
+                if (result.ok) {
+                    bus?.emit("workflow.gate.pass", {
+                        type: "workflow.gate.pass",
+                        traceId,
+                        gateId: gate.id,
+                    });
+                } else {
+                    bus?.emit("workflow.gate.fail", {
+                        type: "workflow.gate.fail",
+                        traceId,
+                        gateId: gate.id,
+                        reason: result.reason,
+                    });
+                }
+                return result;
+            },
+        });
+
+        const steps: WorkflowStep[] = [
+            { id: "spec", gate: wrapGate("spec", new SpecGate()), action: async () => {} },
+            { id: "tests", gate: wrapGate("tests", new TestGate()), action: async () => {} },
+            { id: "dogfood", gate: wrapGate("dogfood", new DogfoodGate()), action: async () => {} },
+        ];
+
+        const workflow = new WorkflowEngine();
+        const workflowResult = await workflow.run(steps, ctx);
+        if (!workflowResult.ok) {
+            bus?.emit("workflow.completed", {
+                type: "workflow.completed",
+                traceId,
+                result: "failure",
+            });
+            return {
+                ok: false,
+                error: sdkError(
+                    "act.runtime_error",
+                    workflowResult.reason ?? "Workflow failed.",
+                ),
+            };
+        }
+
+        bus?.emit("workflow.completed", {
+            type: "workflow.completed",
+            traceId,
+            result: "success",
+        });
+
         const engine = new ActEngine();
         const result = await engine.execute(input.goal, {
             model: input.model,
