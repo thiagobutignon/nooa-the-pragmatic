@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runIndex } from "../../features/index/cli";
-import type { IndexRunInput, IndexRunResult } from "../../features/index/cli";
 import type { SdkError } from "../../core/types";
+import type { IndexRunInput, IndexRunResult } from "../../features/index/cli";
+import { run as runIndex } from "../../features/index/cli";
 
 export type IndexStatus = "idle" | "loading" | "success" | "error";
 

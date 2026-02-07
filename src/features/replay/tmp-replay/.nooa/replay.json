@@ -1,12 +1,12 @@
 {
-  "version": "1.0.0",
-  "nodes": [
-    {
-      "id": "4147fc74-9df3-4173-a03f-2982fd4b7724",
-      "label": "A",
-      "type": "step",
-      "createdAt": "2026-02-07T04:52:47.514Z"
-    }
-  ],
-  "edges": []
+	"version": "1.0.0",
+	"nodes": [
+		{
+			"id": "4147fc74-9df3-4173-a03f-2982fd4b7724",
+			"label": "A",
+			"type": "step",
+			"createdAt": "2026-02-07T04:52:47.514Z"
+		}
+	],
+	"edges": []
 }

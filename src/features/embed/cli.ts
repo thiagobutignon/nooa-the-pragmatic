@@ -1,10 +1,10 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
 	renderJsonOrWrite,
-	setExitCode
+	setExitCode,
 } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
@@ -58,7 +58,7 @@ SDK Usage:
 
 export const embedUsage = {
 	cli: "nooa embed <text|file> <input> [flags]",
-	sdk: "await embed.run({ action: \"text\", input: \"hello\" })",
+	sdk: 'await embed.run({ action: "text", input: "hello" })',
 	tui: "EmbedConsole()",
 };
 
@@ -97,8 +97,14 @@ export const embedExitCodes = [
 ];
 
 export const embedExamples = [
-	{ input: "nooa embed text \"hello\"", output: "Generate an embedding for the text 'hello'." },
-	{ input: "nooa embed file README.md", output: "Generate an embedding for the contents of README.md." },
+	{
+		input: 'nooa embed text "hello"',
+		output: "Generate an embedding for the text 'hello'.",
+	},
+	{
+		input: "nooa embed file README.md",
+		output: "Generate an embedding for the contents of README.md.",
+	},
 ];
 
 export interface EmbedRunInput {
@@ -138,13 +144,19 @@ export async function run(
 				level: "warn",
 				success: false,
 				trace_id: traceId,
-				metadata: { reason: "missing_action", duration_ms: Date.now() - startTime },
+				metadata: {
+					reason: "missing_action",
+					duration_ms: Date.now() - startTime,
+				},
 			},
 			undefined,
 		);
 		return {
 			ok: false,
-			error: sdkError("embed.missing_action", "Action (text/file) is required."),
+			error: sdkError(
+				"embed.missing_action",
+				"Action (text/file) is required.",
+			),
 		};
 	}
 
@@ -162,7 +174,10 @@ export async function run(
 					level: "warn",
 					success: false,
 					trace_id: traceId,
-					metadata: { reason: "missing_text", duration_ms: Date.now() - startTime },
+					metadata: {
+						reason: "missing_text",
+						duration_ms: Date.now() - startTime,
+					},
 				},
 				undefined,
 			);
@@ -181,7 +196,10 @@ export async function run(
 					level: "warn",
 					success: false,
 					trace_id: traceId,
-					metadata: { reason: "missing_path", duration_ms: Date.now() - startTime },
+					metadata: {
+						reason: "missing_path",
+						duration_ms: Date.now() - startTime,
+					},
 				},
 				undefined,
 			);
@@ -210,7 +228,10 @@ export async function run(
 				level: "warn",
 				success: false,
 				trace_id: traceId,
-				metadata: { reason: "unknown_action", duration_ms: Date.now() - startTime },
+				metadata: {
+					reason: "unknown_action",
+					duration_ms: Date.now() - startTime,
+				},
 			},
 			undefined,
 		);
@@ -282,7 +303,10 @@ export async function run(
 				level: "error",
 				success: false,
 				trace_id: traceId,
-				metadata: { error_message: message, duration_ms: Date.now() - startTime },
+				metadata: {
+					error_message: message,
+					duration_ms: Date.now() - startTime,
+				},
 			},
 			undefined,
 		);

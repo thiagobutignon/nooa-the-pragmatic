@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runCommit } from "../../features/commit/cli";
-import type { CommitRunInput, CommitRunResult } from "../../features/commit/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	CommitRunInput,
+	CommitRunResult,
+} from "../../features/commit/cli";
+import { run as runCommit } from "../../features/commit/cli";
 
 export type CommitStatus = "idle" | "loading" | "success" | "error";
 

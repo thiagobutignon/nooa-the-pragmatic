@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runDoctor } from "../../features/doctor/cli";
-import type { DoctorRunInput, DoctorRunResult } from "../../features/doctor/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	DoctorRunInput,
+	DoctorRunResult,
+} from "../../features/doctor/cli";
+import { run as runDoctor } from "../../features/doctor/cli";
 
 export type DoctorStatus = "idle" | "loading" | "success" | "error";
 

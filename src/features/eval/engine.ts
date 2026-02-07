@@ -1,16 +1,16 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { loadCommands } from "../../core/registry";
 import { AiEngine } from "../ai/engine";
 import {
+	GroqProvider,
 	MockProvider,
 	OllamaProvider,
 	OpenAiProvider,
-	GroqProvider,
 } from "../ai/providers/mod";
 import { PromptEngine } from "../prompt/engine";
 import type { Assertion, AssertionResult } from "./scorers/deterministic";
 import { DeterministicScorer } from "./scorers/deterministic";
-import { loadCommands } from "../../core/registry";
 
 export interface EvalCase {
 	id: string;
@@ -90,8 +90,10 @@ export class EvalEngine {
 				tools: toolsList,
 			});
 
-
-			const messages: { role: "system" | "user" | "assistant"; content: string }[] = [{ role: "system", content: systemPrompt }];
+			const messages: {
+				role: "system" | "user" | "assistant";
+				content: string;
+			}[] = [{ role: "system", content: systemPrompt }];
 			if (inputText) {
 				messages.push({ role: "user", content: inputText });
 			}
@@ -194,7 +196,7 @@ export class EvalEngine {
 			})
 			.join("\n---\n");
 
-		const systemPrompt = await promptEngine.renderPrompt(
+		const _systemPrompt = await promptEngine.renderPrompt(
 			optimizerTemplate,
 			{
 				original_prompt: originalPrompt.body, // or full raw content if available, ideally we reconstruct it

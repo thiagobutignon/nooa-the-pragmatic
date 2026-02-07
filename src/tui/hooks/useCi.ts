@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runCi } from "../../features/ci/cli";
-import type { CiRunInput, CiRunResult } from "../../features/ci/cli";
 import type { SdkError } from "../../core/types";
+import type { CiRunInput, CiRunResult } from "../../features/ci/cli";
+import { run as runCi } from "../../features/ci/cli";
 
 export type CiStatus = "idle" | "loading" | "success" | "error";
 

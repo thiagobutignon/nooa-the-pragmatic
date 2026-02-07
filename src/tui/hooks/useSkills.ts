@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runSkills } from "../../features/skills/cli";
-import type { SkillsRunInput, SkillsRunResult } from "../../features/skills/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	SkillsRunInput,
+	SkillsRunResult,
+} from "../../features/skills/cli";
+import { run as runSkills } from "../../features/skills/cli";
 
 export type SkillsStatus = "idle" | "loading" | "success" | "error";
 

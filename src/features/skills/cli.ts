@@ -1,10 +1,7 @@
 import { join } from "node:path";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	setExitCode
-} from "../../core/cli-output";
+import { handleCommandError, setExitCode } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -49,7 +46,7 @@ SDK Usage:
 
 export const skillsUsage = {
 	cli: "nooa skills [subcommand] [flags]",
-	sdk: "await skills.run({ action: \"list\" })",
+	sdk: 'await skills.run({ action: "list" })',
 	tui: "SkillsPanel()",
 };
 
@@ -79,8 +76,14 @@ export const skillsExitCodes = [
 ];
 
 export const skillsExamples = [
-	{ input: "nooa skills list", output: "List all installed and available skills." },
-	{ input: "nooa skills add my-skill \"description\"", output: "Create a new skill named 'my-skill'." },
+	{
+		input: "nooa skills list",
+		output: "List all installed and available skills.",
+	},
+	{
+		input: 'nooa skills add my-skill "description"',
+		output: "Create a new skill named 'my-skill'.",
+	},
 ];
 
 export interface SkillsRunInput {

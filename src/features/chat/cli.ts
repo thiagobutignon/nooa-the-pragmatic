@@ -1,13 +1,9 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
-
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import type { EventBus } from "../../core/event-bus";
 import type { Message, MessageOptions, MessageRole } from "./types";
 
 const VALID_ROLES: MessageRole[] = ["user", "system", "assistant"];
@@ -55,7 +51,7 @@ SDK Usage:
 
 export const messageUsage = {
 	cli: "nooa message <text> [flags]",
-	sdk: "await message.run({ content: \"Hello\", role: \"user\" })",
+	sdk: 'await message.run({ content: "Hello", role: "user" })',
 	tui: "MessageConsole()",
 };
 
@@ -83,8 +79,14 @@ export const messageExitCodes = [
 ];
 
 export const messageExamples = [
-	{ input: "nooa message \"Hello\"", output: "Send a message saying 'Hello' to the agent." },
-	{ input: "nooa message \"Init\" --role system", output: "Send a system message to initialize the agent context." },
+	{
+		input: 'nooa message "Hello"',
+		output: "Send a message saying 'Hello' to the agent.",
+	},
+	{
+		input: 'nooa message "Init" --role system',
+		output: "Send a system message to initialize the agent context.",
+	},
 ];
 
 export interface MessageRunInput {
@@ -162,9 +164,7 @@ const messageBuilder = new CommandBuilder<MessageRunInput, MessageRunResult>()
 	.parseInput(async ({ positionals, values, bus }) => ({
 		content: positionals[1],
 		role:
-			typeof values.role === "string"
-				? (values.role as MessageRole)
-				: "user",
+			typeof values.role === "string" ? (values.role as MessageRole) : "user",
 		json: Boolean(values.json),
 		bus,
 	}))

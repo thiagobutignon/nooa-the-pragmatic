@@ -17,7 +17,11 @@ export class WorktreeError extends Error {
 	readonly exitCode: number;
 	readonly metadata?: Record<string, unknown>;
 
-	constructor(message: string, exitCode = 1, metadata?: Record<string, unknown>) {
+	constructor(
+		message: string,
+		exitCode = 1,
+		metadata?: Record<string, unknown>,
+	) {
 		super(message);
 		this.exitCode = exitCode;
 		this.metadata = metadata;
@@ -177,7 +181,8 @@ export async function createWorktree(
 		);
 	}
 
-	const skipInstall = Boolean(input.noInstall) || process.env.NOOA_SKIP_INSTALL === "1";
+	const skipInstall =
+		Boolean(input.noInstall) || process.env.NOOA_SKIP_INSTALL === "1";
 	const skipTest = Boolean(input.noTest) || process.env.NOOA_SKIP_TEST === "1";
 
 	const childEnv = { ...process.env };
@@ -209,13 +214,7 @@ export async function createWorktree(
 			env: childEnv,
 		});
 		if (testResult.exitCode !== 0) {
-			throw fail(
-				"worktree.failure",
-				traceId,
-				"Tests failed.",
-				input.bus,
-				1,
-			);
+			throw fail("worktree.failure", traceId, "Tests failed.", input.bus, 1);
 		}
 	}
 
@@ -262,7 +261,8 @@ export async function listWorktrees(
 		entries = list.entries;
 		rawOutput = list.raw;
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Failed to list worktrees.";
+		const message =
+			error instanceof Error ? error.message : "Failed to list worktrees.";
 		throw fail("worktree.failure", traceId, message, input.bus, 1);
 	}
 
@@ -287,14 +287,21 @@ export async function worktreeInfo(
 	logger.setContext({ trace_id: traceId, command: "worktree" });
 	const root = await resolveRepoRoot(input.cwd);
 	if (!input.branch) {
-		throw fail("worktree.failure", traceId, "Branch name is required.", input.bus, 2);
+		throw fail(
+			"worktree.failure",
+			traceId,
+			"Branch name is required.",
+			input.bus,
+			2,
+		);
 	}
 
 	let entries: WorktreeEntry[];
 	try {
 		entries = (await fetchWorktreeList(root)).entries;
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Failed to list worktrees.";
+		const message =
+			error instanceof Error ? error.message : "Failed to list worktrees.";
 		throw fail("worktree.failure", traceId, message, input.bus, 1);
 	}
 
@@ -325,13 +332,18 @@ export async function worktreeInfo(
 
 export async function removeWorktree(
 	input: WorktreeRemoveInput,
-): Promise<{ traceId: string; path: string }>
-{
+): Promise<{ traceId: string; path: string }> {
 	const traceId = input.traceId ?? createTraceId();
 	logger.setContext({ trace_id: traceId, command: "worktree" });
 	const root = await resolveRepoRoot(input.cwd);
 	if (!input.branch) {
-		throw fail("worktree.failure", traceId, "Branch name is required.", input.bus, 2);
+		throw fail(
+			"worktree.failure",
+			traceId,
+			"Branch name is required.",
+			input.bus,
+			2,
+		);
 	}
 	const worktreeDir = determineWorktreeDir(root);
 	const target = join(root, worktreeDir, input.branch);
@@ -362,8 +374,7 @@ export async function removeWorktree(
 
 export async function pruneWorktrees(
 	input: WorktreePruneInput = {},
-): Promise<{ traceId: string }>
-{
+): Promise<{ traceId: string }> {
 	const traceId = input.traceId ?? createTraceId();
 	logger.setContext({ trace_id: traceId, command: "worktree" });
 	const root = await resolveRepoRoot(input.cwd);
@@ -382,13 +393,18 @@ export async function pruneWorktrees(
 
 export async function lockWorktree(
 	input: WorktreeLockInput,
-): Promise<{ traceId: string; path: string; lock: boolean }>
-{
+): Promise<{ traceId: string; path: string; lock: boolean }> {
 	const traceId = input.traceId ?? createTraceId();
 	logger.setContext({ trace_id: traceId, command: "worktree" });
 	const root = await resolveRepoRoot(input.cwd);
 	if (!input.branch) {
-		throw fail("worktree.failure", traceId, "Branch name is required.", input.bus, 2);
+		throw fail(
+			"worktree.failure",
+			traceId,
+			"Branch name is required.",
+			input.bus,
+			2,
+		);
 	}
 	const worktreeDir = determineWorktreeDir(root);
 	const target = join(root, worktreeDir, input.branch);
@@ -420,7 +436,13 @@ async function resolveRepoRoot(cwd?: string) {
 	const rootCwd = cwd ?? process.cwd();
 	const repoRoot = await git(["rev-parse", "--show-toplevel"], rootCwd);
 	if (repoRoot.exitCode !== 0) {
-		throw fail("worktree.failure", createTraceId(), "Not a git repository.", undefined, 2);
+		throw fail(
+			"worktree.failure",
+			createTraceId(),
+			"Not a git repository.",
+			undefined,
+			2,
+		);
 	}
 	return repoRoot.stdout.trim();
 }
@@ -428,9 +450,14 @@ async function resolveRepoRoot(cwd?: string) {
 async function fetchWorktreeList(root: string) {
 	const result = await git(["worktree", "list"], root);
 	if (result.exitCode !== 0) {
-		throw new Error(String(result.stderr).trim() || "Failed to list worktrees.");
+		throw new Error(
+			String(result.stderr).trim() || "Failed to list worktrees.",
+		);
 	}
-	const entries = parseWorktreeEntries(result.stdout, determineWorktreeDir(root));
+	const entries = parseWorktreeEntries(
+		result.stdout,
+		determineWorktreeDir(root),
+	);
 	return { entries, raw: result.stdout };
 }
 
@@ -451,9 +478,15 @@ function parseWorktreeEntries(output: string, worktreeDir: string) {
 }
 
 async function resolveBaseBranch(base: string, root: string) {
-	const baseLocal = await git(["show-ref", "--verify", `refs/heads/${base}`], root);
+	const baseLocal = await git(
+		["show-ref", "--verify", `refs/heads/${base}`],
+		root,
+	);
 	if (baseLocal.exitCode === 0) return base;
-	const baseRemote = await git(["show-ref", "--verify", `refs/remotes/origin/${base}`], root);
+	const baseRemote = await git(
+		["show-ref", "--verify", `refs/remotes/origin/${base}`],
+		root,
+	);
 	if (baseRemote.exitCode === 0) return `origin/${base}`;
 	return null;
 }
@@ -468,7 +501,9 @@ async function ensureIgnored(worktreeDir: string, root: string) {
 	const ignoreCheck = await git(["check-ignore", "-q", worktreeDir], root);
 	if (ignoreCheck.exitCode === 0) return;
 	const gitignorePath = join(root, ".gitignore");
-	const current = existsSync(gitignorePath) ? await readFile(gitignorePath, "utf-8") : "";
+	const current = existsSync(gitignorePath)
+		? await readFile(gitignorePath, "utf-8")
+		: "";
 	const candidate =
 		current +
 		(current.endsWith("\n") || current.length === 0 ? "" : "\n") +
@@ -494,6 +529,9 @@ function fail(
 		},
 		bus,
 	);
-	logger.error("worktree.failure", new Error(message), { trace_id: traceId, ...metadata });
+	logger.error("worktree.failure", new Error(message), {
+		trace_id: traceId,
+		...metadata,
+	});
 	return new WorktreeError(message, exitCode, metadata);
 }

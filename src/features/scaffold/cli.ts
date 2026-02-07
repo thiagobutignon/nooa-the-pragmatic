@@ -1,14 +1,13 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	printError,
 	renderJsonOrWrite,
-	setExitCode
+	setExitCode,
 } from "../../core/cli-output";
-
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { createTraceId } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import { createTraceId } from "../../core/logger";
 import { executeScaffold } from "./execute";
 
 export const scaffoldMeta: AgentDocMeta = {
@@ -59,7 +58,7 @@ SDK Usage:
 
 export const scaffoldUsage = {
 	cli: "nooa scaffold <command|prompt> <name> [flags]",
-	sdk: "await scaffold.run({ type: \"command\", name: \"my-feature\" })",
+	sdk: 'await scaffold.run({ type: "command", name: "my-feature" })',
 	tui: "ScaffoldWizard()",
 };
 
@@ -103,7 +102,10 @@ export const scaffoldExitCodes = [
 ];
 
 export const scaffoldExamples = [
-	{ input: "nooa scaffold command authentication", output: "Scaffold a new command named 'authentication'." },
+	{
+		input: "nooa scaffold command authentication",
+		output: "Scaffold a new command named 'authentication'.",
+	},
 	{
 		input: "nooa scaffold prompt review --with-docs",
 		output: "Scaffold a new prompt template named 'review' with documentation.",
@@ -158,9 +160,13 @@ export async function run(
 		const traceId = createTraceId();
 		return {
 			ok: false,
-			error: sdkError("scaffold.invalid_type", "Type must be command or prompt.", {
-				traceId,
-			}),
+			error: sdkError(
+				"scaffold.invalid_type",
+				"Type must be command or prompt.",
+				{
+					traceId,
+				},
+			),
 		};
 	}
 
@@ -212,7 +218,10 @@ export async function run(
 	}
 }
 
-const scaffoldBuilder = new CommandBuilder<ScaffoldRunInput, ScaffoldRunResult>()
+const scaffoldBuilder = new CommandBuilder<
+	ScaffoldRunInput,
+	ScaffoldRunResult
+>()
 	.meta(scaffoldMeta)
 	.usage(scaffoldUsage)
 	.schema(scaffoldSchema)

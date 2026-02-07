@@ -1,9 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -48,7 +45,7 @@ SDK Usage:
 
 export const goalUsage = {
 	cli: "nooa goal <subcommand> [flags]",
-	sdk: "await goal.run({ action: \"status\" })",
+	sdk: 'await goal.run({ action: "status" })',
 	tui: "GoalPanel()",
 };
 
@@ -77,7 +74,10 @@ export const goalExitCodes = [
 ];
 
 export const goalExamples = [
-	{ input: "nooa goal set Ship it", output: "Set the current high-level goal to 'Ship it'." },
+	{
+		input: "nooa goal set Ship it",
+		output: "Set the current high-level goal to 'Ship it'.",
+	},
 	{ input: "nooa goal status", output: "Display the current goal." },
 ];
 

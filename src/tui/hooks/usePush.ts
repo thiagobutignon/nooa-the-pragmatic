@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runPush } from "../../features/push/cli";
-import type { PushRunInput, PushRunResult } from "../../features/push/cli";
 import type { SdkError } from "../../core/types";
+import type { PushRunInput, PushRunResult } from "../../features/push/cli";
+import { run as runPush } from "../../features/push/cli";
 
 export type PushStatus = "idle" | "loading" | "success" | "error";
 

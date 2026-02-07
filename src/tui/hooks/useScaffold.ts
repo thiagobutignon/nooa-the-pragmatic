@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runScaffold } from "../../features/scaffold/cli";
-import type { ScaffoldRunInput, ScaffoldRunResult } from "../../features/scaffold/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	ScaffoldRunInput,
+	ScaffoldRunResult,
+} from "../../features/scaffold/cli";
+import { run as runScaffold } from "../../features/scaffold/cli";
 
 export type ScaffoldStatus = "idle" | "loading" | "success" | "error";
 

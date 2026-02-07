@@ -17,6 +17,6 @@ describe("pwd feature", () => {
 
 	test("pwdAgentDoc embeds instruction and version", () => {
 		expect(pwdAgentDoc).toContain("<instruction");
-		expect(pwdAgentDoc).toContain(`version=\"${pwdMeta.changelog[0]?.version}\"`);
+		expect(pwdAgentDoc).toContain(`version="${pwdMeta.changelog[0]?.version}"`);
 	});
 });

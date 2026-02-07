@@ -34,7 +34,9 @@ describe("read feature", () => {
 
 	test("readAgentDoc embeds instruction and version", () => {
 		expect(readAgentDoc).toContain("<instruction");
-		expect(readAgentDoc).toContain(`version="${readMeta.changelog[0]?.version}"`);
+		expect(readAgentDoc).toContain(
+			`version="${readMeta.changelog[0]?.version}"`,
+		);
 	});
 
 	test("run respects basePath restriction", async () => {

@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runWorktree } from "../../features/worktree/cli";
-import type { WorktreeRunInput, WorktreeRunResult } from "../../features/worktree/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	WorktreeRunInput,
+	WorktreeRunResult,
+} from "../../features/worktree/cli";
+import { run as runWorktree } from "../../features/worktree/cli";
 
 export type WorktreeStatus = "idle" | "loading" | "success" | "error";
 

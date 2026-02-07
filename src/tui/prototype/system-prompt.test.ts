@@ -14,8 +14,7 @@ const manifest = {
 		{
 			name: "pwd",
 			description: "Print current working directory",
-			agentDoc:
-				"<instruction><usage><cli>nooa pwd</cli></usage></instruction>",
+			agentDoc: "<instruction><usage><cli>nooa pwd</cli></usage></instruction>",
 		},
 	],
 };

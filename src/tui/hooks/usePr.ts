@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runPr } from "../../features/pr/cli";
-import type { PrRunInput, PrRunResult } from "../../features/pr/cli";
 import type { SdkError } from "../../core/types";
+import type { PrRunInput, PrRunResult } from "../../features/pr/cli";
+import { run as runPr } from "../../features/pr/cli";
 
 export type PrStatus = "idle" | "loading" | "success" | "error";
 

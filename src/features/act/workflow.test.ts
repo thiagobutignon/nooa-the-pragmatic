@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdtempSync } from "node:fs";
-import { rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventBus } from "../../core/event-bus";
@@ -25,10 +24,18 @@ describe("act workflow integration", () => {
 		const bus = new EventBus();
 		const events: string[] = [];
 
-		bus.on("workflow.started", (evt) => events.push((evt as { type: string }).type));
-		bus.on("workflow.step.start", (evt) => events.push((evt as { type: string }).type));
-		bus.on("workflow.gate.fail", (evt) => events.push((evt as { type: string }).type));
-		bus.on("workflow.completed", (evt) => events.push((evt as { type: string }).type));
+		bus.on("workflow.started", (evt) =>
+			events.push((evt as { type: string }).type),
+		);
+		bus.on("workflow.step.start", (evt) =>
+			events.push((evt as { type: string }).type),
+		);
+		bus.on("workflow.gate.fail", (evt) =>
+			events.push((evt as { type: string }).type),
+		);
+		bus.on("workflow.completed", (evt) =>
+			events.push((evt as { type: string }).type),
+		);
 
 		const result = await run({ goal: "test workflow", bus });
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runEmbed } from "../../features/embed/cli";
-import type { EmbedRunInput, EmbedRunResult } from "../../features/embed/cli";
 import type { SdkError } from "../../core/types";
+import type { EmbedRunInput, EmbedRunResult } from "../../features/embed/cli";
+import { run as runEmbed } from "../../features/embed/cli";
 
 export type EmbedStatus = "idle" | "loading" | "success" | "error";
 

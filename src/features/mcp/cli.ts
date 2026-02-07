@@ -1,8 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError
-} from "../../core/cli-output";
+import { handleCommandError } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -61,7 +59,7 @@ SDK Usage:
 
 export const mcpUsage = {
 	cli: "nooa mcp <subcommand> [options]",
-	sdk: "await mcp.run({ command: \"list\" })",
+	sdk: 'await mcp.run({ command: "list" })',
 	tui: "McpConsole()",
 };
 
@@ -71,9 +69,7 @@ export const mcpSchema = {
 	json: { type: "boolean", required: false },
 } satisfies SchemaSpec;
 
-export const mcpOutputFields = [
-	{ name: "result", type: "string" },
-];
+export const mcpOutputFields = [{ name: "result", type: "string" }];
 
 export const mcpErrors = [
 	{ code: "mcp.missing_subcommand", message: "Missing subcommand." },
@@ -88,8 +84,14 @@ export const mcpExitCodes = [
 ];
 
 export const mcpExamples = [
-	{ input: "nooa mcp list", output: "List all installed and available MCP servers." },
-	{ input: "nooa mcp call filesystem read_file --path README.md", output: "Call the 'read_file' tool from the 'filesystem' MCP server." },
+	{
+		input: "nooa mcp list",
+		output: "List all installed and available MCP servers.",
+	},
+	{
+		input: "nooa mcp call filesystem read_file --path README.md",
+		output: "Call the 'read_file' tool from the 'filesystem' MCP server.",
+	},
 ];
 
 export interface McpRunInput {
@@ -178,7 +180,10 @@ const mcpBuilder = new CommandBuilder<McpRunInput, McpRunResult>()
 			process.exitCode = 1;
 			return;
 		}
-		handleCommandError(error, ["mcp.missing_subcommand", "mcp.unknown_subcommand"]);
+		handleCommandError(error, [
+			"mcp.missing_subcommand",
+			"mcp.unknown_subcommand",
+		]);
 	})
 	.telemetry({
 		eventPrefix: "mcp",

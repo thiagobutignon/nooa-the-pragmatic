@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { run, streamAi } from "../../features/ai/cli";
-import type { AiRunInput, AiRunResult } from "../../features/ai/cli";
 import type { SdkError } from "../../core/types";
+import type { AiRunInput, AiRunResult } from "../../features/ai/cli";
+import { run, streamAi } from "../../features/ai/cli";
 
 export type AiStatus = "idle" | "loading" | "streaming" | "success" | "error";
 

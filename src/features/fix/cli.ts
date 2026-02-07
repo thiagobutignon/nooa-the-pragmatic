@@ -1,6 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -47,7 +47,7 @@ SDK Usage:
 
 export const fixUsage = {
 	cli: "nooa fix <issue> [flags]",
-	sdk: "await fix.run({ issue: \"fix logger typo\" })",
+	sdk: 'await fix.run({ issue: "fix logger typo" })',
 	tui: "FixConsole()",
 };
 
@@ -76,8 +76,14 @@ export const fixExitCodes = [
 ];
 
 export const fixExamples = [
-	{ input: "nooa fix \"fix logger typo\"", output: "Start autonomous agent loop to fix 'logger typo'." },
-	{ input: "nooa fix \"auth flow\" --dry-run", output: "Simulate a fix for 'auth flow' without making changes." },
+	{
+		input: 'nooa fix "fix logger typo"',
+		output: "Start autonomous agent loop to fix 'logger typo'.",
+	},
+	{
+		input: 'nooa fix "auth flow" --dry-run',
+		output: "Simulate a fix for 'auth flow' without making changes.",
+	},
 ];
 
 export interface FixRunInput {
@@ -176,7 +182,9 @@ const fixBuilder = new CommandBuilder<FixRunInput, FixRunResult>()
 			return;
 		}
 
-		console.log(`🔧 Starting autonomous fix for: "${values.issue ?? output.traceId}"...\n`);
+		console.log(
+			`🔧 Starting autonomous fix for: "${values.issue ?? output.traceId}"...\n`,
+		);
 		console.log(
 			output.stages.worktree ? "✅ Worktree created" : "❌ Worktree failed",
 		);
@@ -191,7 +199,9 @@ const fixBuilder = new CommandBuilder<FixRunInput, FixRunResult>()
 				? "✅ Verification (CI) passed"
 				: "❌ Verification failed",
 		);
-		console.log(output.stages.commit ? "✅ Changes committed" : "❌ Commit skipped");
+		console.log(
+			output.stages.commit ? "✅ Changes committed" : "❌ Commit skipped",
+		);
 
 		if (output.ok) {
 			console.log(`\n🎉 Fix complete! [Trace ID: ${output.traceId}]`);

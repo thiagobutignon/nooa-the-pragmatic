@@ -1,9 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -59,7 +56,7 @@ SDK Usage:
 
 export const searchUsage = {
 	cli: "nooa search <query> [path] [flags]",
-	sdk: "await search.run({ query: \"TODO\", root: \".\" })",
+	sdk: 'await search.run({ query: "TODO", root: "." })',
 	tui: "SearchPanel()",
 };
 
@@ -101,8 +98,16 @@ export const searchExitCodes = [
 ];
 
 export const searchExamples = [
-	{ input: 'nooa search "TODO" . --include "*.ts"', output: "Search for 'TODO' in all TypeScript files in the current directory." },
-	{ input: 'nooa search "class User" src --json', output: "Find all occurrences of 'class User' in 'src/' and output as JSON." },
+	{
+		input: 'nooa search "TODO" . --include "*.ts"',
+		output:
+			"Search for 'TODO' in all TypeScript files in the current directory.",
+	},
+	{
+		input: 'nooa search "class User" src --json',
+		output:
+			"Find all occurrences of 'class User' in 'src/' and output as JSON.",
+	},
 ];
 
 function normalizeList(value: unknown): string[] | undefined {
@@ -262,9 +267,7 @@ const searchBuilder = new CommandBuilder<SearchRunInput, SearchRunResult>()
 		}
 
 		if (values.count) {
-			const lines = output.results.map(
-				(r) => `${r.path}:${r.matchCount ?? 0}`,
-			);
+			const lines = output.results.map((r) => `${r.path}:${r.matchCount ?? 0}`);
 			process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
 			console.error(`Found ${lines.length} files with matches`);
 			return;
@@ -283,7 +286,10 @@ const searchBuilder = new CommandBuilder<SearchRunInput, SearchRunResult>()
 		console.error(`Found ${output.results.length} matches`);
 	})
 	.onFailure((error) => {
-		handleCommandError(error, ["search.missing_query", "search.invalid_max_results"]);
+		handleCommandError(error, [
+			"search.missing_query",
+			"search.invalid_max_results",
+		]);
 	})
 	.telemetry({
 		eventPrefix: "search",

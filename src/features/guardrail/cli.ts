@@ -1,13 +1,9 @@
-import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stringify as stringifyYaml } from "yaml";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-
-import {
-	printError,
-	renderJson
-} from "../../core/cli-output";
+import { printError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -90,7 +86,7 @@ SDK Usage:
 
 export const guardrailUsage = {
 	cli: "nooa guardrail <subcommand> [options]",
-	sdk: "await guardrail.run({ action: \"check\", profile: \"security\" })",
+	sdk: 'await guardrail.run({ action: "check", profile: "security" })',
 	tui: "GuardrailConsole()",
 };
 
@@ -131,8 +127,14 @@ export const guardrailExitCodes = [
 ];
 
 export const guardrailExamples = [
-	{ input: "nooa guardrail check --profile security", output: "Run the security guardrail profile." },
-	{ input: "nooa guardrail list", output: "List all available guardrail profiles." },
+	{
+		input: "nooa guardrail check --profile security",
+		output: "Run the security guardrail profile.",
+	},
+	{
+		input: "nooa guardrail list",
+		output: "List all available guardrail profiles.",
+	},
 ];
 
 export interface GuardrailRunInput {
@@ -159,7 +161,12 @@ export interface GuardrailRunResult {
 
 const formatSpecSummary = (spec: {
 	profiles: string[];
-	thresholds?: { critical?: number; high?: number; medium?: number; low?: number };
+	thresholds?: {
+		critical?: number;
+		high?: number;
+		medium?: number;
+		low?: number;
+	};
 	exclusions?: string[];
 }) => {
 	const lines: string[] = ["Enabled profiles:"];
@@ -249,9 +256,16 @@ export async function run(
 
 				const engine = new GuardrailEngine(process.cwd());
 				const startTime = Date.now();
-				const findings = await engine.evaluate(profile, { exclude: exclusions });
+				const findings = await engine.evaluate(profile, {
+					exclude: exclusions,
+				});
 				const executionMs = Date.now() - startTime;
-				const report = buildReport(findings, profileName, executionMs, thresholds);
+				const report = buildReport(
+					findings,
+					profileName,
+					executionMs,
+					thresholds,
+				);
 				return { ok: true, data: { mode: "check", report } };
 			}
 
@@ -277,7 +291,10 @@ export async function run(
 				}
 				return {
 					ok: true,
-					data: { mode: "validate", result: `Profile "${input.profile}" is valid` },
+					data: {
+						mode: "validate",
+						result: `Profile "${input.profile}" is valid`,
+					},
 				};
 			}
 
@@ -446,7 +463,10 @@ rules:
 					};
 				}
 
-				return { ok: true, data: { mode: "spec", result: "GUARDRAIL.md is valid" } };
+				return {
+					ok: true,
+					data: { mode: "spec", result: "GUARDRAIL.md is valid" },
+				};
 			}
 
 			case "add": {
@@ -454,7 +474,10 @@ rules:
 				if (!name) {
 					return {
 						ok: false,
-						error: sdkError("guardrail.missing_name", "profile name is required"),
+						error: sdkError(
+							"guardrail.missing_name",
+							"profile name is required",
+						),
 					};
 				}
 				const profilesDir = getBuiltinProfilesDir();
@@ -500,7 +523,10 @@ rules:
 				if (!name) {
 					return {
 						ok: false,
-						error: sdkError("guardrail.missing_name", "profile name is required"),
+						error: sdkError(
+							"guardrail.missing_name",
+							"profile name is required",
+						),
 					};
 				}
 				if (!input.force) {
@@ -523,7 +549,10 @@ rules:
 			default:
 				return {
 					ok: false,
-					error: sdkError("guardrail.invalid_subcommand", "Unknown subcommand."),
+					error: sdkError(
+						"guardrail.invalid_subcommand",
+						"Unknown subcommand.",
+					),
 				};
 		}
 	} catch (error) {
@@ -532,7 +561,10 @@ rules:
 	}
 }
 
-const guardrailBuilder = new CommandBuilder<GuardrailRunInput, GuardrailRunResult>()
+const guardrailBuilder = new CommandBuilder<
+	GuardrailRunInput,
+	GuardrailRunResult
+>()
 	.meta(guardrailMeta)
 	.usage(guardrailUsage)
 	.schema(guardrailSchema)

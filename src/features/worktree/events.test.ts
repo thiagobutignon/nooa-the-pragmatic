@@ -56,7 +56,10 @@ describe("worktree events", () => {
 		await worktreeCommand.execute({
 			args: ["worktree", branch],
 			rawArgs: ["worktree", branch, "--no-install", "--no-test"],
-			values: { "no-install": true, "no-test": true } as Record<string, unknown>,
+			values: { "no-install": true, "no-test": true } as Record<
+				string,
+				unknown
+			>,
 			bus,
 		});
 

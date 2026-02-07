@@ -1,13 +1,9 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
-
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import type { CronJobRecord, CronJobSpec } from "../../core/db/cron_store";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import type { CronJobRecord, CronJobSpec } from "../../core/db/cron_store";
 import { cronService } from "./service";
 
 export const cronMeta: AgentDocMeta = {
@@ -85,7 +81,7 @@ SDK Usage:
 
 export const cronUsage = {
 	cli: "nooa cron <subcommand> [args] [flags]",
-	sdk: "await cron.run({ action: \"list\" })",
+	sdk: 'await cron.run({ action: "list" })',
 	tui: "CronConsole()",
 };
 
@@ -140,8 +136,14 @@ export const cronExitCodes = [
 
 export const cronExamples = [
 	{ input: "nooa cron list", output: "List all scheduled cron jobs." },
-	{ input: "nooa cron add job --every 5m -- index repo", output: "Add a new job named 'job' running 'index repo' every 5 minutes." },
-	{ input: "nooa cron remove job --force", output: "Force remove the job named 'job'." },
+	{
+		input: "nooa cron add job --every 5m -- index repo",
+		output: "Add a new job named 'job' running 'index repo' every 5 minutes.",
+	},
+	{
+		input: "nooa cron remove job --force",
+		output: "Force remove the job named 'job'.",
+	},
 ];
 
 export interface CronRunInput {
@@ -240,8 +242,8 @@ export async function run(
 					description: input.description,
 					command: input.argv.join(" "),
 					enabled: true,
-					on_failure: (input.onFailure as CronJobSpec["on_failure"]) ??
-						"notify",
+					on_failure:
+						(input.onFailure as CronJobSpec["on_failure"]) ?? "notify",
 					retries: numberFromValue(input.retry) ?? 0,
 					timeout: input.timeout,
 					start_at: input.startAt,
@@ -261,7 +263,9 @@ export async function run(
 
 			case "list": {
 				const jobs = cronService.listJobs();
-				const filtered = input.active ? jobs.filter((job) => job.enabled) : jobs;
+				const filtered = input.active
+					? jobs.filter((job) => job.enabled)
+					: jobs;
 				return {
 					ok: true,
 					data: { mode: "list", jobs: filtered },
@@ -370,7 +374,11 @@ export async function run(
 				const logs = cronService.listLogs(name, limit, input.since);
 				return {
 					ok: true,
-					data: { mode: action, job: cronService.getJob(name) ?? undefined, logs },
+					data: {
+						mode: action,
+						job: cronService.getJob(name) ?? undefined,
+						logs,
+					},
 				};
 			}
 
@@ -480,16 +488,15 @@ const cronBuilder = new CommandBuilder<CronRunInput, CronRunResult>()
 	.parseInput(async ({ positionals, values, rawArgs }) => {
 		const sourceArgs = rawArgs ?? positionals;
 		const delimiterIndex = sourceArgs.indexOf("--");
-		const argv = delimiterIndex >= 0 ? sourceArgs.slice(delimiterIndex + 1) : [];
+		const argv =
+			delimiterIndex >= 0 ? sourceArgs.slice(delimiterIndex + 1) : [];
 		return {
 			action: positionals[1],
 			name: positionals[2],
 			json: Boolean(values.json),
 			every: typeof values.every === "string" ? values.every : undefined,
 			description:
-				typeof values.description === "string"
-					? values.description
-					: undefined,
+				typeof values.description === "string" ? values.description : undefined,
 			onFailure:
 				typeof values["on-failure"] === "string"
 					? values["on-failure"]
@@ -497,19 +504,14 @@ const cronBuilder = new CommandBuilder<CronRunInput, CronRunResult>()
 			retry: typeof values.retry === "string" ? values.retry : undefined,
 			timeout: typeof values.timeout === "string" ? values.timeout : undefined,
 			startAt:
-				typeof values["start-at"] === "string"
-					? values["start-at"]
-					: undefined,
+				typeof values["start-at"] === "string" ? values["start-at"] : undefined,
 			endAt:
 				typeof values["end-at"] === "string" ? values["end-at"] : undefined,
 			maxRuns:
-				typeof values["max-runs"] === "string"
-					? values["max-runs"]
-					: undefined,
+				typeof values["max-runs"] === "string" ? values["max-runs"] : undefined,
 			schedule:
 				typeof values.schedule === "string" ? values.schedule : undefined,
-			command:
-				typeof values.command === "string" ? values.command : undefined,
+			command: typeof values.command === "string" ? values.command : undefined,
 			limit: typeof values.limit === "string" ? values.limit : undefined,
 			since: typeof values.since === "string" ? values.since : undefined,
 			force: Boolean(values.force),

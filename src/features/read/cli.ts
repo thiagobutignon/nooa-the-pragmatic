@@ -1,16 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-
-import {
-	printError,
-	renderJson,
-	setExitCode
-} from "../../core/cli-output";
-
 import { buildStandardOptions } from "../../core/cli-flags";
+
+import { printError, renderJson, setExitCode } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { createTraceId } from "../../core/logger";
-import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";
+import { type AgentDocMeta, type SdkResult, sdkError } from "../../core/types";
 
 export const readMeta: AgentDocMeta = {
 	name: "read",
@@ -69,7 +64,7 @@ SDK Usage:
 
 export const readUsage = {
 	cli: "nooa read <path> [--json]",
-	sdk: "await read.run({ path: \"file.txt\", json: false, basePath: \"/path/to/project\" })",
+	sdk: 'await read.run({ path: "file.txt", json: false, basePath: "/path/to/project" })',
 	tui: "ReadFileDialog({ initialPath })",
 };
 
@@ -88,8 +83,14 @@ export const readOutputFields = [
 ];
 
 export const readExamples = [
-	{ input: "nooa read src/index.ts", output: "Read and display the content of 'src/index.ts'." },
-	{ input: "nooa read src/ --recursive", output: "Recursively read all files in 'src/'." },
+	{
+		input: "nooa read src/index.ts",
+		output: "Read and display the content of 'src/index.ts'.",
+	},
+	{
+		input: "nooa read src/ --recursive",
+		output: "Recursively read all files in 'src/'.",
+	},
 ];
 
 export const readErrors = [
@@ -104,7 +105,6 @@ export const readExitCodes = [
 	{ value: "1", description: "File not found or read failed" },
 	{ value: "2", description: "Path required or invalid" },
 ];
-
 
 export interface ReadRunInput {
 	path?: string;
@@ -141,7 +141,7 @@ export async function run(
 		: path;
 
 	if (basePath) {
-		const normalizedRoot = resolve(basePath) + "/";
+		const normalizedRoot = `${resolve(basePath)}/`;
 		if (!resolvedPath.startsWith(normalizedRoot)) {
 			return {
 				ok: false,
@@ -170,10 +170,14 @@ export async function run(
 		const isNotFound = message.toLowerCase().includes("no such file");
 		return {
 			ok: false,
-			error: sdkError(isNotFound ? "read.not_found" : "read.read_failed", "Failed to read file.", {
-				path,
-				error: message,
-			}),
+			error: sdkError(
+				isNotFound ? "read.not_found" : "read.read_failed",
+				"Failed to read file.",
+				{
+					path,
+					error: message,
+				},
+			),
 		};
 	}
 }

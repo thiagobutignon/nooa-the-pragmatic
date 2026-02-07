@@ -1,14 +1,14 @@
 export interface Assertion {
 	type:
-	| "is_valid_json"
-	| "has_property"
-	| "enum_check"
-	| "no_absolute_paths"
-	| "max_count"
-	| "no_absolute_paths"
-	| "max_count"
-	| "property_equals"
-	| "contains";
+		| "is_valid_json"
+		| "has_property"
+		| "enum_check"
+		| "no_absolute_paths"
+		| "max_count"
+		| "no_absolute_paths"
+		| "max_count"
+		| "property_equals"
+		| "contains";
 	property?: string;
 	allowed?: string[];
 	limit?: number;
@@ -51,7 +51,10 @@ export class DeterministicScorer {
 				// Logic split for JSON vs String assertions
 				if (assertion.type === "contains") {
 					if (typeof assertion.value !== "string") {
-						results.push({ passed: false, message: "Value must be string for contains" });
+						results.push({
+							passed: false,
+							message: "Value must be string for contains",
+						});
 						continue;
 					}
 					results.push({
@@ -67,8 +70,11 @@ export class DeterministicScorer {
 					try {
 						const jsonMatch = output.match(/\{[\s\S]*\}/);
 						const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : output);
-						parsedJson = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
-					} catch { }
+						parsedJson =
+							parsed && typeof parsed === "object"
+								? (parsed as Record<string, unknown>)
+								: null;
+					} catch {}
 				}
 
 				if (!parsedJson) {

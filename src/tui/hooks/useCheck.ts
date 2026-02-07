@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runCheck } from "../../features/check/cli";
-import type { CheckRunInput, CheckRunResult } from "../../features/check/cli";
 import type { SdkError } from "../../core/types";
+import type { CheckRunInput, CheckRunResult } from "../../features/check/cli";
+import { run as runCheck } from "../../features/check/cli";
 
 export type CheckStatus = "idle" | "loading" | "success" | "error";
 

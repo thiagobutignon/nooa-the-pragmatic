@@ -1,16 +1,20 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import { handleCommandError, renderJson, setExitCode } from "../../core/cli-output";
+import {
+	handleCommandError,
+	renderJson,
+	setExitCode,
+} from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
-	WorktreeError,
 	createWorktree,
 	listWorktrees,
 	lockWorktree,
 	pruneWorktrees,
 	removeWorktree,
+	WorktreeError,
 	worktreeInfo,
 } from "./execute";
 
@@ -82,7 +86,7 @@ SDK Usage:
 
 export const worktreeUsage = {
 	cli: "nooa worktree <subcommand> [args] [flags]",
-	sdk: "await worktree.run({ action: \"create\", branch: \"feat/login\" })",
+	sdk: 'await worktree.run({ action: "create", branch: "feat/login" })',
 	tui: "WorktreeConsole()",
 };
 
@@ -122,9 +126,18 @@ export const worktreeExitCodes = [
 ];
 
 export const worktreeExamples = [
-	{ input: "nooa worktree create feat/login", output: "Create a new isolated worktree for the login feature." },
-	{ input: "nooa worktree list --json", output: "List all active worktrees in JSON format." },
-	{ input: "nooa worktree remove feat/login", output: "Remove the worktree for the login feature." },
+	{
+		input: "nooa worktree create feat/login",
+		output: "Create a new isolated worktree for the login feature.",
+	},
+	{
+		input: "nooa worktree list --json",
+		output: "List all active worktrees in JSON format.",
+	},
+	{
+		input: "nooa worktree remove feat/login",
+		output: "Remove the worktree for the login feature.",
+	},
 	{ input: "nooa worktree prune", output: "Prune stale worktrees." },
 ];
 
@@ -271,7 +284,10 @@ export async function run(
 	}
 }
 
-const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>()
+const worktreeBuilder = new CommandBuilder<
+	WorktreeRunInput,
+	WorktreeRunResult
+>()
 	.meta(worktreeMeta)
 	.usage(worktreeUsage)
 	.schema(worktreeSchema)
@@ -363,9 +379,7 @@ const worktreeBuilder = new CommandBuilder<WorktreeRunInput, WorktreeRunResult>(
 			case "create":
 				console.error(`Worktree created: ${output.worktree_path}`);
 				console.error(`Branch: ${output.branch} (from ${output.base})`);
-				console.error(
-					`Install: ${output?.skip_install ? "skipped" : "done"}`,
-				);
+				console.error(`Install: ${output?.skip_install ? "skipped" : "done"}`);
 				console.error(`Tests: ${output?.skip_test ? "skipped" : "passed"}`);
 				if (output.worktree_path && output.branch) {
 					input.bus?.emit("worktree.acquired", {

@@ -25,7 +25,7 @@ describe("EventBus", () => {
 
 	test("removes event entry when last handler is removed", () => {
 		const bus = new EventBus();
-		const handler = (_payload: { id: string }) => { };
+		const handler = (_payload: { id: string }) => {};
 		bus.on("cleanup", handler);
 		bus.off("cleanup", handler);
 		// Should not throw even after removing the last handler
@@ -34,7 +34,7 @@ describe("EventBus", () => {
 
 	test("handles off with non-existent event", () => {
 		const bus = new EventBus();
-		bus.off("missing", () => { }); // Should not throw
+		bus.off("missing", () => {}); // Should not throw
 	});
 
 	test("handles emit with no subscribers", () => {
@@ -43,7 +43,7 @@ describe("EventBus", () => {
 	});
 
 	test("creates EventBus instance", () => {
-		const bus = new EventBus();  // cobre constructor
+		const bus = new EventBus(); // cobre constructor
 		expect(bus).toBeDefined();
 	});
 });

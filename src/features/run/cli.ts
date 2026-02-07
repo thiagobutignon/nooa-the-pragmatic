@@ -1,18 +1,17 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { randomUUID } from "node:crypto";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
 	renderJson,
-	setExitCode
+	setExitCode,
 } from "../../core/cli-output";
-
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executePipeline } from "./executor";
 import { parsePipelineArgs } from "./parser";
 import type { PipelineResult, PipelineStep, RunOptions } from "./types";
-import type { EventBus } from "../../core/event-bus";
-import { randomUUID } from "node:crypto";
 
 export const runMeta: AgentDocMeta = {
 	name: "run",
@@ -54,7 +53,7 @@ Error Codes:
 export const runSdkUsage = `
 SDK Usage:
   const result = await run.run({
-    steps: [\"code write foo.ts\", \"commit -m 'feat: foo'\"],
+    steps: ["code write foo.ts", "commit -m 'feat: foo'"],
     continueOnError: false
   });
   if (result.ok) console.log(result.data.steps.length);
@@ -62,7 +61,7 @@ SDK Usage:
 
 export const runUsage = {
 	cli: "nooa run [flags] -- <cmd1> -- <cmd2> ...",
-	sdk: "await run.run({ steps: [\"code write foo.ts\"] })",
+	sdk: 'await run.run({ steps: ["code write foo.ts"] })',
 	tui: "RunPipelineConsole()",
 };
 
@@ -94,11 +93,11 @@ export const runExitCodes = [
 
 export const runExamples = [
 	{
-		input: "nooa run -- code write foo.ts -- commit -m \"feat: foo\"",
+		input: 'nooa run -- code write foo.ts -- commit -m "feat: foo"',
 		output: "Run a pipeline to write a file and then commit it.",
 	},
 	{
-		input: "nooa run \"code write foo.ts\" \"commit -m 'feat: foo'\"",
+		input: 'nooa run "code write foo.ts" "commit -m \'feat: foo\'"',
 		output: "Run a pipeline using quoted strings (alternative syntax).",
 	},
 ];
@@ -275,7 +274,8 @@ const runBuilder = new CommandBuilder<RunRunInput, RunRunResult>()
 
 		if (result) {
 			const failedIndex = result.failedStepIndex ?? -1;
-			const failedStep = failedIndex >= 0 ? result.steps[failedIndex] : undefined;
+			const failedStep =
+				failedIndex >= 0 ? result.steps[failedIndex] : undefined;
 			if (failedStep) {
 				console.error(
 					`Pipeline failed at step ${failedIndex + 1}: ${failedStep.step.original}`,

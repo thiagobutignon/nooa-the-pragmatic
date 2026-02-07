@@ -65,7 +65,9 @@ export class OpenAiProvider implements AiProvider {
 		};
 	}
 
-	async *stream(request: AiRequest): AsyncGenerator<AiStreamChunk, AiResponse, void> {
+	async *stream(
+		request: AiRequest,
+	): AsyncGenerator<AiStreamChunk, AiResponse, void> {
 		const apiKey = process.env.OPENAI_API_KEY;
 		if (!apiKey) {
 			throw new Error("OpenAI API key not found (OPENAI_API_KEY)");

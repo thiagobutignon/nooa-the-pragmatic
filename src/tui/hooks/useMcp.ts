@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runMcp } from "../../features/mcp/cli";
-import type { McpRunInput, McpRunResult } from "../../features/mcp/cli";
 import type { SdkError } from "../../core/types";
+import type { McpRunInput, McpRunResult } from "../../features/mcp/cli";
+import { run as runMcp } from "../../features/mcp/cli";
 
 export type McpStatus = "idle" | "loading" | "success" | "error";
 

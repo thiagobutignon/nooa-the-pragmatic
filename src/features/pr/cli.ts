@@ -1,9 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { EventBus } from "../../core/event-bus";
 import { getCurrentBranch } from "../../core/integrations/git";
@@ -64,7 +61,7 @@ SDK Usage:
 
 export const prUsage = {
 	cli: "nooa pr <subcommand> [flags]",
-	sdk: "await pr.run({ action: \"list\" })",
+	sdk: 'await pr.run({ action: "list" })',
 	tui: "PrConsole()",
 };
 
@@ -105,9 +102,18 @@ export const prExitCodes = [
 ];
 
 export const prExamples = [
-	{ input: "nooa pr list", output: "List all open pull requests for the current repository." },
-	{ input: "nooa pr review 12", output: "Start an interactive review for PR #12." },
-	{ input: "nooa pr create --title T --body B", output: "Create a new pull request with title T and body B." },
+	{
+		input: "nooa pr list",
+		output: "List all open pull requests for the current repository.",
+	},
+	{
+		input: "nooa pr review 12",
+		output: "Start an interactive review for PR #12.",
+	},
+	{
+		input: "nooa pr create --title T --body B",
+		output: "Create a new pull request with title T and body B.",
+	},
 ];
 
 type GhPrListItem = {
@@ -332,7 +338,9 @@ const prBuilder = new CommandBuilder<PrRunInput, PrRunResult>()
 
 		switch (output.action) {
 			case "create":
-				console.log(`URL: ${(output.result as { url?: string })?.url || "(no url)"}`);
+				console.log(
+					`URL: ${(output.result as { url?: string })?.url || "(no url)"}`,
+				);
 				break;
 			case "list":
 				console.log("\nOpen PRs:");
@@ -368,8 +376,8 @@ const prBuilder = new CommandBuilder<PrRunInput, PrRunResult>()
 				if (!status) return;
 				const labels = Array.isArray(status.labels)
 					? status.labels
-						.map((label) => label.name)
-						.filter((name): name is string => Boolean(name))
+							.map((label) => label.name)
+							.filter((name): name is string => Boolean(name))
 					: [];
 				const approvals = status.reviewDecision === "APPROVED" ? 1 : 0;
 				const checks = Array.isArray(status.statusCheckRollup)
@@ -381,7 +389,9 @@ const prBuilder = new CommandBuilder<PrRunInput, PrRunResult>()
 				console.log(`State: ${status.state ?? "unknown"}`);
 				console.log(`Approvals: ${approvals}`);
 				console.log(`Labels: ${labels.join(", ") || "(none)"}`);
-				console.log(`Checks: ${passed}/${checks.length} passed, ${failed} failed`);
+				console.log(
+					`Checks: ${passed}/${checks.length} passed, ${failed} failed`,
+				);
 				break;
 			}
 			default:
@@ -401,7 +411,10 @@ const prBuilder = new CommandBuilder<PrRunInput, PrRunResult>()
 	.telemetry({
 		eventPrefix: "pr",
 		successMetadata: (input) => ({ action: input.action }),
-		failureMetadata: (input, error) => ({ action: input.action, error: error.message }),
+		failureMetadata: (input, error) => ({
+			action: input.action,
+			error: error.message,
+		}),
 	});
 
 export const prAgentDoc = prBuilder.buildAgentDoc(false);

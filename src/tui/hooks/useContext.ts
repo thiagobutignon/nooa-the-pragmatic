@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runContext } from "../../features/context/cli";
-import type { ContextRunInput, ContextRunResult } from "../../features/context/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	ContextRunInput,
+	ContextRunResult,
+} from "../../features/context/cli";
+import { run as runContext } from "../../features/context/cli";
 
 export type ContextStatus = "idle" | "loading" | "success" | "error";
 

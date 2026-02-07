@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { run } from "../../features/pwd/cli";
 import type { SdkError } from "../../core/types";
+import { run } from "../../features/pwd/cli";
 
 export interface UsePwdState {
 	cwd?: string;

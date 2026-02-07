@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runSearch } from "../../features/search/cli";
-import type { SearchRunInput, SearchRunResult } from "../../features/search/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	SearchRunInput,
+	SearchRunResult,
+} from "../../features/search/cli";
+import { run as runSearch } from "../../features/search/cli";
 
 export type SearchStatus = "idle" | "loading" | "success" | "error";
 

@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runReview } from "../../features/review/cli";
-import type { ReviewRunInput, ReviewRunResult } from "../../features/review/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	ReviewRunInput,
+	ReviewRunResult,
+} from "../../features/review/cli";
+import { run as runReview } from "../../features/review/cli";
 
 export type ReviewStatus = "idle" | "loading" | "success" | "error";
 

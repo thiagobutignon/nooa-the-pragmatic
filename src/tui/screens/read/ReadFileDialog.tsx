@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
+import { useMemo, useState } from "react";
 import { usePwd } from "../../hooks/usePwd";
 import { useRead } from "../../hooks/useRead";
 
@@ -71,9 +71,9 @@ export function ReadFileDialog({ initialPath = "" }: { initialPath?: string }) {
 				<Text>
 					Status: <StatusBadge status={state.status} />
 				</Text>
-				<Text dimColor>  |  </Text>
+				<Text dimColor> | </Text>
 				<Text dimColor>r: reset</Text>
-				<Text dimColor>  |  </Text>
+				<Text dimColor> | </Text>
 				<Text dimColor>q: quit</Text>
 			</Box>
 

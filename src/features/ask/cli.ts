@@ -1,9 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -43,7 +40,7 @@ SDK Usage:
 
 export const askUsage = {
 	cli: "nooa ask <query> [flags]",
-	sdk: "await ask.run({ query: \"find TODOs\", limit: 5 })",
+	sdk: 'await ask.run({ query: "find TODOs", limit: 5 })',
 	tui: "AskPanel()",
 };
 
@@ -70,8 +67,14 @@ export const askExitCodes = [
 ];
 
 export const askExamples = [
-	{ input: "nooa ask \"find TODOs\"", output: "Search indexed code and memory for 'find TODOs'." },
-	{ input: "nooa ask init --json", output: "Search for 'init' relevance and return results as JSON." },
+	{
+		input: 'nooa ask "find TODOs"',
+		output: "Search indexed code and memory for 'find TODOs'.",
+	},
+	{
+		input: "nooa ask init --json",
+		output: "Search for 'init' relevance and return results as JSON.",
+	},
 ];
 
 export interface AskRunInput {
@@ -147,7 +150,7 @@ const askBuilder = new CommandBuilder<AskRunInput, AskRunResult>()
 			console.log("");
 		}
 	})
-	.onFailure((error, input) => {
+	.onFailure((error, _input) => {
 		if (error.code === "ask.missing_query") {
 			console.error("Error: Query required.");
 			process.exitCode = 2;

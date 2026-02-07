@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runPrompt } from "../../features/prompt/cli";
-import type { PromptRunInput, PromptRunResult } from "../../features/prompt/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	PromptRunInput,
+	PromptRunResult,
+} from "../../features/prompt/cli";
+import { run as runPrompt } from "../../features/prompt/cli";
 
 export type PromptStatus = "idle" | "loading" | "success" | "error";
 

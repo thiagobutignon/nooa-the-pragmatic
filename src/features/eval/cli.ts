@@ -1,17 +1,13 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { buildStandardOptions } from "../../core/cli-flags";
-
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { EvalEngine } from "./engine";
 import { appendHistory, loadHistory } from "./history";
-import { readFile, writeFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
 
 export const evalMeta: AgentDocMeta = {
 	name: "eval",
@@ -76,14 +72,14 @@ SDK Usage:
 
 export const evalUsage = {
 	cli: "nooa eval <command> <prompt_name> --suite <name>",
-	sdk: "await eval.run({ command: \"run\", promptName: \"review\", suite: \"standard\" })",
+	sdk: 'await eval.run({ command: "run", promptName: "review", suite: "standard" })',
 	tui: "EvalConsole()",
 };
 
 export const evalSchema = {
 	command: { type: "string", required: true },
 	promptName: { type: "string", required: false }, // Optional for dataset
-	suite: { type: "string", required: false },      // Optional for dataset
+	suite: { type: "string", required: false }, // Optional for dataset
 	json: { type: "boolean", required: false },
 	baseline: { type: "string", required: false },
 	"fail-on-regression": { type: "boolean", required: false },
@@ -96,9 +92,7 @@ export const evalSchema = {
 	"history-file": { type: "string", required: false },
 } satisfies SchemaSpec;
 
-export const evalOutputFields = [
-	{ name: "result", type: "string" },
-];
+export const evalOutputFields = [{ name: "result", type: "string" }];
 
 export const evalErrors = [
 	{ code: "eval.missing_args", message: "Missing required arguments." },
@@ -115,10 +109,23 @@ export const evalExitCodes = [
 ];
 
 export const evalExamples = [
-	{ input: "nooa eval run --suite unit-tests", output: "Run the 'unit-tests' evaluation suite." },
-	{ input: "nooa eval optimize --prompt fix_code", output: "Optimize the 'fix_code' prompt based on failures." },
-	{ input: "nooa eval assert --output \"hello world\" --contains \"hello\"", output: "Assert that output contains 'hello'." },
-	{ input: "nooa eval compare review --suite standard", output: "Compare the latest review prompt evaluation against the standard suite." },
+	{
+		input: "nooa eval run --suite unit-tests",
+		output: "Run the 'unit-tests' evaluation suite.",
+	},
+	{
+		input: "nooa eval optimize --prompt fix_code",
+		output: "Optimize the 'fix_code' prompt based on failures.",
+	},
+	{
+		input: 'nooa eval assert --output "hello world" --contains "hello"',
+		output: "Assert that output contains 'hello'.",
+	},
+	{
+		input: "nooa eval compare review --suite standard",
+		output:
+			"Compare the latest review prompt evaluation against the standard suite.",
+	},
 ];
 
 export interface EvalRunInput {
@@ -150,11 +157,19 @@ export async function run(
 	const suiteName = input.suite;
 
 	// Validation for commands that require prompt/suite
-	if (command !== "dataset" && command !== "history" && command !== "compare" && command !== "report") {
+	if (
+		command !== "dataset" &&
+		command !== "history" &&
+		command !== "compare" &&
+		command !== "report"
+	) {
 		if (!promptName || !suiteName) {
 			return {
 				ok: false,
-				error: sdkError("eval.missing_args", "Missing required arguments (prompt/suite)."),
+				error: sdkError(
+					"eval.missing_args",
+					"Missing required arguments (prompt/suite).",
+				),
 			};
 		}
 	}
@@ -163,7 +178,8 @@ export async function run(
 	const repoRoot = resolve(import.meta.dir, "../../..");
 
 	const engine = new EvalEngine();
-	const optionsJudge = (input.judge as "deterministic" | "llm") ?? "deterministic";
+	const optionsJudge =
+		(input.judge as "deterministic" | "llm") ?? "deterministic";
 
 	try {
 		if (command === "dataset") {
@@ -186,9 +202,9 @@ export async function run(
 						ok: true,
 						result: `Generated ${entries.length} examples to ${outputPath}`,
 						count: entries.length,
-						path: outputPath
-					}
-				}
+						path: outputPath,
+					},
+				},
 			};
 		}
 
@@ -242,7 +258,10 @@ export async function run(
 			if (result.totalScore < 1.0 && input.failOnRegression) {
 				return {
 					ok: false,
-					error: sdkError("eval.runtime_error", "Apply rejected due to regression"),
+					error: sdkError(
+						"eval.runtime_error",
+						"Apply rejected due to regression",
+					),
 				};
 			}
 
@@ -344,10 +363,16 @@ export async function run(
 			};
 		}
 
-		if (command === "report" || command === "history" || command === "compare") {
+		if (
+			command === "report" ||
+			command === "history" ||
+			command === "compare"
+		) {
 			const entries = await loadHistory(process.cwd(), input.historyFile);
 			const relevant = entries
-				.filter((entry) => entry.prompt === promptName && entry.suite === suiteName)
+				.filter(
+					(entry) => entry.prompt === promptName && entry.suite === suiteName,
+				)
 				.sort(
 					(a, b) =>
 						new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
@@ -461,7 +486,7 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			head: { type: "string" },
 			id: { type: "string" },
 			"history-file": { type: "string" },
-			"case": { type: "string" },
+			case: { type: "string" },
 		},
 	})
 	.parseInput(async ({ positionals, values }) => ({
@@ -501,9 +526,7 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 					console.log(`  - ${a.passed ? "pass" : "fail"}: ${a.message}`);
 				}
 			}
-			console.log(
-				`\nOverall Score: ${(payload.totalScore * 100).toFixed(0)}%`,
-			);
+			console.log(`\nOverall Score: ${(payload.totalScore * 100).toFixed(0)}%`);
 			return;
 		}
 
@@ -586,7 +609,9 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 		}
 
 		if (error.code === "eval.invalid_command") {
-			console.error(`Error: Command '${input.command}' not yet fully implemented.`);
+			console.error(
+				`Error: Command '${input.command}' not yet fully implemented.`,
+			);
 			process.exitCode = 1;
 			return;
 		}

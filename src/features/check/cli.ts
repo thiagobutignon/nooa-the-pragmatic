@@ -1,18 +1,14 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { lstat, readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { execa } from "execa";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
-
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import type { GuardrailReport } from "../guardrail/contracts";
 import { GuardrailEngine } from "../guardrail/engine";
-import { execa } from "execa";
-import { lstat, readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { loadProfile } from "../guardrail/profiles";
 
 export const checkMeta: AgentDocMeta = {
@@ -60,7 +56,7 @@ SDK Usage:
 
 export const checkUsage = {
 	cli: "nooa check [path] [flags]",
-	sdk: "await check.run({ path: \".\" })",
+	sdk: 'await check.run({ path: "." })',
 	tui: "CheckConsole()",
 };
 
@@ -93,8 +89,14 @@ export const checkExitCodes = [
 ];
 
 export const checkExamples = [
-	{ input: "nooa check", output: "Audit the codebase against project policies." },
-	{ input: "nooa check src --json", output: "Audit the src directory and output a JSON report." },
+	{
+		input: "nooa check",
+		output: "Audit the codebase against project policies.",
+	},
+	{
+		input: "nooa check src --json",
+		output: "Audit the src directory and output a JSON report.",
+	},
 	{
 		input: "nooa check --profile .nooa/guardrails/profiles/security.yaml",
 		output: "Run a guardrail check using the security profile.",
@@ -163,7 +165,7 @@ export async function run(
 					"--diff-filter=ACMR",
 				]);
 				filesToCheck = stdout.split("\n").filter((f) => f.trim() !== "");
-			} catch (error) {
+			} catch (_error) {
 				return {
 					ok: false,
 					error: sdkError(
@@ -239,7 +241,15 @@ const checkBuilder = new CommandBuilder<CheckRunInput, CheckRunResult>()
 	.onFailure((error) => {
 		if (error.code === "check.policy_violation") {
 			const result = error.details?.result as
-				| { violations: { rule: string; file: string; line: number; content: string; message: string }[] }
+				| {
+						violations: {
+							rule: string;
+							file: string;
+							line: number;
+							content: string;
+							message: string;
+						}[];
+				  }
 				| undefined;
 			if (result) {
 				console.error(

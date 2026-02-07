@@ -1,16 +1,15 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
-	renderJsonOrWrite,
 	renderJson,
-	setExitCode
+	renderJsonOrWrite,
+	setExitCode,
 } from "../../core/cli-output";
-
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId, logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import type { EventBus } from "../../core/event-bus";
 import { executeReview, type ReviewResult } from "./execute";
 
 export const reviewMeta: AgentDocMeta = {
@@ -60,7 +59,7 @@ SDK Usage:
 
 export const reviewUsage = {
 	cli: "nooa review [path] [flags]",
-	sdk: "await review.run({ path: \"src/index.ts\" })",
+	sdk: 'await review.run({ path: "src/index.ts" })',
 	tui: "ReviewConsole()",
 };
 
@@ -96,12 +95,19 @@ export const reviewExitCodes = [
 ];
 
 export const reviewExamples = [
-	{ input: "nooa review src/index.ts", output: "Perform an AI code review on 'src/index.ts'." },
+	{
+		input: "nooa review src/index.ts",
+		output: "Perform an AI code review on 'src/index.ts'.",
+	},
 	{
 		input: "nooa review --json --out review-results.json",
-		output: "Review staged changes and export findings to 'review-results.json'.",
+		output:
+			"Review staged changes and export findings to 'review-results.json'.",
 	},
-	{ input: "nooa review --fail-on high", output: "Review staged changes and fail if high severity issues are found." },
+	{
+		input: "nooa review --fail-on high",
+		output: "Review staged changes and fail if high severity issues are found.",
+	},
 ];
 
 export interface ReviewRunInput {
@@ -193,7 +199,8 @@ const reviewBuilder = new CommandBuilder<ReviewRunInput, ReviewRunResult>()
 		prompt: typeof values.prompt === "string" ? values.prompt : undefined,
 		json: Boolean(values.json),
 		out: typeof values.out === "string" ? values.out : undefined,
-		failOn: typeof values["fail-on"] === "string" ? values["fail-on"] : undefined,
+		failOn:
+			typeof values["fail-on"] === "string" ? values["fail-on"] : undefined,
 		bus,
 	}))
 	.run(run)
@@ -229,9 +236,7 @@ const reviewBuilder = new CommandBuilder<ReviewRunInput, ReviewRunResult>()
 				values["fail-on"] as (typeof severityLevels)[number],
 			);
 			if (minLevelIdx === -1) {
-				console.error(
-					`Error: Invalid severity level '${values["fail-on"]}'.`,
-				);
+				console.error(`Error: Invalid severity level '${values["fail-on"]}'.`);
 				process.exitCode = 2;
 				return;
 			}

@@ -99,7 +99,14 @@ export class TelemetryStore {
 		return result.lastInsertRowid;
 	}
 
-	list(filters: { event?: string; trace_id?: string; level?: string; limit?: number } = {}) {
+	list(
+		filters: {
+			event?: string;
+			trace_id?: string;
+			level?: string;
+			limit?: number;
+		} = {},
+	) {
 		const db = this.ensureOpen();
 		let sql = "SELECT * FROM telemetry";
 		const params: Record<string, string | number> = {};
@@ -124,7 +131,11 @@ export class TelemetryStore {
 
 		sql += " ORDER BY timestamp DESC";
 
-		if (typeof filters.limit === "number" && Number.isInteger(filters.limit) && filters.limit > 0) {
+		if (
+			typeof filters.limit === "number" &&
+			Number.isInteger(filters.limit) &&
+			filters.limit > 0
+		) {
 			sql += ` LIMIT ${filters.limit}`;
 		}
 

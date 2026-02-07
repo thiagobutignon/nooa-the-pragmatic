@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runMessage } from "../../features/chat/cli";
-import type { MessageRunInput, MessageRunResult } from "../../features/chat/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	MessageRunInput,
+	MessageRunResult,
+} from "../../features/chat/cli";
+import { run as runMessage } from "../../features/chat/cli";
 
 export type ChatStatus = "idle" | "loading" | "success" | "error";
 

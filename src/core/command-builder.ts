@@ -1,7 +1,7 @@
+import { buildStandardOptions } from "./cli-flags";
 import type { Command, CommandContext } from "./command";
 import type { EventBus } from "./event-bus";
 import { HelpBuilder, renderChangelogXml } from "./help-builder";
-import { buildStandardOptions } from "./cli-flags";
 import { createTraceId, logger } from "./logger";
 import { telemetry } from "./telemetry";
 import type {
@@ -65,7 +65,10 @@ export class CommandBuilder<Input, Output> {
 		values: Record<string, unknown>,
 		input: Input,
 	) => void | Promise<void>;
-	private renderFailure?: (error: SdkError, input: Input) => void | Promise<void>;
+	private renderFailure?: (
+		error: SdkError,
+		input: Input,
+	) => void | Promise<void>;
 	private telemetryConfig?: TelemetryConfig<Input, Output>;
 	private agentDocIncludeChangelog = false;
 	private examplesValue: AgentDocExample[] = [];
@@ -161,7 +164,9 @@ export class CommandBuilder<Input, Output> {
 
 	buildAgentDoc(includeChangelog = this.agentDocIncludeChangelog) {
 		if (!this.metaValue || !this.usageValue || !this.schemaValue) {
-			throw new Error("meta, usage, and schema are required to build agent doc");
+			throw new Error(
+				"meta, usage, and schema are required to build agent doc",
+			);
 		}
 
 		const version = this.metaValue.changelog[0]?.version ?? "1.0.0";
@@ -173,7 +178,8 @@ export class CommandBuilder<Input, Output> {
 					`type="${field.type}"`,
 					field.required ? `required="true"` : `required="false"`,
 				];
-				if (field.default !== undefined) attrs.push(`default="${field.default}"`);
+				if (field.default !== undefined)
+					attrs.push(`default="${field.default}"`);
 				if (field.since) attrs.push(`since="${field.since}"`);
 				return `      <field ${attrs.join(" ")} />`;
 			})
@@ -182,38 +188,41 @@ export class CommandBuilder<Input, Output> {
 		const outputXml =
 			this.outputFieldsValue.length > 0
 				? `\n    <output>\n${this.outputFieldsValue
-					.map((field) => `      <field name="${field.name}" type="${field.type}" />`)
-					.join("\n")}\n    </output>`
+						.map(
+							(field) =>
+								`      <field name="${field.name}" type="${field.type}" />`,
+						)
+						.join("\n")}\n    </output>`
 				: "";
 
 		const examplesXml =
 			this.examplesValue.length > 0
 				? `\n  <examples>\n${this.examplesValue
-					.map(
-						(example) =>
-							`    <example>\n      <input>${example.input}</input>\n      <output>${example.output}</output>\n    </example>`,
-					)
-					.join("\n")}\n  </examples>`
+						.map(
+							(example) =>
+								`    <example>\n      <input>${example.input}</input>\n      <output>${example.output}</output>\n    </example>`,
+						)
+						.join("\n")}\n  </examples>`
 				: "";
 
 		const errorsXml =
 			this.errorsValue.length > 0
 				? `\n  <errors>\n${this.errorsValue
-					.map(
-						(error) =>
-							`    <error code="${error.code}">${error.message}</error>`,
-					)
-					.join("\n")}\n  </errors>`
+						.map(
+							(error) =>
+								`    <error code="${error.code}">${error.message}</error>`,
+						)
+						.join("\n")}\n  </errors>`
 				: "";
 
 		const exitCodesXml =
 			this.exitCodesValue.length > 0
 				? `\n  <exit-codes>\n${this.exitCodesValue
-					.map(
-						(code) =>
-							`    <code value="${code.value}">${code.description}</code>`,
-					)
-					.join("\n")}\n  </exit-codes>`
+						.map(
+							(code) =>
+								`    <code value="${code.value}">${code.description}</code>`,
+						)
+						.join("\n")}\n  </exit-codes>`
 				: "";
 
 		const changelogXml = includeChangelog
@@ -251,8 +260,14 @@ ${outputXml}
 
 		const agentDoc = this.buildAgentDoc(includeChangelog);
 		return new HelpBuilder(this.helpText.trim())
-			.addSection("System Instruction (Agent)", `\`\`\`xml\n${agentDoc}\n\`\`\``)
-			.addSection("SDK Usage", `\`\`\`text\n${this.sdkUsageText.trim()}\n\`\`\``)
+			.addSection(
+				"System Instruction (Agent)",
+				`\`\`\`xml\n${agentDoc}\n\`\`\``,
+			)
+			.addSection(
+				"SDK Usage",
+				`\`\`\`text\n${this.sdkUsageText.trim()}\n\`\`\``,
+			)
 			.withChangelog(this.metaValue.changelog)
 			.includeChangelogSection(includeChangelog)
 			.build();
@@ -275,13 +290,17 @@ ${outputXml}
 
 	build(): Command {
 		if (!this.metaValue || !this.helpText || !this.runFn || !this.inputParser) {
-			throw new Error("meta, help, parseInput, and run are required to build command");
+			throw new Error(
+				"meta, help, parseInput, and run are required to build command",
+			);
 		}
 
 		const runFn = this.runFn;
 		const inputParser = this.inputParser;
-		const parseOptions = this.parseOptions ?? { options: buildStandardOptions() };
-		const helpText = this.helpText;
+		const parseOptions = this.parseOptions ?? {
+			options: buildStandardOptions(),
+		};
+		const _helpText = this.helpText;
 		const meta = this.metaValue;
 
 		const execute = async ({ rawArgs, bus }: CommandContext) => {
@@ -335,7 +354,11 @@ ${outputXml}
 					},
 					bus,
 				);
-				logger.error(`${meta.name}.failure`, new Error(result.error.message), metaData);
+				logger.error(
+					`${meta.name}.failure`,
+					new Error(result.error.message),
+					metaData,
+				);
 				return;
 			}
 

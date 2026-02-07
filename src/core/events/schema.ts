@@ -2,10 +2,24 @@ export type NOOAEvent =
 	| { type: "workflow.started"; traceId: string; goal: string }
 	| { type: "workflow.step.start"; traceId: string; stepId: string }
 	| { type: "workflow.gate.pass"; traceId: string; gateId: string }
-	| { type: "workflow.gate.fail"; traceId: string; gateId: string; reason: string }
-	| { type: "workflow.completed"; traceId: string; result: "success" | "failure" }
+	| {
+			type: "workflow.gate.fail";
+			traceId: string;
+			gateId: string;
+			reason: string;
+	  }
+	| {
+			type: "workflow.completed";
+			traceId: string;
+			result: "success" | "failure";
+	  }
 	| { type: "act.started"; traceId: string; goal: string }
-	| { type: "act.completed"; traceId: string; goal: string; result: "success" | "failure" }
+	| {
+			type: "act.completed";
+			traceId: string;
+			goal: string;
+			result: "success" | "failure";
+	  }
 	| { type: "act.failed"; traceId: string; goal: string; error: string }
 	| { type: "test.failed"; traceId: string; test: string; error: string }
 	| { type: "commit.created"; traceId: string; hash: string; message: string }

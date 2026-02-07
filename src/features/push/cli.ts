@@ -1,20 +1,19 @@
 import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
 	renderJson,
-	setExitCode
+	setExitCode,
 } from "../../core/cli-output";
-
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId, logger } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import type { EventBus } from "../../core/event-bus";
 import { ensureGitRepo, git, isWorkingTreeClean } from "./guards";
 
 export const pushMeta: AgentDocMeta = {
@@ -63,7 +62,7 @@ SDK Usage:
 
 export const pushUsage = {
 	cli: "nooa push [remote] [branch] [flags]",
-	sdk: "await push.run({ remote: \"origin\", branch: \"main\" })",
+	sdk: 'await push.run({ remote: "origin", branch: "main" })',
 	tui: "PushConsole()",
 };
 
@@ -99,7 +98,10 @@ export const pushExitCodes = [
 ];
 
 export const pushExamples = [
-	{ input: "nooa push", output: "Push committed changes to the remote repository." },
+	{
+		input: "nooa push",
+		output: "Push committed changes to the remote repository.",
+	},
 	{
 		input: "nooa push origin feat/auth --no-test",
 		output: "Push changes to 'origin/feat/auth' skipping pre-push tests.",
@@ -258,7 +260,11 @@ const pushBuilder = new CommandBuilder<PushRunInput, PushRunResult>()
 	.run(run)
 	.onSuccess((output, values) => {
 		if (values.json) {
-			renderJson({ ok: true, traceId: output.traceId, message: output.message });
+			renderJson({
+				ok: true,
+				traceId: output.traceId,
+				message: output.message,
+			});
 			return;
 		}
 		console.log(`✅ ${output.message} [${output.traceId}]`);

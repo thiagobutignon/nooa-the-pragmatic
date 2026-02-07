@@ -8,7 +8,6 @@ import {
 	editPrompt,
 	publishPrompt,
 } from "./service";
-import * as yaml from "js-yaml";
 
 describe("Prompt Service", () => {
 	let testRoot: string;
@@ -31,10 +30,13 @@ describe("Prompt Service", () => {
 				name: "test-prompt",
 				description: "desc",
 				body: "Hello {{name}}",
-				output: "json"
+				output: "json",
 			});
 
-			const content = await readFile(join(templatesDir, "test-prompt.md"), "utf8");
+			const content = await readFile(
+				join(templatesDir, "test-prompt.md"),
+				"utf8",
+			);
 			expect(content).toContain("name: test-prompt");
 			expect(content).toContain("output: json");
 			expect(content).toContain("Hello {{name}}");
@@ -45,7 +47,7 @@ describe("Prompt Service", () => {
 				templatesDir,
 				name: "dup",
 				description: "d",
-				body: ""
+				body: "",
 			};
 			await createPrompt(args);
 			expect(createPrompt(args)).rejects.toThrow("Prompt already exists");
@@ -68,7 +70,9 @@ describe("Prompt Service", () => {
 		});
 
 		test("throws if prompt not found", async () => {
-			expect(deletePrompt({ templatesDir, name: "missing" })).rejects.toThrow(/Prompt not found/);
+			expect(deletePrompt({ templatesDir, name: "missing" })).rejects.toThrow(
+				/Prompt not found/,
+			);
 		});
 	});
 
@@ -80,7 +84,7 @@ describe("Prompt Service", () => {
 
 			// diff format for "Line 2" -> "Line 2 modified"
 			// Usually we use createPatch from 'diff' module but here we pass raw patch string.
-			// Our applyPatch implementation expects git unidiff? 
+			// Our applyPatch implementation expects git unidiff?
 			// In patches.test.ts it uses:
 			// Index: file
 			// ===================================================================
@@ -91,7 +95,7 @@ describe("Prompt Service", () => {
 			// -Line 2
 			// +Line 2 modified
 
-			// Simpler: replace entire content if patch is just full replacement? 
+			// Simpler: replace entire content if patch is just full replacement?
 			// no, code/patch.ts uses `diff.applyPatch`.
 
 			// Let's use a simple patch that works.
@@ -126,7 +130,7 @@ describe("Prompt Service", () => {
 				name,
 				level: "minor",
 				changelogPath: clPath,
-				note: "First update"
+				note: "First update",
 			});
 
 			expect(next).toBe("1.1.0");
@@ -147,7 +151,7 @@ describe("Prompt Service", () => {
 				name: "new-sec",
 				level: "patch",
 				changelogPath: clPath,
-				note: "Patch"
+				note: "Patch",
 			});
 
 			const cl = await readFile(clPath, "utf8");
@@ -159,7 +163,10 @@ describe("Prompt Service", () => {
 		test("updates existing section in changelog", async () => {
 			const name = "existing";
 			const clPath = join(testRoot, "CHANGELOG.md");
-			await writeFile(clPath, `# Prompt Changelog\n\n## ${name}\n### v1.0.0\n- Initial\n`);
+			await writeFile(
+				clPath,
+				`# Prompt Changelog\n\n## ${name}\n### v1.0.0\n- Initial\n`,
+			);
 
 			await setupPrompt(name); // 1.0.0
 			await publishPrompt({
@@ -167,7 +174,7 @@ describe("Prompt Service", () => {
 				name,
 				level: "patch", // -> 1.0.1
 				changelogPath: clPath,
-				note: "Fix"
+				note: "Fix",
 			});
 
 			const cl = await readFile(clPath, "utf8");

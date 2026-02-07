@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runInit } from "../../features/init/cli";
-import type { InitRunInput, InitRunResult } from "../../features/init/cli";
 import type { SdkError } from "../../core/types";
+import type { InitRunInput, InitRunResult } from "../../features/init/cli";
+import { run as runInit } from "../../features/init/cli";
 
 export type InitStatus = "idle" | "loading" | "success" | "error";
 

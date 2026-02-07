@@ -39,7 +39,7 @@ describe("Store", () => {
 	test("cosine similarity works", async () => {
 		const v1 = [1.0, 0.0];
 		const v2 = [0.0, 1.0]; // Orthogonal, sim = 0
-		const v3 = [0.707, 0.707]; // 45 deg, sim ~ 0.707? No, dot (.707) / 1 = .707.
+		const v3 = [Math.SQRT1_2, Math.SQRT1_2]; // 45 deg, sim ~ 0.707? No, dot (.707) / 1 = .707.
 
 		await store.storeEmbedding("v1", "v1", v1);
 		await store.storeEmbedding("v2", "v2", v2);
@@ -70,7 +70,7 @@ describe("Store", () => {
 		// If b is shorter, `b[i] ?? 0` handles it.
 
 		await store.storeEmbedding("short", "short", [1]);
-		const results = await store.searchEmbeddings([1, 1]);
+		const _results = await store.searchEmbeddings([1, 1]);
 		// dot = 1*1 + 1*0 = 1
 		// mA = 2, mB = 1
 		// sim = 1 / (1.414 * 1) =         expect(results[0].score).toBe(0);

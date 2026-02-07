@@ -1,17 +1,13 @@
 import { execa } from "execa";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
-
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId, logger } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import type { EventBus } from "../../core/event-bus";
 import {
 	ensureGitRepo,
 	git,
@@ -63,7 +59,7 @@ SDK Usage:
 
 export const commitUsage = {
 	cli: "nooa commit -m <message> [flags]",
-	sdk: "await commit.run({ message: \"feat: x\" })",
+	sdk: 'await commit.run({ message: "feat: x" })',
 	tui: "CommitConsole()",
 };
 
@@ -99,10 +95,14 @@ export const commitExitCodes = [
 ];
 
 export const commitExamples = [
-	{ input: "nooa commit -m \"feat: user authentication\"", output: "Commit staged changes with message 'feat: user authentication'." },
 	{
-		input: "nooa commit -m \"docs: api reference\" --allow-lazy",
-		output: "Commit changes with 'allow-lazy' flag to bypass strict policy checks.",
+		input: 'nooa commit -m "feat: user authentication"',
+		output: "Commit staged changes with message 'feat: user authentication'.",
+	},
+	{
+		input: 'nooa commit -m "docs: api reference" --allow-lazy',
+		output:
+			"Commit changes with 'allow-lazy' flag to bypass strict policy checks.",
 	},
 ];
 
@@ -276,7 +276,11 @@ const commitBuilder = new CommandBuilder<CommitRunInput, CommitRunResult>()
 	.run(run)
 	.onSuccess((output, values) => {
 		if (values.json) {
-			renderJson({ ok: true, traceId: output.traceId, message: output.message });
+			renderJson({
+				ok: true,
+				traceId: output.traceId,
+				message: output.message,
+			});
 			return;
 		}
 		console.log(`✅ ${output.message} [${output.traceId}]`);

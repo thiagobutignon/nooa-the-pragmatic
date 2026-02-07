@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runIgnore } from "../../features/ignore/cli";
-import type { IgnoreRunInput, IgnoreRunResult } from "../../features/ignore/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	IgnoreRunInput,
+	IgnoreRunResult,
+} from "../../features/ignore/cli";
+import { run as runIgnore } from "../../features/ignore/cli";
 
 export type IgnoreStatus = "idle" | "loading" | "success" | "error";
 

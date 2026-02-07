@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runEval } from "../../features/eval/cli";
-import type { EvalRunInput, EvalRunResult } from "../../features/eval/cli";
 import type { SdkError } from "../../core/types";
+import type { EvalRunInput, EvalRunResult } from "../../features/eval/cli";
+import { run as runEval } from "../../features/eval/cli";
 
 export type EvalStatus = "idle" | "loading" | "success" | "error";
 

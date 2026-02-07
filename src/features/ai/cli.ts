@@ -1,9 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import { openMcpDatabase } from "../../core/mcp/db";
 import { executeMcpToolFromAi } from "../../core/mcp/integrations/ai";
@@ -16,7 +13,7 @@ import {
 	OllamaProvider,
 	OpenAiProvider,
 } from "./providers/mod";
-import type { AiStreamChunk, AiResponse } from "./types";
+import type { AiResponse, AiStreamChunk } from "./types";
 
 export const aiMeta: AgentDocMeta = {
 	name: "ai",
@@ -59,7 +56,7 @@ SDK Usage:
 
 export const aiUsage = {
 	cli: "nooa ai <prompt> [flags]",
-	sdk: "await ai.run({ prompt: \"Hello\" })",
+	sdk: 'await ai.run({ prompt: "Hello" })',
 	tui: "AiConsole()",
 };
 
@@ -100,7 +97,10 @@ export const aiExitCodes = [
 
 export const aiExamples = [
 	{ input: 'nooa ai "Who are you?"', output: "Ask the AI a general question." },
-	{ input: 'nooa ai "Tell a joke" --json', output: "Ask the AI to tell a joke and return the response in JSON format." },
+	{
+		input: 'nooa ai "Tell a joke" --json',
+		output: "Ask the AI to tell a joke and return the response in JSON format.",
+	},
 ];
 
 export interface AiRunInput {
@@ -181,7 +181,12 @@ export async function run(input: AiRunInput): Promise<SdkResult<AiRunResult>> {
 					};
 				}
 			}
-			const toolResult = await executeMcpToolFromAi(db, mcpSource, mcpTool, args);
+			const toolResult = await executeMcpToolFromAi(
+				db,
+				mcpSource,
+				mcpTool,
+				args,
+			);
 			return {
 				ok: true,
 				data: {

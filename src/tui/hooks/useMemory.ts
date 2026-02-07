@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runMemory } from "../../features/memory/cli";
-import type { MemoryRunInput, MemoryRunResult } from "../../features/memory/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	MemoryRunInput,
+	MemoryRunResult,
+} from "../../features/memory/cli";
+import { run as runMemory } from "../../features/memory/cli";
 
 export type MemoryStatus = "idle" | "loading" | "success" | "error";
 

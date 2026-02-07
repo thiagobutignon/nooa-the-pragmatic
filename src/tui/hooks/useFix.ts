@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runFix } from "../../features/fix/cli";
-import type { FixRunInput, FixRunResult } from "../../features/fix/cli";
 import type { SdkError } from "../../core/types";
+import type { FixRunInput, FixRunResult } from "../../features/fix/cli";
+import { run as runFix } from "../../features/fix/cli";
 
 export type FixStatus = "idle" | "loading" | "success" | "error";
 

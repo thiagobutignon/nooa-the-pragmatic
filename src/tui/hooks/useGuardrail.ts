@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { run as runGuardrail } from "../../features/guardrail/cli";
-import type { GuardrailRunInput, GuardrailRunResult } from "../../features/guardrail/cli";
 import type { SdkError } from "../../core/types";
+import type {
+	GuardrailRunInput,
+	GuardrailRunResult,
+} from "../../features/guardrail/cli";
+import { run as runGuardrail } from "../../features/guardrail/cli";
 
 export type GuardrailStatus = "idle" | "loading" | "success" | "error";
 

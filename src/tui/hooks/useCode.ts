@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runCode } from "../../features/code/cli";
-import type { CodeRunInput, CodeRunResult } from "../../features/code/cli";
 import type { SdkError } from "../../core/types";
+import type { CodeRunInput, CodeRunResult } from "../../features/code/cli";
+import { run as runCode } from "../../features/code/cli";
 
 export type CodeStatus = "idle" | "loading" | "success" | "error";
 

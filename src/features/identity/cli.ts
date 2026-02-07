@@ -1,9 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { initIdentity } from "./init";
@@ -48,9 +45,7 @@ export const initSchema = {
 	json: { type: "boolean", required: false },
 } satisfies SchemaSpec;
 
-export const initOutputFields = [
-	{ name: "message", type: "string" },
-];
+export const initOutputFields = [{ name: "message", type: "string" }];
 
 export const initErrors = [
 	{ code: "init.runtime_error", message: "Init failed." },
@@ -62,8 +57,14 @@ export const initExitCodes = [
 ];
 
 export const initExamples = [
-	{ input: "nooa init", output: "Initialize the agent identity and artifacts." },
-	{ input: "nooa init --force", output: "Force initialize identity, overwriting existing files." },
+	{
+		input: "nooa init",
+		output: "Initialize the agent identity and artifacts.",
+	},
+	{
+		input: "nooa init --force",
+		output: "Force initialize identity, overwriting existing files.",
+	},
 ];
 
 export interface InitRunInput {
@@ -76,7 +77,7 @@ export interface InitRunResult {
 }
 
 export async function run(
-	input: InitRunInput,
+	_input: InitRunInput,
 ): Promise<SdkResult<InitRunResult>> {
 	try {
 		await initIdentity(process.cwd());

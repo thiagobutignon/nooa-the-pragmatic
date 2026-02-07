@@ -1,9 +1,6 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -65,7 +62,7 @@ SDK Usage:
 
 export const ignoreUsage = {
 	cli: "nooa ignore <command> [pattern] [paths...] [flags]",
-	sdk: "await ignore.run({ action: \"list\" })",
+	sdk: 'await ignore.run({ action: "list" })',
 	tui: "IgnoreConsole()",
 };
 
@@ -98,7 +95,10 @@ export const ignoreExitCodes = [
 ];
 
 export const ignoreExamples = [
-	{ input: "nooa ignore add secret.ts", output: "Add 'secret.ts' to the ignore list." },
+	{
+		input: "nooa ignore add secret.ts",
+		output: "Add 'secret.ts' to the ignore list.",
+	},
 	{ input: "nooa ignore list", output: "List all active ignore patterns." },
 ];
 
@@ -201,7 +201,7 @@ export async function run(
 					error: sdkError("ignore.missing_pattern", "Pattern required."),
 				};
 			}
-			const samplePaths = input.paths && input.paths.length ? input.paths : ["."];
+			const samplePaths = input.paths?.length ? input.paths : ["."];
 			const results = samplePaths.map((sample) => ({
 				path: sample,
 				matches: matchesPattern(pattern, sample),

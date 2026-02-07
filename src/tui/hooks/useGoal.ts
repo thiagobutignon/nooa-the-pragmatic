@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runGoal } from "../../features/goal/cli";
-import type { GoalRunInput, GoalRunResult } from "../../features/goal/cli";
 import type { SdkError } from "../../core/types";
+import type { GoalRunInput, GoalRunResult } from "../../features/goal/cli";
+import { run as runGoal } from "../../features/goal/cli";
 
 export type GoalStatus = "idle" | "loading" | "success" | "error";
 

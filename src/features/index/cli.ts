@@ -1,10 +1,7 @@
 import { relative, resolve } from "node:path";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -63,7 +60,7 @@ SDK Usage:
 
 export const indexUsage = {
 	cli: "nooa index [subcommand] [flags]",
-	sdk: "await index.run({ action: \"repo\" })",
+	sdk: 'await index.run({ action: "repo" })',
 	tui: "IndexConsole()",
 };
 
@@ -91,8 +88,14 @@ export const indexExitCodes = [
 ];
 
 export const indexExamples = [
-	{ input: "nooa index repo", output: "Index all TypeScript and Markdown files in the repository." },
-	{ input: "nooa index file src/index.ts", output: "Index the specific file 'src/index.ts'." },
+	{
+		input: "nooa index repo",
+		output: "Index all TypeScript and Markdown files in the repository.",
+	},
+	{
+		input: "nooa index file src/index.ts",
+		output: "Index the specific file 'src/index.ts'.",
+	},
 ];
 
 export interface IndexRunInput {
@@ -186,7 +189,11 @@ const indexBuilder = new CommandBuilder<IndexRunInput, IndexRunResult>()
 
 		switch (output.mode) {
 			case "repo": {
-				const result = output.result as { files: number; totalChunks: number; traceId: string };
+				const result = output.result as {
+					files: number;
+					totalChunks: number;
+					traceId: string;
+				};
 				console.log("🔍 Indexing repository (TypeScript/Markdown)...");
 				console.log("✅ Indexing complete!");
 				console.log(`   Files: ${result.files}`);

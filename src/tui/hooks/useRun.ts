@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runPipeline } from "../../features/run/cli";
-import type { RunRunInput, RunRunResult } from "../../features/run/cli";
 import type { SdkError } from "../../core/types";
+import type { RunRunInput, RunRunResult } from "../../features/run/cli";
+import { run as runPipeline } from "../../features/run/cli";
 
 export type RunStatus = "idle" | "loading" | "success" | "error";
 

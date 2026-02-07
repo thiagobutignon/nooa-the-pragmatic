@@ -52,7 +52,9 @@ export class OllamaProvider implements AiProvider {
 		};
 	}
 
-	async *stream(request: AiRequest): AsyncGenerator<AiStreamChunk, AiResponse, void> {
+	async *stream(
+		request: AiRequest,
+	): AsyncGenerator<AiStreamChunk, AiResponse, void> {
 		const endpoint = process.env.NOOA_AI_ENDPOINT || "http://localhost:11434";
 		const model =
 			request.model || process.env.NOOA_AI_MODEL || "qwen2.5-coder:14b";
@@ -106,8 +108,7 @@ export class OllamaProvider implements AiProvider {
 					usage = {
 						promptTokens: data.prompt_eval_count || 0,
 						completionTokens: data.eval_count || 0,
-						totalTokens:
-							(data.prompt_eval_count || 0) + (data.eval_count || 0),
+						totalTokens: (data.prompt_eval_count || 0) + (data.eval_count || 0),
 					};
 					return {
 						content,

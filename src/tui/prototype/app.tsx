@@ -1,26 +1,27 @@
 #!/usr/bin/env bun
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { mkdir, readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
 import Gradient from "ink-gradient";
 import TextInput from "ink-text-input";
-import { resolve } from "node:path";
-import { mkdir, readFile } from "node:fs/promises";
+import type React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { telemetry } from "../../core/telemetry";
+import { reconstituteState, type WorkerView } from "../shared/state";
 import { runAiStream } from "./ai-runner";
-import { buildSystemPrompt, type AgentManifest } from "./system-prompt";
 import { runNooaCommand } from "./command-runner";
-import { buildScrollState } from "./scroll";
+import {
+	appendLogLine,
+	type LogEvent,
+	resolveDefaultLogPath,
+} from "./log-writer";
 import {
 	disableMouseTracking,
 	enableMouseTracking,
 	parseMouseScroll,
 } from "./mouse";
-import {
-	appendLogLine,
-	resolveDefaultLogPath,
-	type LogEvent,
-} from "./log-writer";
-import { telemetry } from "../../core/telemetry";
-import { reconstituteState, type WorkerView } from "../shared/state";
+import { buildScrollState } from "./scroll";
+import { type AgentManifest, buildSystemPrompt } from "./system-prompt";
 
 const theme = {
 	background: "black",
@@ -80,12 +81,19 @@ function Panel({
 	);
 }
 
-function WorkflowStatus({ worker }: { worker: WorkerView }) {
-	const color = worker.status === "active" ? theme.accent : worker.status === "failed" ? theme.warn : theme.muted;
+function _WorkflowStatus({ worker }: { worker: WorkerView }) {
+	const color =
+		worker.status === "active"
+			? theme.accent
+			: worker.status === "failed"
+				? theme.warn
+				: theme.muted;
 	return (
 		<Box flexDirection="column">
 			<Box justifyContent="space-between">
-				<Text bold color={color}>{worker.status.toUpperCase()}</Text>
+				<Text bold color={color}>
+					{worker.status.toUpperCase()}
+				</Text>
 				<Text dimColor>{worker.id.slice(0, 6)}</Text>
 			</Box>
 			<Text>Goal: {worker.goal}</Text>
@@ -178,7 +186,9 @@ export function PrototypeApp() {
 	]);
 	const [logs, setLogs] = useState<string[]>([]);
 	const logFileRef = useRef<string | null>(null);
-	const scrollStateRef = useRef(buildScrollState({ totalLines: 0, viewportLines: 10 }));
+	const scrollStateRef = useRef(
+		buildScrollState({ totalLines: 0, viewportLines: 10 }),
+	);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [isStreaming, setIsStreaming] = useState(false);
 	const resizeTimer = useRef<Timer | null>(null);
@@ -188,14 +198,16 @@ export function PrototypeApp() {
 		rows: stdout?.rows ?? 24,
 	}));
 	// Workflow State
-	const [workers, setWorkers] = useState<WorkerView[]>([]);
+	const [_workers, setWorkers] = useState<WorkerView[]>([]);
 
 	useEffect(() => {
 		const refresh = () => {
 			const rows = telemetry.list({ limit: 100 });
 			const nextWorkers = reconstituteState(rows);
 			// Filter for recent/active
-			const active = nextWorkers.filter(w => w.status === "active" || (Date.now() - w.lastEventTime < 10000));
+			const active = nextWorkers.filter(
+				(w) => w.status === "active" || Date.now() - w.lastEventTime < 10000,
+			);
 			setWorkers(active.reverse());
 		};
 		const timer = setInterval(refresh, 500);
@@ -217,7 +229,7 @@ export function PrototypeApp() {
 		appendLogLine(logPath, {
 			type: "session.start",
 			message: "tui prototype started",
-		}).catch(() => { });
+		}).catch(() => {});
 
 		void (async () => {
 			try {
@@ -249,7 +261,9 @@ export function PrototypeApp() {
 					columns: stdout?.columns ?? 80,
 					rows: stdout?.rows ?? 24,
 				});
-				scrollStateRef.current.setViewportLines(Math.max(6, (stdout?.rows ?? 24) - 8));
+				scrollStateRef.current.setViewportLines(
+					Math.max(6, (stdout?.rows ?? 24) - 8),
+				);
 				setScrollOffset(scrollStateRef.current.getOffset());
 				clearScreen();
 			}, 120);
@@ -266,7 +280,7 @@ export function PrototypeApp() {
 				clearTimeout(resizeTimer.current);
 			}
 		};
-	}, [stdout]);
+	}, [stdout, clearScreen]);
 
 	useInput((input, key) => {
 		if (key.ctrl && input === "c") exit();
@@ -323,7 +337,7 @@ export function PrototypeApp() {
 		setLogs((prev) => [...prev, line].slice(-200));
 		const logPath = logFileRef.current;
 		if (logPath && event) {
-			appendLogLine(logPath, event).catch(() => { });
+			appendLogLine(logPath, event).catch(() => {});
 		}
 	};
 
@@ -359,13 +373,18 @@ export function PrototypeApp() {
 
 		if (isCommand) {
 			// Robustly strip '!nooa' prefix
-			let commandText = prompt.startsWith("!nooa") ? prompt.slice(5).trim() : prompt;
+			let commandText = prompt.startsWith("!nooa")
+				? prompt.slice(5).trim()
+				: prompt;
 			// Also strip 'nooa' if user typed '!nooa nooa' or auto-execute added it redundantly
 			if (commandText.startsWith("nooa ")) {
 				commandText = commandText.slice(5).trim();
 			}
 
-			appendLog(`running: ${commandText}`, { type: "info", message: `running: ${commandText}` });
+			appendLog(`running: ${commandText}`, {
+				type: "info",
+				message: `running: ${commandText}`,
+			});
 
 			const repoRoot = resolve(import.meta.dir, "../../..");
 			streamRef.current?.stop();
@@ -424,16 +443,16 @@ export function PrototypeApp() {
 						prev.map((message) =>
 							message.id === assistantId
 								? {
-									...message,
-									text: `${message.text}${chunk}`,
-								}
+										...message,
+										text: `${message.text}${chunk}`,
+									}
 								: message,
 						),
 					);
 				},
 				onStderr: (chunk) => {
 					const next = chunk.trim();
-					if (!next || next.startsWith("{\"level\"")) return;
+					if (!next || next.startsWith('{"level"')) return;
 					if (!next) return;
 					stderrBuffer.current = `${stderrBuffer.current}\n${next}`.trim();
 					appendLog(next, { type: "stderr", message: next });
@@ -450,12 +469,15 @@ export function PrototypeApp() {
 					// Auto-Execute Logic
 					const fullText = assistantBuffer.current;
 					const bashMatch = fullText.match(/```(?:bash|sh)\n([\s\S]*?)```/);
-					if (bashMatch && bashMatch[1]) {
+					if (bashMatch?.[1]) {
 						const commandToRun = bashMatch[1].trim();
-						// Strip leading 'nooa' if present, as runNooaCommand adds 'index.ts' 
+						// Strip leading 'nooa' if present, as runNooaCommand adds 'index.ts'
 						// and we want 'index.ts <subcommand> ...'
 						const cleanCommand = commandToRun.replace(/^nooa\s+/, "");
-						appendLog(`Auto-executing: ${cleanCommand.slice(0, 40)}...`, { type: "info", message: "Auto-executing detected block" });
+						appendLog(`Auto-executing: ${cleanCommand.slice(0, 40)}...`, {
+							type: "info",
+							message: "Auto-executing detected block",
+						});
 						setTimeout(() => handleSubmit(`!nooa ${cleanCommand}`), 100);
 					}
 
@@ -477,7 +499,12 @@ export function PrototypeApp() {
 	};
 
 	return (
-		<Box flexDirection="column" paddingX={1} paddingY={0} height={viewport.rows}>
+		<Box
+			flexDirection="column"
+			paddingX={1}
+			paddingY={0}
+			height={viewport.rows}
+		>
 			<Box flexDirection="column" flexShrink={0} marginTop={0}>
 				<Box justifyContent="space-between">
 					<Gradient name="atlas">
@@ -504,16 +531,12 @@ export function PrototypeApp() {
 						{chat}
 						<Box marginTop={1}>
 							<Text color={theme.muted}>
-								{isStreaming
-									? "Streaming…"
-									: "Pronto para o próximo comando."}
+								{isStreaming ? "Streaming…" : "Pronto para o próximo comando."}
 							</Text>
 						</Box>
 					</Panel>
 					<Box marginTop={1}>
-						<Panel title="Logs">
-							{logPanel}
-						</Panel>
+						<Panel title="Logs">{logPanel}</Panel>
 					</Box>
 				</Box>
 
@@ -542,7 +565,9 @@ export function PrototypeApp() {
 }
 
 if (!process.stdin.isTTY || !process.stdout.isTTY) {
-	console.error("Error: NOOA TUI requires a TTY. Run in an interactive terminal.");
+	console.error(
+		"Error: NOOA TUI requires a TTY. Run in an interactive terminal.",
+	);
 	process.exit(1);
 }
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
-import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
+import type React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const palette = {
 	amber: "#FFF",
@@ -109,7 +110,7 @@ export function Prototype2App() {
 			stdout?.off("resize", handleResize);
 			if (resizeTimer.current) clearTimeout(resizeTimer.current);
 		};
-	}, [stdout]);
+	}, [stdout, clearScreen]);
 
 	useInput((input, key) => {
 		if (key.escape || input === "q") exit();
@@ -122,7 +123,11 @@ export function Prototype2App() {
 	const chatBody = useMemo(
 		() =>
 			messages.map((msg, index) => (
-				<Box key={`${msg.role}-${index}`} flexDirection="column" marginBottom={1}>
+				<Box
+					key={`${msg.role}-${index}`}
+					flexDirection="column"
+					marginBottom={1}
+				>
 					<Text color={palette.amber}>
 						{msg.role === "user" ? "USER" : "ASSIST"} ▸
 					</Text>
@@ -168,7 +173,7 @@ export function Prototype2App() {
 			<Box
 				height={footerHeight}
 				// borderStyle="double"
-				backgroundColor={'#373b41'}
+				backgroundColor={"#373b41"}
 				borderColor={palette.dim}
 				paddingX={1}
 				justifyContent="space-between"
@@ -179,16 +184,16 @@ export function Prototype2App() {
 					Ask NOOA to plan the next refactor...
 				</Text> */}
 				<input placeholder="Ask NOOA to plan the next refactor..."></input>
-				<Text color={palette.dim}>
-					{statusLine.join("  •  ")}
-				</Text>
+				<Text color={palette.dim}>{statusLine.join("  •  ")}</Text>
 			</Box>
 		</Box>
 	);
 }
 
 if (!process.stdin.isTTY || !process.stdout.isTTY) {
-	console.error("Error: NOOA TUI requires a TTY. Run in an interactive terminal.");
+	console.error(
+		"Error: NOOA TUI requires a TTY. Run in an interactive terminal.",
+	);
 	process.exit(1);
 }
 

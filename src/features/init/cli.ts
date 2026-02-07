@@ -1,10 +1,7 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
-import {
-	handleCommandError,
-	renderJsonOrWrite
-} from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
 import * as readline from "node:readline/promises";
+import { buildStandardOptions } from "../../core/cli-flags";
+import { handleCommandError, renderJsonOrWrite } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executeInit } from "./execute";
@@ -54,7 +51,7 @@ SDK Usage:
 
 export const initUsage = {
 	cli: "nooa init [flags]",
-	sdk: "await init.run({ name: \"NOOA\" })",
+	sdk: 'await init.run({ name: "NOOA" })',
 	tui: "InitConsole()",
 };
 
@@ -64,7 +61,7 @@ export const initSchema = {
 	"user-name": { type: "string", required: false },
 	"user-role": { type: "string", required: false },
 	"working-style": { type: "string", required: false },
-	"architecture": { type: "string", required: false },
+	architecture: { type: "string", required: false },
 	root: { type: "string", required: false },
 	force: { type: "boolean", required: false },
 	"dry-run": { type: "boolean", required: false },
@@ -94,8 +91,14 @@ export const initExitCodes = [
 ];
 
 export const initExamples = [
-	{ input: "nooa init", output: "Initialize the NOOA agent identity and configuration." },
-	{ input: "nooa init --force", output: "Force re-initialize the agent, overwriting existing config." },
+	{
+		input: "nooa init",
+		output: "Initialize the NOOA agent identity and configuration.",
+	},
+	{
+		input: "nooa init --force",
+		output: "Force re-initialize the agent, overwriting existing config.",
+	},
 ];
 
 export interface InitRunInput {
@@ -182,7 +185,7 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 			"user-name": { type: "string" },
 			"user-role": { type: "string" },
 			"working-style": { type: "string" },
-			"architecture": { type: "string" },
+			architecture: { type: "string" },
 			root: { type: "string" },
 			force: { type: "boolean" },
 			"dry-run": { type: "boolean" },
@@ -194,12 +197,15 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 		let name = typeof values.name === "string" ? values.name : undefined;
 		let vibe = typeof values.vibe === "string" ? values.vibe : undefined;
 		let userName =
-			typeof values["user-name"] === "string"
-				? values["user-name"]
+			typeof values["user-name"] === "string" ? values["user-name"] : undefined;
+		let userRole =
+			typeof values["user-role"] === "string" ? values["user-role"] : undefined;
+		let workingStyle =
+			typeof values["working-style"] === "string"
+				? values["working-style"]
 				: undefined;
-		let userRole = typeof values["user-role"] === "string" ? values["user-role"] : undefined;
-		let workingStyle = typeof values["working-style"] === "string" ? values["working-style"] : undefined;
-		let architecture = typeof values.architecture === "string" ? values.architecture : undefined;
+		let architecture =
+			typeof values.architecture === "string" ? values.architecture : undefined;
 
 		const nonInteractive = Boolean(values["non-interactive"]);
 		if (!nonInteractive) {
@@ -212,9 +218,8 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 
 			if (!name) {
 				name =
-					(await rl.question(
-						"What should I be called? (default: NOOA): ",
-					)) || "NOOA";
+					(await rl.question("What should I be called? (default: NOOA): ")) ||
+					"NOOA";
 			}
 
 			if (!vibe) {
@@ -232,13 +237,22 @@ const initBuilder = new CommandBuilder<InitRunInput, InitRunResult>()
 			}
 
 			if (!userRole) {
-				userRole = (await rl.question("What is your role? (default: Lead Developer): ")) || "Lead Developer";
+				userRole =
+					(await rl.question(
+						"What is your role? (default: Lead Developer): ",
+					)) || "Lead Developer";
 			}
 			if (!workingStyle) {
-				workingStyle = (await rl.question("What is your working style? (e.g. TDD, Prototype-First) (default: TDD): ")) || "TDD";
+				workingStyle =
+					(await rl.question(
+						"What is your working style? (e.g. TDD, Prototype-First) (default: TDD): ",
+					)) || "TDD";
 			}
 			if (!architecture) {
-				architecture = (await rl.question("Preferred architecture? (e.g. Clean Arch, Vertical Slice) (default: Vertical Slice): ")) || "Vertical Slice";
+				architecture =
+					(await rl.question(
+						"Preferred architecture? (e.g. Clean Arch, Vertical Slice) (default: Vertical Slice): ",
+					)) || "Vertical Slice";
 			}
 
 			rl.close();

@@ -51,7 +51,9 @@ export function renderChangelogXml(changelog: AgentChangelogEntry[]) {
 		.map(
 			(entry) =>
 				`    <version number="${entry.version}">` +
-				entry.changes.map((change) => `\n      <change>${change}</change>`).join("") +
+				entry.changes
+					.map((change) => `\n      <change>${change}</change>`)
+					.join("") +
 				"\n    </version>",
 		)
 		.join("\n");

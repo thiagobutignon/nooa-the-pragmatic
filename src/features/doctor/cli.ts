@@ -1,14 +1,10 @@
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
-
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+import type { EventBus } from "../../core/event-bus";
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import type { EventBus } from "../../core/event-bus";
 import { executeDoctorCheck } from "./execute";
 
 export const doctorMeta: AgentDocMeta = {
@@ -73,8 +69,14 @@ export const doctorExitCodes = [
 ];
 
 export const doctorExamples = [
-	{ input: "nooa doctor", output: "Check the health of the development environment." },
-	{ input: "nooa doctor --json", output: "Run environment check and output JSON report." },
+	{
+		input: "nooa doctor",
+		output: "Check the health of the development environment.",
+	},
+	{
+		input: "nooa doctor --json",
+		output: "Run environment check and output JSON report.",
+	},
 ];
 
 export interface DoctorRunInput {

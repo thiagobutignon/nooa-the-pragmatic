@@ -1,5 +1,5 @@
-import { describe, expect, test, spyOn, mock } from "bun:test";
-import { Logger, createLogger, createTraceId, logger } from "./logger";
+import { describe, expect, spyOn, test } from "bun:test";
+import { createLogger, createTraceId, Logger } from "./logger";
 
 describe("Logger", () => {
 	test("createTraceId returns string", () => {
@@ -31,7 +31,7 @@ describe("Logger", () => {
 
 	test("levels", () => {
 		const lines: string[] = [];
-		const log = new Logger(l => lines.push(l));
+		const log = new Logger((l) => lines.push(l));
 
 		log.debug("d");
 		log.warn("w");
@@ -46,7 +46,7 @@ describe("Logger", () => {
 
 	test("async context", () => {
 		const lines: string[] = [];
-		const log = new Logger(l => lines.push(l));
+		const log = new Logger((l) => lines.push(l));
 
 		log.runWithContext({ trace_id: "t1" }, () => {
 			log.info("in_context");
@@ -64,7 +64,7 @@ describe("Logger", () => {
 
 	test("setContext / clearContext (async)", () => {
 		const lines: string[] = [];
-		const log = new Logger(l => lines.push(l));
+		const log = new Logger((l) => lines.push(l));
 
 		log.runWithContext({}, () => {
 			log.setContext({ user: "u1" });
@@ -79,7 +79,7 @@ describe("Logger", () => {
 
 	test("sync context fallback", () => {
 		const lines: string[] = [];
-		const log = new Logger(l => lines.push(l), false); // Disable async storage
+		const log = new Logger((l) => lines.push(l), false); // Disable async storage
 
 		log.setContext({ trace_id: "s1" });
 		log.info("sync");
@@ -102,10 +102,10 @@ describe("Logger", () => {
 		const l1 = createLogger();
 		expect(l1).toBeInstanceOf(Logger);
 
-		const l2 = createLogger(() => { });
+		const l2 = createLogger(() => {});
 		expect(l2).toBeInstanceOf(Logger);
 
-		const l3 = createLogger({ writer: () => { }, useAsyncStorage: false });
+		const l3 = createLogger({ writer: () => {}, useAsyncStorage: false });
 		expect(l3).toBeInstanceOf(Logger);
 	});
 

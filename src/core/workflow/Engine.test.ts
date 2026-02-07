@@ -6,9 +6,7 @@ describe("WorkflowEngine", () => {
 	it("fails when spec is missing", async () => {
 		const engine = new WorkflowEngine();
 		const result = await engine.run(
-			[
-				{ id: "spec", gate: new SpecGate(), action: async () => null },
-			],
+			[{ id: "spec", gate: new SpecGate(), action: async () => null }],
 			{
 				traceId: "t",
 				command: "missing-spec-command",

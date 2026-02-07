@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { run as runAct } from "../../features/act/cli";
-import type { ActRunInput, ActRunResult } from "../../features/act/cli";
 import type { SdkError } from "../../core/types";
+import type { ActRunInput, ActRunResult } from "../../features/act/cli";
+import { run as runAct } from "../../features/act/cli";
 
 export type ActStatus = "idle" | "loading" | "success" | "error";
 

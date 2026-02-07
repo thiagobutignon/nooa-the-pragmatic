@@ -1,12 +1,9 @@
+import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { Database } from "bun:sqlite";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import { logger } from "../../core/logger";
 import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";
@@ -49,7 +46,7 @@ SDK Usage:
 
 export const contextUsage = {
 	cli: "nooa context <file|symbol> [flags]",
-	sdk: "await context.run({ target: \"src/index.ts\" })",
+	sdk: 'await context.run({ target: "src/index.ts" })',
 	tui: "ContextConsole()",
 };
 
@@ -80,8 +77,14 @@ export const contextExitCodes = [
 ];
 
 export const contextExamples = [
-	{ input: "nooa context src/index.ts", output: "Generate a context pack for 'src/index.ts'." },
-	{ input: "nooa context SymbolName --json", output: "Generate context for 'SymbolName' and output as JSON." },
+	{
+		input: "nooa context src/index.ts",
+		output: "Generate a context pack for 'src/index.ts'.",
+	},
+	{
+		input: "nooa context SymbolName --json",
+		output: "Generate context for 'SymbolName' and output as JSON.",
+	},
 ];
 
 export interface ContextRunInput {
@@ -121,8 +124,7 @@ export async function run(
 			try {
 				mcpResources = await getMcpResourcesForContext(db);
 			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : String(error);
+				const message = error instanceof Error ? error.message : String(error);
 				logger.warn("MCP resources unavailable", { error: message });
 				mcpResources = [];
 			} finally {
@@ -182,7 +184,8 @@ const contextBuilder = new CommandBuilder<ContextRunInput, ContextRunResult>()
 		console.log(`Recent Commits: ${output.recentCommits.length}`);
 		if (output.mcpResources) {
 			console.log(
-				`MCP Resources: ${output.mcpResources.map((r) => r.name).join(", ") || "none"
+				`MCP Resources: ${
+					output.mcpResources.map((r) => r.name).join(", ") || "none"
 				}`,
 			);
 		}

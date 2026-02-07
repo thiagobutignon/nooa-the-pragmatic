@@ -1,10 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
-import {
-	handleCommandError,
-	renderJson
-} from "../../core/cli-output";
+import { handleCommandError, renderJson } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executeDiff } from "./diff";
@@ -57,7 +54,7 @@ SDK Usage:
 
 export const codeUsage = {
 	cli: "nooa code <subcommand> [args] [flags]",
-	sdk: "await code.run({ action: \"write\", path: \"app.ts\", content: \"...\" })",
+	sdk: 'await code.run({ action: "write", path: "app.ts", content: "..." })',
 	tui: "CodeConsole()",
 };
 
@@ -88,7 +85,10 @@ export const codeOutputFields = [
 export const codeErrors = [
 	{ code: "code.missing_action", message: "Action is required." },
 	{ code: "code.missing_path", message: "Destination path is required." },
-	{ code: "code.missing_input", message: "Missing input. Use --from or stdin." },
+	{
+		code: "code.missing_input",
+		message: "Missing input. Use --from or stdin.",
+	},
 	{
 		code: "code.missing_patch_input",
 		message: "Missing patch input. Use --patch-from or stdin.",
@@ -115,12 +115,27 @@ export const codeExitCodes = [
 ];
 
 export const codeExamples = [
-	{ input: "nooa code write app.ts --from template.ts", output: "Write the content of 'template.ts' to 'app.ts'." },
-	{ input: "nooa code patch app.ts --patch-from fix.patch", output: "Apply the unified diff from 'fix.patch' to 'app.ts'." },
-	{ input: "nooa code diff src/", output: "Show the git diff for the 'src/' directory." },
+	{
+		input: "nooa code write app.ts --from template.ts",
+		output: "Write the content of 'template.ts' to 'app.ts'.",
+	},
+	{
+		input: "nooa code patch app.ts --patch-from fix.patch",
+		output: "Apply the unified diff from 'fix.patch' to 'app.ts'.",
+	},
+	{
+		input: "nooa code diff src/",
+		output: "Show the git diff for the 'src/' directory.",
+	},
 ];
 
-export type CodeAction = "write" | "patch" | "diff" | "format" | "refactor" | "help";
+export type CodeAction =
+	| "write"
+	| "patch"
+	| "diff"
+	| "format"
+	| "refactor"
+	| "help";
 
 export interface CodeRunInput {
 	action?: CodeAction;
@@ -152,7 +167,10 @@ export async function run(
 	const action = input.action;
 
 	if (!action) {
-		return { ok: false, error: sdkError("code.missing_action", "Action is required.") };
+		return {
+			ok: false,
+			error: sdkError("code.missing_action", "Action is required."),
+		};
 	}
 
 	if (!["write", "patch", "diff", "format", "refactor"].includes(action)) {
@@ -168,7 +186,10 @@ export async function run(
 		if (!input.path) {
 			return {
 				ok: false,
-				error: sdkError("code.format_missing_path", "Path required for format."),
+				error: sdkError(
+					"code.format_missing_path",
+					"Path required for format.",
+				),
 			};
 		}
 		const output = await executeFormat(input.path);
@@ -261,7 +282,10 @@ export async function run(
 		if (!content) {
 			return {
 				ok: false,
-				error: sdkError("code.missing_input", "Missing input. Use --from or stdin."),
+				error: sdkError(
+					"code.missing_input",
+					"Missing input. Use --from or stdin.",
+				),
 			};
 		}
 
@@ -320,7 +344,9 @@ const codeBuilder = new CommandBuilder<CodeRunInput, CodeRunResult>()
 			path: positionals[2],
 			instruction: positionals[3], // Only for refactor
 			from: values.from as string | undefined,
-			content: (values.content as string | undefined) ?? (action === "write" ? positionals[3] : undefined),
+			content:
+				(values.content as string | undefined) ??
+				(action === "write" ? positionals[3] : undefined),
 			overwrite: Boolean(values.overwrite),
 			"dry-run": Boolean(values["dry-run"]),
 			patch: Boolean(values.patch),

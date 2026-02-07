@@ -1,17 +1,22 @@
 import { join } from "node:path";
-import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
 	renderJson,
-	setExitCode
+	setExitCode,
 } from "../../core/cli-output";
+import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import { createTraceId } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { PromptEngine } from "./engine";
-import { createPrompt, deletePrompt, editPrompt, publishPrompt } from "./service";
+import {
+	createPrompt,
+	deletePrompt,
+	editPrompt,
+	publishPrompt,
+} from "./service";
 
 export const promptMeta: AgentDocMeta = {
 	name: "prompt",
@@ -80,7 +85,7 @@ SDK Usage:
 
 export const promptUsage = {
 	cli: "nooa prompt <list|view|validate|render|create|edit|delete|publish> [name] [flags]",
-	sdk: "await prompt.run({ action: \"list\" })",
+	sdk: 'await prompt.run({ action: "list" })',
 	tui: "PromptConsole()",
 };
 
@@ -130,8 +135,14 @@ export const promptExitCodes = [
 
 export const promptExamples = [
 	{ input: "nooa prompt list", output: "List all available prompt templates." },
-	{ input: "nooa prompt view review", output: "View details and body of the 'review' prompt." },
-	{ input: "nooa prompt publish review --level patch --note note", output: "Publish a patch version of the 'review' prompt." },
+	{
+		input: "nooa prompt view review",
+		output: "View details and body of the 'review' prompt.",
+	},
+	{
+		input: "nooa prompt publish review --level patch --note note",
+		output: "Publish a patch version of the 'review' prompt.",
+	},
 ];
 
 export interface PromptRunInput {
@@ -298,7 +309,10 @@ export async function run(
 					),
 					note,
 				});
-				return { ok: true, data: { action, name: input.name, version, traceId } };
+				return {
+					ok: true,
+					data: { action, name: input.name, version, traceId },
+				};
 			}
 			case "list": {
 				const prompts = await engine.listPrompts();
@@ -356,7 +370,10 @@ export async function run(
 					}
 				}
 				const rendered = await engine.renderPrompt(prompt, vars);
-				return { ok: true, data: { action, name: input.name, rendered, traceId } };
+				return {
+					ok: true,
+					data: { action, name: input.name, rendered, traceId },
+				};
 			}
 			default:
 				return {
@@ -454,7 +471,10 @@ const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
 				break;
 			case "view":
 				if (output.prompt && typeof output.prompt === "object") {
-					const prompt = output.prompt as { metadata?: { name?: string; version?: string }; body?: string };
+					const prompt = output.prompt as {
+						metadata?: { name?: string; version?: string };
+						body?: string;
+					};
 					console.log(
 						`--- ${prompt.metadata?.name ?? output.name} (v${prompt.metadata?.version ?? ""}) ---`,
 					);
@@ -466,7 +486,9 @@ const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
 				if (Array.isArray(output.results)) {
 					console.log("Validation Results:");
 					for (const result of output.results) {
-						console.log(`- ${result.name}: ${result.valid ? "valid" : "invalid"}`);
+						console.log(
+							`- ${result.name}: ${result.valid ? "valid" : "invalid"}`,
+						);
 					}
 				} else if (output.name) {
 					console.log(`Prompt '${output.name}' is valid.`);
@@ -514,7 +536,10 @@ const promptBuilder = new CommandBuilder<PromptRunInput, PromptRunResult>()
 	.telemetry({
 		eventPrefix: "prompt",
 		successMetadata: (input) => ({ action: input.action, name: input.name }),
-		failureMetadata: (input, error) => ({ action: input.action, error: error.message }),
+		failureMetadata: (input, error) => ({
+			action: input.action,
+			error: error.message,
+		}),
 	});
 
 export const promptAgentDoc = promptBuilder.buildAgentDoc(false);
