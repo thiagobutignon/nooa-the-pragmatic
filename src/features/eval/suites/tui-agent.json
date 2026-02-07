@@ -20,7 +20,7 @@
             "assertions": [
                 {
                     "type": "contains",
-                    "value": "nooa act"
+                    "value": "nooa code"
                 },
                 {
                     "type": "contains",
