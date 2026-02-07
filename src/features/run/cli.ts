@@ -5,7 +5,7 @@ import {
 	renderJson,
 	setExitCode
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executePipeline } from "./executor";
@@ -95,11 +95,11 @@ export const runExitCodes = [
 export const runExamples = [
 	{
 		input: "nooa run -- code write foo.ts -- commit -m \"feat: foo\"",
-		output: "Pipeline executed",
+		output: "Run a pipeline to write a file and then commit it.",
 	},
 	{
 		input: "nooa run \"code write foo.ts\" \"commit -m 'feat: foo'\"",
-		output: "Pipeline executed",
+		output: "Run a pipeline using quoted strings (alternative syntax).",
 	},
 ];
 

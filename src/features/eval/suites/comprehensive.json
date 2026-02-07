@@ -1,0 +1,875 @@
+{
+  "name": "comprehensive",
+  "prompt": "tui-agent",
+  "cases": [
+    {
+      "id": "act-0",
+      "vars": {},
+      "input_text": "User request: \"Check the status of the project using the autonomous agent.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa act"
+        }
+      ]
+    },
+    {
+      "id": "act-1",
+      "vars": {},
+      "input_text": "User request: \"Run CI and automatically fix any errors found.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa act"
+        }
+      ]
+    },
+    {
+      "id": "ai-0",
+      "vars": {},
+      "input_text": "User request: \"AI response text\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ai"
+        }
+      ]
+    },
+    {
+      "id": "ai-1",
+      "vars": {},
+      "input_text": "User request: \"{ ... }\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ai"
+        }
+      ]
+    },
+    {
+      "id": "ask-0",
+      "vars": {},
+      "input_text": "User request: \"Search results\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ask"
+        }
+      ]
+    },
+    {
+      "id": "ask-1",
+      "vars": {},
+      "input_text": "User request: \"JSON results\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ask"
+        }
+      ]
+    },
+    {
+      "id": "check-0",
+      "vars": {},
+      "input_text": "User request: \"Policy check\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa check"
+        }
+      ]
+    },
+    {
+      "id": "check-1",
+      "vars": {},
+      "input_text": "User request: \"JSON policy report\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa check"
+        }
+      ]
+    },
+    {
+      "id": "check-2",
+      "vars": {},
+      "input_text": "User request: \"Guardrail report\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa check"
+        }
+      ]
+    },
+    {
+      "id": "ci-0",
+      "vars": {},
+      "input_text": "User request: \"Runs CI\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ci"
+        }
+      ]
+    },
+    {
+      "id": "ci-1",
+      "vars": {},
+      "input_text": "User request: \"JSON report\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ci"
+        }
+      ]
+    },
+    {
+      "id": "code-0",
+      "vars": {},
+      "input_text": "User request: \"Writes file\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa code"
+        }
+      ]
+    },
+    {
+      "id": "code-1",
+      "vars": {},
+      "input_text": "User request: \"Patches file\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa code"
+        }
+      ]
+    },
+    {
+      "id": "code-2",
+      "vars": {},
+      "input_text": "User request: \"Git diff output\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa code"
+        }
+      ]
+    },
+    {
+      "id": "commit-0",
+      "vars": {},
+      "input_text": "User request: \"Commit\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa commit"
+        }
+      ]
+    },
+    {
+      "id": "commit-1",
+      "vars": {},
+      "input_text": "User request: \"Commit with allow-lazy\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa commit"
+        }
+      ]
+    },
+    {
+      "id": "context-0",
+      "vars": {},
+      "input_text": "User request: \"Context summary\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa context"
+        }
+      ]
+    },
+    {
+      "id": "context-1",
+      "vars": {},
+      "input_text": "User request: \"JSON output\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa context"
+        }
+      ]
+    },
+    {
+      "id": "cron-0",
+      "vars": {},
+      "input_text": "User request: \"List jobs\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa cron"
+        }
+      ]
+    },
+    {
+      "id": "cron-1",
+      "vars": {},
+      "input_text": "User request: \"Add job\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa cron"
+        }
+      ]
+    },
+    {
+      "id": "cron-2",
+      "vars": {},
+      "input_text": "User request: \"Remove job\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa cron"
+        }
+      ]
+    },
+    {
+      "id": "doctor-0",
+      "vars": {},
+      "input_text": "User request: \"Environment check\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa doctor"
+        }
+      ]
+    },
+    {
+      "id": "doctor-1",
+      "vars": {},
+      "input_text": "User request: \"JSON report\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa doctor"
+        }
+      ]
+    },
+    {
+      "id": "embed-0",
+      "vars": {},
+      "input_text": "User request: \"Embedding output\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa embed"
+        }
+      ]
+    },
+    {
+      "id": "embed-1",
+      "vars": {},
+      "input_text": "User request: \"Embedding output\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa embed"
+        }
+      ]
+    },
+    {
+      "id": "eval-0",
+      "vars": {},
+      "input_text": "User request: \"Run the standard evaluation suite for the review prompt.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa eval"
+        }
+      ]
+    },
+    {
+      "id": "eval-1",
+      "vars": {},
+      "input_text": "User request: \"Compare the latest review prompt evaluation against the standard suite.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa eval"
+        }
+      ]
+    },
+    {
+      "id": "fix-0",
+      "vars": {},
+      "input_text": "User request: \"Fix results\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa fix"
+        }
+      ]
+    },
+    {
+      "id": "fix-1",
+      "vars": {},
+      "input_text": "User request: \"Dry run\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa fix"
+        }
+      ]
+    },
+    {
+      "id": "goal-0",
+      "vars": {},
+      "input_text": "User request: \"Goal set\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa goal"
+        }
+      ]
+    },
+    {
+      "id": "goal-1",
+      "vars": {},
+      "input_text": "User request: \"Current goal\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa goal"
+        }
+      ]
+    },
+    {
+      "id": "guardrail-0",
+      "vars": {},
+      "input_text": "User request: \"Run guardrails\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa guardrail"
+        }
+      ]
+    },
+    {
+      "id": "guardrail-1",
+      "vars": {},
+      "input_text": "User request: \"List profiles\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa guardrail"
+        }
+      ]
+    },
+    {
+      "id": "identity-0",
+      "vars": {},
+      "input_text": "User request: \"Initialize the agent identity and artifacts.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa init"
+        }
+      ]
+    },
+    {
+      "id": "identity-1",
+      "vars": {},
+      "input_text": "User request: \"Force initialize identity, overwriting existing files.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa init"
+        }
+      ]
+    },
+    {
+      "id": "ignore-0",
+      "vars": {},
+      "input_text": "User request: \"Add pattern\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ignore"
+        }
+      ]
+    },
+    {
+      "id": "ignore-1",
+      "vars": {},
+      "input_text": "User request: \"List patterns\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa ignore"
+        }
+      ]
+    },
+    {
+      "id": "index-0",
+      "vars": {},
+      "input_text": "User request: \"Index repository\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa index"
+        }
+      ]
+    },
+    {
+      "id": "index-1",
+      "vars": {},
+      "input_text": "User request: \"Index file\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa index"
+        }
+      ]
+    },
+    {
+      "id": "init-0",
+      "vars": {},
+      "input_text": "User request: \"Identity initialized\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa init"
+        }
+      ]
+    },
+    {
+      "id": "init-1",
+      "vars": {},
+      "input_text": "User request: \"Overwrite identity\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa init"
+        }
+      ]
+    },
+    {
+      "id": "mcp-0",
+      "vars": {},
+      "input_text": "User request: \"List MCP servers\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa mcp"
+        }
+      ]
+    },
+    {
+      "id": "mcp-1",
+      "vars": {},
+      "input_text": "User request: \"Call tool\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa mcp"
+        }
+      ]
+    },
+    {
+      "id": "memory-0",
+      "vars": {},
+      "input_text": "User request: \"Added entry\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa memory"
+        }
+      ]
+    },
+    {
+      "id": "memory-1",
+      "vars": {},
+      "input_text": "User request: \"List entries\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa memory"
+        }
+      ]
+    },
+    {
+      "id": "memory-2",
+      "vars": {},
+      "input_text": "User request: \"Promoted entry\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa memory"
+        }
+      ]
+    },
+    {
+      "id": "message-0",
+      "vars": {},
+      "input_text": "User request: \"Message output\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa message"
+        }
+      ]
+    },
+    {
+      "id": "message-1",
+      "vars": {},
+      "input_text": "User request: \"System message\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa message"
+        }
+      ]
+    },
+    {
+      "id": "pr-0",
+      "vars": {},
+      "input_text": "User request: \"List PRs\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa pr"
+        }
+      ]
+    },
+    {
+      "id": "pr-1",
+      "vars": {},
+      "input_text": "User request: \"Review PR\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa pr"
+        }
+      ]
+    },
+    {
+      "id": "pr-2",
+      "vars": {},
+      "input_text": "User request: \"Create PR\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa pr"
+        }
+      ]
+    },
+    {
+      "id": "prompt-0",
+      "vars": {},
+      "input_text": "User request: \"List prompts\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa prompt"
+        }
+      ]
+    },
+    {
+      "id": "prompt-1",
+      "vars": {},
+      "input_text": "User request: \"Prompt details\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa prompt"
+        }
+      ]
+    },
+    {
+      "id": "prompt-2",
+      "vars": {},
+      "input_text": "User request: \"Publish prompt\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa prompt"
+        }
+      ]
+    },
+    {
+      "id": "push-0",
+      "vars": {},
+      "input_text": "User request: \"Pushes current branch\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa push"
+        }
+      ]
+    },
+    {
+      "id": "push-1",
+      "vars": {},
+      "input_text": "User request: \"Pushes without running tests\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa push"
+        }
+      ]
+    },
+    {
+      "id": "pwd-0",
+      "vars": {},
+      "input_text": "User request: \"/path/to/project\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa pwd"
+        }
+      ]
+    },
+    {
+      "id": "pwd-1",
+      "vars": {},
+      "input_text": "User request: \"{ \"cwd\": \"/path/to/project\" }\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa pwd"
+        }
+      ]
+    },
+    {
+      "id": "read-0",
+      "vars": {},
+      "input_text": "User request: \"File contents to stdout\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa read"
+        }
+      ]
+    },
+    {
+      "id": "read-1",
+      "vars": {},
+      "input_text": "User request: \"{ \"path\": \"package.json\", \"bytes\": 1234, \"content\": \"...\" }\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa read"
+        }
+      ]
+    },
+    {
+      "id": "replay-0",
+      "vars": {},
+      "input_text": "User request: \"Creates a node\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa replay"
+        }
+      ]
+    },
+    {
+      "id": "replay-1",
+      "vars": {},
+      "input_text": "User request: \"Creates an edge\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa replay"
+        }
+      ]
+    },
+    {
+      "id": "replay-2",
+      "vars": {},
+      "input_text": "User request: \"Creates a fix node\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa replay"
+        }
+      ]
+    },
+    {
+      "id": "replay-3",
+      "vars": {},
+      "input_text": "User request: \"{ ... }\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa replay"
+        }
+      ]
+    },
+    {
+      "id": "review-0",
+      "vars": {},
+      "input_text": "User request: \"Review output\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa review"
+        }
+      ]
+    },
+    {
+      "id": "review-1",
+      "vars": {},
+      "input_text": "User request: \"JSON review output\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa review"
+        }
+      ]
+    },
+    {
+      "id": "review-2",
+      "vars": {},
+      "input_text": "User request: \"Exit non-zero\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa review"
+        }
+      ]
+    },
+    {
+      "id": "run-0",
+      "vars": {},
+      "input_text": "User request: \"Pipeline executed\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa run"
+        }
+      ]
+    },
+    {
+      "id": "run-1",
+      "vars": {},
+      "input_text": "User request: \"Pipeline executed\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa run"
+        }
+      ]
+    },
+    {
+      "id": "scaffold-0",
+      "vars": {},
+      "input_text": "User request: \"Creates a feature\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa scaffold"
+        }
+      ]
+    },
+    {
+      "id": "scaffold-1",
+      "vars": {},
+      "input_text": "User request: \"Creates a prompt template\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa scaffold"
+        }
+      ]
+    },
+    {
+      "id": "search-0",
+      "vars": {},
+      "input_text": "User request: \"Matches list\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa search"
+        }
+      ]
+    },
+    {
+      "id": "search-1",
+      "vars": {},
+      "input_text": "User request: \"JSON results\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa search"
+        }
+      ]
+    },
+    {
+      "id": "skills-0",
+      "vars": {},
+      "input_text": "User request: \"List skills\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa skills"
+        }
+      ]
+    },
+    {
+      "id": "skills-1",
+      "vars": {},
+      "input_text": "User request: \"Create skill\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa skills"
+        }
+      ]
+    },
+    {
+      "id": "worktree-0",
+      "vars": {},
+      "input_text": "User request: \"Create a new isolated worktree for the login feature.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa worktree"
+        }
+      ]
+    },
+    {
+      "id": "worktree-1",
+      "vars": {},
+      "input_text": "User request: \"List all active worktrees in JSON format.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa worktree"
+        }
+      ]
+    },
+    {
+      "id": "worktree-2",
+      "vars": {},
+      "input_text": "User request: \"Remove the worktree for the login feature.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa worktree"
+        }
+      ]
+    },
+    {
+      "id": "worktree-3",
+      "vars": {},
+      "input_text": "User request: \"Prune stale worktrees.\"\n\nExecute the appropriate command.",
+      "assertions": [
+        {
+          "type": "contains",
+          "value": "nooa worktree"
+        }
+      ]
+    }
+  ]
+}

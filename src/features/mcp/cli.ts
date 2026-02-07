@@ -3,7 +3,7 @@ import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { dropSubcommandPositionals } from "./helpers";
@@ -88,8 +88,8 @@ export const mcpExitCodes = [
 ];
 
 export const mcpExamples = [
-	{ input: "nooa mcp list", output: "List MCP servers" },
-	{ input: "nooa mcp call filesystem read_file --path README.md", output: "Call tool" },
+	{ input: "nooa mcp list", output: "List all installed and available MCP servers." },
+	{ input: "nooa mcp call filesystem read_file --path README.md", output: "Call the 'read_file' tool from the 'filesystem' MCP server." },
 ];
 
 export interface McpRunInput {

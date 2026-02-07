@@ -92,7 +92,8 @@ export const actExitCodes = [
 ];
 
 export const actExamples = [
-    { input: "nooa act 'Check status'", output: "Orchestration result" },
+    { input: "nooa act 'Check status'", output: "Check the status of the project using the autonomous agent." },
+    { input: "nooa act 'Run CI and fix errors'", output: "Run CI and automatically fix any errors found." },
 ];
 
 export interface ActRunInput {

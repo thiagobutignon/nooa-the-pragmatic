@@ -28,10 +28,15 @@ Examples:
   nooa workflow run --gates spec,test --target my-command
 `;
 
+export const workflowExamples = [
+    { input: "nooa workflow run", output: "Run the full verification workflow (spec, test, dogfood)." },
+    { input: "nooa workflow run --gates spec,test", output: "Run only the 'spec' and 'test' gates." },
+];
+
 export const workflowSdkUsage = `
 SDK Usage:
-  import { runWorkflow } from "./execute";
-  const result = await runWorkflow({ gates: ["spec", "test"] });
+import { runWorkflow } from "./execute";
+const result = await runWorkflow({ gates: ["spec", "test"] });
 `;
 
 export const workflowUsage = {
@@ -96,6 +101,7 @@ const workflowBuilder = new CommandBuilder<WorkflowRunCliInput, WorkflowRunResul
     .help(workflowHelp)
     .sdkUsage(workflowSdkUsage)
     .outputFields(workflowOutputFields)
+    .examples(workflowExamples)
     .errors(workflowErrors)
     .exitCodes(workflowExitCodes)
     .options({
@@ -131,8 +137,8 @@ const workflowBuilder = new CommandBuilder<WorkflowRunCliInput, WorkflowRunResul
         if (output.ok) {
             console.error("✅ Workflow passed.");
         } else {
-            console.error(`❌ Workflow failed at step: ${output.failedStepId}`);
-            if (output.reason) console.error(`Reason: ${output.reason}`);
+            console.error(`❌ Workflow failed at step: ${output.failedStepId} `);
+            if (output.reason) console.error(`Reason: ${output.reason} `);
             process.exitCode = 1;
         }
     })

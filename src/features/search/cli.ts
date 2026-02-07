@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { hasRipgrep, runSearch, type SearchResult } from "./engine";
@@ -101,8 +101,8 @@ export const searchExitCodes = [
 ];
 
 export const searchExamples = [
-	{ input: 'nooa search "TODO" . --include "*.ts"', output: "Matches list" },
-	{ input: 'nooa search "class User" src --json', output: "JSON results" },
+	{ input: 'nooa search "TODO" . --include "*.ts"', output: "Search for 'TODO' in all TypeScript files in the current directory." },
+	{ input: 'nooa search "class User" src --json', output: "Find all occurrences of 'class User' in 'src/' and output as JSON." },
 ];
 
 function normalizeList(value: unknown): string[] | undefined {

@@ -6,7 +6,7 @@ import {
 	renderJson,
 	setExitCode
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { createTraceId } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -129,9 +129,9 @@ export const promptExitCodes = [
 ];
 
 export const promptExamples = [
-	{ input: "nooa prompt list", output: "List prompts" },
-	{ input: "nooa prompt view review", output: "Prompt details" },
-	{ input: "nooa prompt publish review --level patch --note note", output: "Publish prompt" },
+	{ input: "nooa prompt list", output: "List all available prompt templates." },
+	{ input: "nooa prompt view review", output: "View details and body of the 'review' prompt." },
+	{ input: "nooa prompt publish review --level patch --note note", output: "Publish a patch version of the 'review' prompt." },
 ];
 
 export interface PromptRunInput {
@@ -225,7 +225,7 @@ export async function run(
 					output: output as "json" | "markdown",
 					body,
 				});
-			return { ok: true, data: { action, name: input.name, traceId } };
+				return { ok: true, data: { action, name: input.name, traceId } };
 			}
 			case "edit": {
 				if (!input.name) {
@@ -249,7 +249,7 @@ export async function run(
 					};
 				}
 				await editPrompt({ templatesDir, name: input.name, patch });
-			return { ok: true, data: { action, name: input.name, traceId } };
+				return { ok: true, data: { action, name: input.name, traceId } };
 			}
 			case "delete": {
 				if (!input.name) {
@@ -259,7 +259,7 @@ export async function run(
 					};
 				}
 				await deletePrompt({ templatesDir, name: input.name });
-			return { ok: true, data: { action, name: input.name, traceId } };
+				return { ok: true, data: { action, name: input.name, traceId } };
 			}
 			case "publish": {
 				if (!input.name) {
@@ -298,11 +298,11 @@ export async function run(
 					),
 					note,
 				});
-			return { ok: true, data: { action, name: input.name, version, traceId } };
+				return { ok: true, data: { action, name: input.name, version, traceId } };
 			}
 			case "list": {
 				const prompts = await engine.listPrompts();
-			return { ok: true, data: { action, prompts, traceId } };
+				return { ok: true, data: { action, prompts, traceId } };
 			}
 			case "view":
 			case "validate": {
@@ -332,14 +332,14 @@ export async function run(
 
 				const prompt = await engine.loadPrompt(input.name as string);
 				if (action === "view") {
-				return { ok: true, data: { action, prompt, traceId } };
-			}
+					return { ok: true, data: { action, prompt, traceId } };
+				}
 
-			return {
-				ok: true,
-				data: { action, name: input.name, prompt: prompt.metadata, traceId },
-			};
-		}
+				return {
+					ok: true,
+					data: { action, name: input.name, prompt: prompt.metadata, traceId },
+				};
+			}
 			case "render": {
 				if (!input.name) {
 					return {
@@ -351,18 +351,20 @@ export async function run(
 				const vars: Record<string, string> = {};
 				for (const pair of input.vars || []) {
 					const [key, ...rest] = pair.split("=");
-					vars[key] = rest.join("=");
+					if (key) {
+						vars[key] = rest.join("=");
+					}
 				}
 				const rendered = await engine.renderPrompt(prompt, vars);
-			return { ok: true, data: { action, name: input.name, rendered, traceId } };
-		}
-		default:
-			return {
-				ok: false,
-				error: sdkError("prompt.missing_action", "Missing subcommand.", {
-					traceId,
-				}),
-			};
+				return { ok: true, data: { action, name: input.name, rendered, traceId } };
+			}
+			default:
+				return {
+					ok: false,
+					error: sdkError("prompt.missing_action", "Missing subcommand.", {
+						traceId,
+					}),
+				};
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

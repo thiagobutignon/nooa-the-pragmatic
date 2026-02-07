@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
@@ -98,8 +98,8 @@ export const ignoreExitCodes = [
 ];
 
 export const ignoreExamples = [
-	{ input: "nooa ignore add secret.ts", output: "Add pattern" },
-	{ input: "nooa ignore list", output: "List patterns" },
+	{ input: "nooa ignore add secret.ts", output: "Add 'secret.ts' to the ignore list." },
+	{ input: "nooa ignore list", output: "List all active ignore patterns." },
 ];
 
 export interface IgnoreRunInput {

@@ -10,6 +10,7 @@ import {
 import { PromptEngine } from "../prompt/engine";
 import type { Assertion, AssertionResult } from "./scorers/deterministic";
 import { DeterministicScorer } from "./scorers/deterministic";
+import { loadCommands } from "../../core/registry";
 
 export interface EvalCase {
 	id: string;
@@ -48,7 +49,7 @@ export class EvalEngine {
 
 	async runSuite(
 		suite: EvalSuite,
-		options: { judge?: "deterministic" | "llm" } = {},
+		options: { judge?: "deterministic" | "llm"; filterCase?: string } = {},
 	): Promise<{ results: CaseResult[]; totalScore: number }> {
 		const results: CaseResult[] = [];
 		const templatesDir = join(process.cwd(), "src/features/prompt/templates");
@@ -65,16 +66,28 @@ export class EvalEngine {
 				? await promptEngine.loadPrompt("eval-rubric")
 				: null;
 
-		for (const c of suite.cases) {
+		const filteredCases = options.filterCase
+			? suite.cases.filter((c) => c.id === options.filterCase)
+			: suite.cases;
+
+		for (const c of filteredCases) {
 			let inputText = c.input_text || "";
 			if (c.input && !c.input_text) {
 				inputText = await readFile(join(process.cwd(), c.input), "utf-8");
 			}
 
+			const featuresDir = join(process.cwd(), "src/features");
+			const registry = await loadCommands(featuresDir);
+			const toolsList = registry
+				.list()
+				.map((cmd) => `- ${cmd.name}: ${cmd.description}`)
+				.join("\n");
+
 			const systemPrompt = await promptEngine.renderPrompt(promptTemplate, {
 				...c.vars,
 				input: inputText,
 				repo_root: process.cwd(),
+				tools: toolsList,
 			});
 
 

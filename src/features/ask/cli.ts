@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { executeSearch } from "../index/execute";
@@ -70,8 +70,8 @@ export const askExitCodes = [
 ];
 
 export const askExamples = [
-	{ input: "nooa ask \"find TODOs\"", output: "Search results" },
-	{ input: "nooa ask init --json", output: "JSON results" },
+	{ input: "nooa ask \"find TODOs\"", output: "Search indexed code and memory for 'find TODOs'." },
+	{ input: "nooa ask init --json", output: "Search for 'init' relevance and return results as JSON." },
 ];
 
 export interface AskRunInput {

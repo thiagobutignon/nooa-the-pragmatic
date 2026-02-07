@@ -1,3 +1,6 @@
+import { lstat, readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { execa } from "execa";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
@@ -5,7 +8,7 @@ import {
 	renderJson,
 	setExitCode
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { createTraceId, logger } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
@@ -96,10 +99,10 @@ export const pushExitCodes = [
 ];
 
 export const pushExamples = [
-	{ input: "nooa push", output: "Pushes current branch" },
+	{ input: "nooa push", output: "Push committed changes to the remote repository." },
 	{
 		input: "nooa push origin feat/auth --no-test",
-		output: "Pushes without running tests",
+		output: "Push changes to 'origin/feat/auth' skipping pre-push tests.",
 	},
 ];
 

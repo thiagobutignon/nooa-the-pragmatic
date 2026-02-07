@@ -126,7 +126,7 @@ Please analyze the context and provide specific file changes to fix this issue.
 Format your response as actionable steps.`,
 				},
 			],
-			model: "qwen2.5-coder:7b",
+			model: "qwen2.5-coder:14b",
 			temperature: 0.2,
 			traceId,
 		});

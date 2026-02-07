@@ -62,8 +62,8 @@ export const initExitCodes = [
 ];
 
 export const initExamples = [
-	{ input: "nooa init", output: "Identity initialized" },
-	{ input: "nooa init --force", output: "Overwrite identity" },
+	{ input: "nooa init", output: "Initialize the agent identity and artifacts." },
+	{ input: "nooa init --force", output: "Force initialize identity, overwriting existing files." },
 ];
 
 export interface InitRunInput {

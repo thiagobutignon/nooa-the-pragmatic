@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -73,8 +73,8 @@ export const doctorExitCodes = [
 ];
 
 export const doctorExamples = [
-	{ input: "nooa doctor", output: "Environment check" },
-	{ input: "nooa doctor --json", output: "JSON report" },
+	{ input: "nooa doctor", output: "Check the health of the development environment." },
+	{ input: "nooa doctor --json", output: "Run environment check and output JSON report." },
 ];
 
 export interface DoctorRunInput {

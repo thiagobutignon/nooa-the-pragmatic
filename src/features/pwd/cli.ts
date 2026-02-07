@@ -1,9 +1,10 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
+
 import {
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 
 export const pwdMeta: AgentDocMeta = {
@@ -51,8 +52,8 @@ export const pwdSchema = {
 export const pwdOutputFields = [{ name: "cwd", type: "string" }];
 
 export const pwdExamples = [
-	{ input: "nooa pwd", output: "/path/to/project" },
-	{ input: "nooa pwd --json", output: '{ "cwd": "/path/to/project" }' },
+	{ input: "nooa pwd", output: "Print the current working directory." },
+	{ input: "nooa pwd --json", output: "Get the current working directory in JSON format." },
 ];
 
 export const pwdExitCodes = [{ value: "0", description: "Success" }];

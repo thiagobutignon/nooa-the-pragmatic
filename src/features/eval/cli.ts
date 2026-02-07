@@ -1,5 +1,6 @@
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
+
 import {
 	handleCommandError,
 	renderJson
@@ -114,8 +115,10 @@ export const evalExitCodes = [
 ];
 
 export const evalExamples = [
-	{ input: "nooa eval run review --suite standard", output: "Run suite" },
-	{ input: "nooa eval compare review --suite standard", output: "Compare" },
+	{ input: "nooa eval run --suite unit-tests", output: "Run the 'unit-tests' evaluation suite." },
+	{ input: "nooa eval optimize --prompt fix_code", output: "Optimize the 'fix_code' prompt based on failures." },
+	{ input: "nooa eval assert --output \"hello world\" --contains \"hello\"", output: "Assert that output contains 'hello'." },
+	{ input: "nooa eval compare review --suite standard", output: "Compare the latest review prompt evaluation against the standard suite." },
 ];
 
 export interface EvalRunInput {
@@ -132,6 +135,7 @@ export interface EvalRunInput {
 	head?: string;
 	id?: string;
 	historyFile?: string;
+	case?: string;
 }
 
 export interface EvalRunResult {
@@ -191,7 +195,8 @@ export async function run(
 		if (command === "run") {
 			const suite = await engine.loadSuite(suiteName!);
 			const judge = optionsJudge;
-			const result = await engine.runSuite(suite, { judge });
+			const filterCase = input.case;
+			const result = await engine.runSuite(suite, { judge, filterCase });
 
 			await appendHistory({
 				id: randomUUID(),
@@ -456,6 +461,7 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			head: { type: "string" },
 			id: { type: "string" },
 			"history-file": { type: "string" },
+			"case": { type: "string" },
 		},
 	})
 	.parseInput(async ({ positionals, values }) => ({
@@ -475,6 +481,7 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			typeof values["history-file"] === "string"
 				? values["history-file"]
 				: undefined,
+		case: typeof values.case === "string" ? values.case : undefined,
 	}))
 	.run(run)
 	.onSuccess((output, values) => {

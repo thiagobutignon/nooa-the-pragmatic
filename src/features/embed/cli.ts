@@ -5,7 +5,7 @@ import {
 	renderJsonOrWrite,
 	setExitCode
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { createTraceId, logger } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -97,8 +97,8 @@ export const embedExitCodes = [
 ];
 
 export const embedExamples = [
-	{ input: "nooa embed text \"hello\"", output: "Embedding output" },
-	{ input: "nooa embed file README.md", output: "Embedding output" },
+	{ input: "nooa embed text \"hello\"", output: "Generate an embedding for the text 'hello'." },
+	{ input: "nooa embed file README.md", output: "Generate an embedding for the contents of README.md." },
 ];
 
 export interface EmbedRunInput {

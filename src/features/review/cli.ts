@@ -6,7 +6,7 @@ import {
 	renderJson,
 	setExitCode
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { createTraceId, logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -96,12 +96,12 @@ export const reviewExitCodes = [
 ];
 
 export const reviewExamples = [
-	{ input: "nooa review src/index.ts", output: "Review output" },
+	{ input: "nooa review src/index.ts", output: "Perform an AI code review on 'src/index.ts'." },
 	{
 		input: "nooa review --json --out review-results.json",
-		output: "JSON review output",
+		output: "Review staged changes and export findings to 'review-results.json'.",
 	},
-	{ input: "nooa review --fail-on high", output: "Exit non-zero" },
+	{ input: "nooa review --fail-on high", output: "Review staged changes and fail if high severity issues are found." },
 ];
 
 export interface ReviewRunInput {

@@ -92,10 +92,10 @@ export const replayExitCodes = [
 ];
 
 export const replayExamples = [
-    { input: "nooa replay add A", output: "Creates a node" },
-    { input: "nooa replay link node_a node_b", output: "Creates an edge" },
-    { input: "nooa replay fix node_b \"Fix B\"", output: "Creates a fix node" },
-    { input: "nooa replay show --json", output: "{ ... }" },
+    { input: "nooa replay add A", output: "Add a new step node labeled 'A' to the replay graph." },
+    { input: "nooa replay link node_a node_b", output: "Create a 'next' link from node_a to node_b." },
+    { input: "nooa replay fix node_b \"Fix B\"", output: "Register a fix for node_b with label 'Fix B'." },
+    { input: "nooa replay show --json", output: "Show the current replay graph in JSON format." },
 ];
 
 export interface ReplayRunInput {

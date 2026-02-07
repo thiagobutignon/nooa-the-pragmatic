@@ -65,6 +65,11 @@ export const gateExitCodes = [
     { value: "1", description: "Gate Failed" },
 ];
 
+export const gateExamples = [
+    { input: "nooa gate check --id spec", output: "Check if the project meets the defined specifications." },
+    { input: "nooa gate check --id dogfood --target replay", output: "Run dogfooding check on the 'replay' command." },
+];
+
 export interface GateRunInput {
     action?: "check";
     id?: string;
@@ -104,6 +109,7 @@ const gateBuilder = new CommandBuilder<GateRunInput, GateCheckResult>()
     .help(gateHelp)
     .sdkUsage(gateSdkUsage)
     .outputFields(gateOutputFields)
+    .examples(gateExamples)
     .errors(gateErrors)
     .exitCodes(gateExitCodes)
     .options({

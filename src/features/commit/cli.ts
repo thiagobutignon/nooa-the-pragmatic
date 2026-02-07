@@ -5,7 +5,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { createTraceId, logger } from "../../core/logger";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { telemetry } from "../../core/telemetry";
@@ -99,10 +99,10 @@ export const commitExitCodes = [
 ];
 
 export const commitExamples = [
-	{ input: "nooa commit -m \"feat: user authentication\"", output: "Commit" },
+	{ input: "nooa commit -m \"feat: user authentication\"", output: "Commit staged changes with message 'feat: user authentication'." },
 	{
 		input: "nooa commit -m \"docs: api reference\" --allow-lazy",
-		output: "Commit with allow-lazy",
+		output: "Commit changes with 'allow-lazy' flag to bypass strict policy checks.",
 	},
 ];
 

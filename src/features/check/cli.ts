@@ -4,12 +4,15 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import type { GuardrailReport } from "../guardrail/contracts";
 import { GuardrailEngine } from "../guardrail/engine";
+import { execa } from "execa";
+import { lstat, readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { loadProfile } from "../guardrail/profiles";
 
 export const checkMeta: AgentDocMeta = {
@@ -90,11 +93,11 @@ export const checkExitCodes = [
 ];
 
 export const checkExamples = [
-	{ input: "nooa check", output: "Policy check" },
-	{ input: "nooa check src --json", output: "JSON policy report" },
+	{ input: "nooa check", output: "Audit the codebase against project policies." },
+	{ input: "nooa check src --json", output: "Audit the src directory and output a JSON report." },
 	{
 		input: "nooa check --profile .nooa/guardrails/profiles/security.yaml",
-		output: "Guardrail report",
+		output: "Run a guardrail check using the security profile.",
 	},
 ];
 

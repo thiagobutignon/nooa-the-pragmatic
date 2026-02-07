@@ -115,9 +115,9 @@ export const codeExitCodes = [
 ];
 
 export const codeExamples = [
-	{ input: "nooa code write app.ts --from template.ts", output: "Writes file" },
-	{ input: "nooa code patch app.ts --patch-from fix.patch", output: "Patches file" },
-	{ input: "nooa code diff src/", output: "Git diff output" },
+	{ input: "nooa code write app.ts --from template.ts", output: "Write the content of 'template.ts' to 'app.ts'." },
+	{ input: "nooa code patch app.ts --patch-from fix.patch", output: "Apply the unified diff from 'fix.patch' to 'app.ts'." },
+	{ input: "nooa code diff src/", output: "Show the git diff for the 'src/' directory." },
 ];
 
 export type CodeAction = "write" | "patch" | "diff" | "format" | "refactor" | "help";

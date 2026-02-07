@@ -5,7 +5,7 @@ import {
 	renderJsonOrWrite,
 	setExitCode
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { createTraceId } from "../../core/logger";
@@ -103,10 +103,10 @@ export const scaffoldExitCodes = [
 ];
 
 export const scaffoldExamples = [
-	{ input: "nooa scaffold command authentication", output: "Creates a feature" },
+	{ input: "nooa scaffold command authentication", output: "Scaffold a new command named 'authentication'." },
 	{
 		input: "nooa scaffold prompt review --with-docs",
-		output: "Creates a prompt template",
+		output: "Scaffold a new prompt template named 'review' with documentation.",
 	},
 ];
 

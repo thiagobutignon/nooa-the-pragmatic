@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { EventBus } from "../../core/event-bus";
@@ -83,8 +83,8 @@ export const messageExitCodes = [
 ];
 
 export const messageExamples = [
-	{ input: "nooa message \"Hello\"", output: "Message output" },
-	{ input: "nooa message \"Init\" --role system", output: "System message" },
+	{ input: "nooa message \"Hello\"", output: "Send a message saying 'Hello' to the agent." },
+	{ input: "nooa message \"Init\" --role system", output: "Send a system message to initialize the agent context." },
 ];
 
 export interface MessageRunInput {
@@ -165,8 +165,8 @@ const messageBuilder = new CommandBuilder<MessageRunInput, MessageRunResult>()
 			typeof values.role === "string"
 				? (values.role as MessageRole)
 				: "user",
-			json: Boolean(values.json),
-			bus,
+		json: Boolean(values.json),
+		bus,
 	}))
 	.run(run)
 	.onSuccess((output, values) => {

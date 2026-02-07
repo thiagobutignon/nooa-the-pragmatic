@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { CronJobRecord, CronJobSpec } from "../../core/db/cron_store";
@@ -139,9 +139,9 @@ export const cronExitCodes = [
 ];
 
 export const cronExamples = [
-	{ input: "nooa cron list", output: "List jobs" },
-	{ input: "nooa cron add job --every 5m -- index repo", output: "Add job" },
-	{ input: "nooa cron remove job --force", output: "Remove job" },
+	{ input: "nooa cron list", output: "List all scheduled cron jobs." },
+	{ input: "nooa cron add job --every 5m -- index repo", output: "Add a new job named 'job' running 'index repo' every 5 minutes." },
+	{ input: "nooa cron remove job --force", output: "Force remove the job named 'job'." },
 ];
 
 export interface CronRunInput {
@@ -354,7 +354,7 @@ export async function run(
 				}
 				return {
 					ok: true,
-					data: { mode: "status", job },
+					data: { mode: "status", job: job ?? undefined },
 				};
 			}
 
@@ -370,7 +370,7 @@ export async function run(
 				const logs = cronService.listLogs(name, limit, input.since);
 				return {
 					ok: true,
-					data: { mode: action, job: cronService.getJob(name), logs },
+					data: { mode: action, job: cronService.getJob(name) ?? undefined, logs },
 				};
 			}
 

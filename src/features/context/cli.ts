@@ -7,7 +7,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { logger } from "../../core/logger";
 import { getMcpResourcesForContext } from "../../core/mcp/integrations/context";
 import type { McpResource } from "../../core/mcp/types";
@@ -80,8 +80,8 @@ export const contextExitCodes = [
 ];
 
 export const contextExamples = [
-	{ input: "nooa context src/index.ts", output: "Context summary" },
-	{ input: "nooa context SymbolName --json", output: "JSON output" },
+	{ input: "nooa context src/index.ts", output: "Generate a context pack for 'src/index.ts'." },
+	{ input: "nooa context SymbolName --json", output: "Generate context for 'SymbolName' and output as JSON." },
 ];
 
 export interface ContextRunInput {
@@ -182,8 +182,7 @@ const contextBuilder = new CommandBuilder<ContextRunInput, ContextRunResult>()
 		console.log(`Recent Commits: ${output.recentCommits.length}`);
 		if (output.mcpResources) {
 			console.log(
-				`MCP Resources: ${
-					output.mcpResources.map((r) => r.name).join(", ") || "none"
+				`MCP Resources: ${output.mcpResources.map((r) => r.name).join(", ") || "none"
 				}`,
 			);
 		}

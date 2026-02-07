@@ -3,11 +3,12 @@ import { join } from "node:path";
 import { stringify as stringifyYaml } from "yaml";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
+
 import {
 	printError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -130,8 +131,8 @@ export const guardrailExitCodes = [
 ];
 
 export const guardrailExamples = [
-	{ input: "nooa guardrail check --spec", output: "Run guardrails" },
-	{ input: "nooa guardrail list", output: "List profiles" },
+	{ input: "nooa guardrail check --profile security", output: "Run the security guardrail profile." },
+	{ input: "nooa guardrail list", output: "List all available guardrail profiles." },
 ];
 
 export interface GuardrailRunInput {

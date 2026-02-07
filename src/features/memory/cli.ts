@@ -122,9 +122,9 @@ export const memoryExitCodes = [
 ];
 
 export const memoryExamples = [
-	{ input: "nooa memory add \"Store key insight\"", output: "Added entry" },
-	{ input: "nooa memory search \"auth\"", output: "List entries" },
-	{ input: "nooa memory promote mem_123", output: "Promoted entry" },
+	{ input: "nooa memory add \"Store key insight\"", output: "Add a new key insight to the agent's long-term memory." },
+	{ input: "nooa memory search \"auth\"", output: "Search memory for entries related to 'auth'." },
+	{ input: "nooa memory promote mem_123", output: "Promote memory entry 'mem_123' to durable storage." },
 ];
 
 export interface MemoryRunInput {
@@ -273,18 +273,18 @@ export async function run(
 				await engine.promoteEntry(input.id);
 				return { ok: true, data: { action, id: input.id } };
 			}
-		case "search": {
-			if (!input.query) {
-				return {
-					ok: false,
-					error: sdkError("memory.missing_query", "Search query required."),
-				};
+			case "search": {
+				if (!input.query) {
+					return {
+						ok: false,
+						error: sdkError("memory.missing_query", "Search query required."),
+					};
+				}
+				const entries = await engine.search(input.query, {
+					semantic: input.semantic,
+				});
+				return { ok: true, data: { action, entries, query: input.query } };
 			}
-			const entries = await engine.search(input.query, {
-				semantic: input.semantic,
-			});
-			return { ok: true, data: { action, entries, query: input.query } };
-		}
 			case "list": {
 				const entries = await engine.search("", { semantic: false });
 				entries.sort(

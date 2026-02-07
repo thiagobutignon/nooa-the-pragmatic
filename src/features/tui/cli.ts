@@ -23,6 +23,11 @@ Examples:
   nooa tui --tail
 `;
 
+export const tuiExamples = [
+    { input: "nooa tui", output: "Launch the interactive dashboard interface." },
+    { input: "nooa tui --tail", output: "View the live event tail log." },
+];
+
 export const tuiSchema = {
     dashboard: { type: "boolean", required: false },
     tail: { type: "boolean", required: false },
@@ -70,6 +75,7 @@ const tuiBuilder = new CommandBuilder<TuiInput, void>()
     .schema(tuiSchema)
     .help(tuiHelp)
     .sdkUsage("await tui.run({})")
+    .examples(tuiExamples)
     .options({
         options: {
             ...buildStandardOptions(),

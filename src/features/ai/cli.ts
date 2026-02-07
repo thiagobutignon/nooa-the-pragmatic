@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { openMcpDatabase } from "../../core/mcp/db";
 import { executeMcpToolFromAi } from "../../core/mcp/integrations/ai";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -99,8 +99,8 @@ export const aiExitCodes = [
 ];
 
 export const aiExamples = [
-	{ input: 'nooa ai "Who are you?"', output: "AI response text" },
-	{ input: 'nooa ai "Tell a joke" --json', output: "{ ... }" },
+	{ input: 'nooa ai "Who are you?"', output: "Ask the AI a general question." },
+	{ input: 'nooa ai "Tell a joke" --json', output: "Ask the AI to tell a joke and return the response in JSON format." },
 ];
 
 export interface AiRunInput {

@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJsonOrWrite
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import type { EventBus } from "../../core/event-bus";
@@ -75,8 +75,8 @@ export const ciExitCodes = [
 ];
 
 export const ciExamples = [
-	{ input: "nooa ci", output: "Runs CI" },
-	{ input: "nooa ci --json", output: "JSON report" },
+	{ input: "nooa ci", output: "Run the local CI pipeline (test, lint, check)." },
+	{ input: "nooa ci --json", output: "Run CI and output results in JSON format." },
 ];
 
 export interface CiRunInput {

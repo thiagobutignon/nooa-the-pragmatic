@@ -1,8 +1,17 @@
 [
   {
     "id": "act-0",
-    "input": "Orchestration result",
+    "input": "Check the status of the project using the autonomous agent.",
     "output": "nooa act 'Check status'",
+    "meta": {
+      "source": "registry",
+      "command": "act"
+    }
+  },
+  {
+    "id": "act-1",
+    "input": "Run CI and automatically fix any errors found.",
+    "output": "nooa act 'Run CI and fix errors'",
     "meta": {
       "source": "registry",
       "command": "act"
@@ -217,7 +226,7 @@
   },
   {
     "id": "eval-0",
-    "input": "Run suite",
+    "input": "Run the standard evaluation suite for the review prompt.",
     "output": "nooa eval run review --suite standard",
     "meta": {
       "source": "registry",
@@ -226,7 +235,7 @@
   },
   {
     "id": "eval-1",
-    "input": "Compare",
+    "input": "Compare the latest review prompt evaluation against the standard suite.",
     "output": "nooa eval compare review --suite standard",
     "meta": {
       "source": "registry",
@@ -289,7 +298,7 @@
   },
   {
     "id": "identity-0",
-    "input": "Identity initialized",
+    "input": "Initialize the agent identity and artifacts.",
     "output": "nooa init",
     "meta": {
       "source": "registry",
@@ -298,7 +307,7 @@
   },
   {
     "id": "identity-1",
-    "input": "Overwrite identity",
+    "input": "Force initialize identity, overwriting existing files.",
     "output": "nooa init --force",
     "meta": {
       "source": "registry",
@@ -667,7 +676,7 @@
   },
   {
     "id": "worktree-0",
-    "input": "Worktree created",
+    "input": "Create a new isolated worktree for the login feature.",
     "output": "nooa worktree create feat/login",
     "meta": {
       "source": "registry",
@@ -676,8 +685,26 @@
   },
   {
     "id": "worktree-1",
-    "input": "{ worktrees: [...] }",
+    "input": "List all active worktrees in JSON format.",
     "output": "nooa worktree list --json",
+    "meta": {
+      "source": "registry",
+      "command": "worktree"
+    }
+  },
+  {
+    "id": "worktree-2",
+    "input": "Remove the worktree for the login feature.",
+    "output": "nooa worktree remove feat/login",
+    "meta": {
+      "source": "registry",
+      "command": "worktree"
+    }
+  },
+  {
+    "id": "worktree-3",
+    "input": "Prune stale worktrees.",
+    "output": "nooa worktree prune",
     "meta": {
       "source": "registry",
       "command": "worktree"

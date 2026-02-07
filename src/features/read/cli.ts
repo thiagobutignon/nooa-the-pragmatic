@@ -1,11 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
+
 import {
 	printError,
 	renderJson,
 	setExitCode
 } from "../../core/cli-output";
+
 import { buildStandardOptions } from "../../core/cli-flags";
 import { createTraceId } from "../../core/logger";
 import { sdkError, type SdkResult, type AgentDocMeta } from "../../core/types";
@@ -78,19 +80,16 @@ export const readSchema = {
 } satisfies SchemaSpec;
 
 export const readOutputFields = [
-    { name: "ok", type: "boolean" },
-    { name: "traceId", type: "string" },
-    { name: "path", type: "string" },
-    { name: "bytes", type: "number" },
-    { name: "content", type: "string" },
+	{ name: "ok", type: "boolean" },
+	{ name: "traceId", type: "string" },
+	{ name: "path", type: "string" },
+	{ name: "bytes", type: "number" },
+	{ name: "content", type: "string" },
 ];
 
 export const readExamples = [
-    { input: "nooa read README.md", output: "File contents to stdout" },
-    {
-        input: "nooa read package.json --json",
-        output: '{ "path": "package.json", "bytes": 1234, "content": "..." }',
-    },
+	{ input: "nooa read src/index.ts", output: "Read and display the content of 'src/index.ts'." },
+	{ input: "nooa read src/ --recursive", output: "Recursively read all files in 'src/'." },
 ];
 
 export const readErrors = [
@@ -114,11 +113,11 @@ export interface ReadRunInput {
 }
 
 export interface ReadRunResult {
-    ok: boolean;
-    traceId: string;
-    path: string;
-    bytes: number;
-    content: string;
+	ok: boolean;
+	traceId: string;
+	path: string;
+	bytes: number;
+	content: string;
 }
 
 export async function run(
@@ -180,30 +179,30 @@ export async function run(
 }
 
 const readBuilder = new CommandBuilder<ReadRunInput, ReadRunResult>()
-    .meta(readMeta)
-    .usage(readUsage)
-    .schema(readSchema)
-    .help(readHelp)
-    .sdkUsage(readSdkUsage)
-    .outputFields(readOutputFields)
-    .examples(readExamples)
-    .errors(readErrors)
-    .exitCodes(readExitCodes)
-    .options({ options: buildStandardOptions() })
-    .parseInput(async ({ values, positionals }) => {
-        const { getStdinText } = await import("../../core/io");
-        let path = positionals[1];
+	.meta(readMeta)
+	.usage(readUsage)
+	.schema(readSchema)
+	.help(readHelp)
+	.sdkUsage(readSdkUsage)
+	.outputFields(readOutputFields)
+	.examples(readExamples)
+	.errors(readErrors)
+	.exitCodes(readExitCodes)
+	.options({ options: buildStandardOptions() })
+	.parseInput(async ({ values, positionals }) => {
+		const { getStdinText } = await import("../../core/io");
+		let path = positionals[1];
 
-        if (!path) {
-            path = await getStdinText();
-        }
+		if (!path) {
+			path = await getStdinText();
+		}
 
-        return {
-            path,
-            json: Boolean(values.json),
-        };
-    })
-    .run(run)
+		return {
+			path,
+			json: Boolean(values.json),
+		};
+	})
+	.run(run)
 	.onFailure((error, input) => {
 		const errorMessage = error.details?.error
 			? String(error.details.error)
@@ -217,28 +216,28 @@ const readBuilder = new CommandBuilder<ReadRunInput, ReadRunResult>()
 		}
 		setExitCode(error, ["read.missing_path", "read.outside_root"]);
 	})
-    .onSuccess((output, values) => {
-        if (values.json) {
-            renderJson(output);
-            return;
-        }
-        process.stdout.write(output.content);
-    })
-    .telemetry({
-        eventPrefix: "read",
-        successMetadata: (_, output) => ({
-            path: output.path,
-            bytes: output.bytes,
-        }),
-        failureMetadata: (input, error) => ({
-            path: input.path,
-            error: error.message,
-        }),
-    });
+	.onSuccess((output, values) => {
+		if (values.json) {
+			renderJson(output);
+			return;
+		}
+		process.stdout.write(output.content);
+	})
+	.telemetry({
+		eventPrefix: "read",
+		successMetadata: (_, output) => ({
+			path: output.path,
+			bytes: output.bytes,
+		}),
+		failureMetadata: (input, error) => ({
+			path: input.path,
+			error: error.message,
+		}),
+	});
 
 export const readAgentDoc = readBuilder.buildAgentDoc(false);
 export const readFeatureDoc = (includeChangelog: boolean) =>
-    readBuilder.buildFeatureDoc(includeChangelog);
+	readBuilder.buildFeatureDoc(includeChangelog);
 
 const readCommand = readBuilder.build();
 

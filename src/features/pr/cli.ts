@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { EventBus } from "../../core/event-bus";
 import { getCurrentBranch } from "../../core/integrations/git";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
@@ -105,9 +105,9 @@ export const prExitCodes = [
 ];
 
 export const prExamples = [
-	{ input: "nooa pr list", output: "List PRs" },
-	{ input: "nooa pr review 12", output: "Review PR" },
-	{ input: "nooa pr create --title T --body B", output: "Create PR" },
+	{ input: "nooa pr list", output: "List all open pull requests for the current repository." },
+	{ input: "nooa pr review 12", output: "Start an interactive review for PR #12." },
+	{ input: "nooa pr create --title T --body B", output: "Create a new pull request with title T and body B." },
 ];
 
 type GhPrListItem = {
@@ -368,8 +368,8 @@ const prBuilder = new CommandBuilder<PrRunInput, PrRunResult>()
 				if (!status) return;
 				const labels = Array.isArray(status.labels)
 					? status.labels
-							.map((label) => label.name)
-							.filter((name): name is string => Boolean(name))
+						.map((label) => label.name)
+						.filter((name): name is string => Boolean(name))
 					: [];
 				const approvals = status.reviewDecision === "APPROVED" ? 1 : 0;
 				const checks = Array.isArray(status.statusCheckRollup)

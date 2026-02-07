@@ -4,7 +4,7 @@ import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { clearGoal, getGoal, setGoal } from "./execute";
@@ -77,8 +77,8 @@ export const goalExitCodes = [
 ];
 
 export const goalExamples = [
-	{ input: "nooa goal set Ship it", output: "Goal set" },
-	{ input: "nooa goal status", output: "Current goal" },
+	{ input: "nooa goal set Ship it", output: "Set the current high-level goal to 'Ship it'." },
+	{ input: "nooa goal status", output: "Display the current goal." },
 ];
 
 export interface GoalRunInput {

@@ -1,10 +1,11 @@
+import { relative, resolve } from "node:path";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import { buildStandardOptions } from "../../core/cli-flags";
 import {
 	handleCommandError,
 	renderJson
 } from "../../core/cli-output";
-import { buildStandardOptions } from "../../core/cli-flags";
+
 import { logger } from "../../core/logger";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
@@ -90,8 +91,8 @@ export const indexExitCodes = [
 ];
 
 export const indexExamples = [
-	{ input: "nooa index repo", output: "Index repository" },
-	{ input: "nooa index file src/index.ts", output: "Index file" },
+	{ input: "nooa index repo", output: "Index all TypeScript and Markdown files in the repository." },
+	{ input: "nooa index file src/index.ts", output: "Index the specific file 'src/index.ts'." },
 ];
 
 export interface IndexRunInput {
@@ -177,7 +178,7 @@ const indexBuilder = new CommandBuilder<IndexRunInput, IndexRunResult>()
 		json: Boolean(values.json),
 	}))
 	.run(run)
-	.onSuccess((output, values) => {
+	.onSuccess((output, values, input) => {
 		if (values.json) {
 			renderJson(output.result);
 			return;
@@ -195,7 +196,7 @@ const indexBuilder = new CommandBuilder<IndexRunInput, IndexRunResult>()
 			}
 			case "file": {
 				const result = output.result as { chunks: number };
-				console.log(`✅ Indexed ${positionals[2]} (${result.chunks} chunks)`);
+				console.log(`✅ Indexed ${input.path} (${result.chunks} chunks)`);
 				return;
 			}
 			case "clear": {
