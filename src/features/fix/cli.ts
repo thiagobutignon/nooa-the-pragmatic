@@ -77,12 +77,12 @@ export const fixExitCodes = [
 
 export const fixExamples = [
 	{
-		input: 'nooa fix "fix logger typo"',
-		output: "Start autonomous agent loop to fix 'logger typo'.",
+		input: 'nooa fix "Fix results"',
+		output: "Start autonomous fix loop for 'Fix results'.",
 	},
 	{
-		input: 'nooa fix "auth flow" --dry-run',
-		output: "Simulate a fix for 'auth flow' without making changes.",
+		input: 'nooa fix "Dry run" --dry-run',
+		output: "Simulate a fix for 'Dry run' without making changes.",
 	},
 ];
 

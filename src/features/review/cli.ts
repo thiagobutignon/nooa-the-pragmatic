@@ -101,12 +101,11 @@ export const reviewExamples = [
 	},
 	{
 		input: "nooa review --json --out review-results.json",
-		output:
-			"Review staged changes and export findings to 'review-results.json'.",
+		output: "Review changes and export findings to 'review-results.json'.",
 	},
 	{
 		input: "nooa review --fail-on high",
-		output: "Review staged changes and fail if high severity issues are found.",
+		output: "Review changes and fail if high severity issues found.",
 	},
 ];
 

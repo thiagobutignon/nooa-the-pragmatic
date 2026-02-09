@@ -490,5 +490,53 @@
       "optimizedPath": "/Users/thiagobutignon/dev/nooa-the-pragmatic/src/features/prompt/templates/tui-agent.optimized.md"
     },
     "timestamp": "2026-02-07T04:43:50.356Z"
+  },
+  {
+    "id": "e8d79644-abac-4f1d-993f-5e7746fa7a2b",
+    "prompt": "tui-agent",
+    "suite": "comprehensive",
+    "command": "run",
+    "totalScore": 1,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-07T04:57:36.645Z"
+  },
+  {
+    "id": "8f566271-7683-43b7-82f8-c0e23aae1b33",
+    "prompt": "tui-agent",
+    "suite": "comprehensive",
+    "command": "run",
+    "totalScore": 0.43037974683544306,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-07T05:08:50.596Z"
+  },
+  {
+    "id": "15f0d2c3-099d-49fe-b35d-304f98717f81",
+    "prompt": "tui-agent",
+    "suite": "comprehensive",
+    "command": "run",
+    "totalScore": 0.6582278481012658,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-07T05:48:00.463Z"
+  },
+  {
+    "id": "d508e352-af4d-4dad-b4dc-9b85fe76edb7",
+    "prompt": "tui-agent",
+    "suite": "comprehensive",
+    "command": "run",
+    "totalScore": 0.15789473684210525,
+    "judge": "deterministic",
+    "meta": {
+      "failOnRegression": false
+    },
+    "timestamp": "2026-02-07T22:19:56.491Z"
   }
 ]

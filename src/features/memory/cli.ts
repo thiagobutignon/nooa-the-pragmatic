@@ -122,9 +122,18 @@ export const memoryExitCodes = [
 ];
 
 export const memoryExamples = [
-	{ input: "nooa memory add \"Store key insight\"", output: "Add a new key insight to the agent's long-term memory." },
-	{ input: "nooa memory search \"auth\"", output: "Search memory for entries related to 'auth'." },
-	{ input: "nooa memory promote mem_123", output: "Promote memory entry 'mem_123' to durable storage." },
+	{
+		input: "nooa memory add \"Store key insight\"",
+		output: "Add a new key insight to the agent's long-term memory.",
+	},
+	{
+		input: "nooa memory search \"auth\" --json",
+		output: "Search memory for entries related to 'auth' and return JSON.",
+	},
+	{
+		input: "nooa memory promote mem_123",
+		output: "Promote memory entry 'mem_123' to durable storage.",
+	},
 ];
 
 export interface MemoryRunInput {

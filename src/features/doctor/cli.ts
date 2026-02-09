@@ -71,7 +71,7 @@ export const doctorExitCodes = [
 export const doctorExamples = [
 	{
 		input: "nooa doctor",
-		output: "Check the health of the development environment.",
+		output: "Check the health of the project environment.",
 	},
 	{
 		input: "nooa doctor --json",

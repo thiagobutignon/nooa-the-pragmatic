@@ -91,15 +91,19 @@ export const checkExitCodes = [
 export const checkExamples = [
 	{
 		input: "nooa check",
-		output: "Audit the codebase against project policies.",
+		output: "Audit the codebase against project policies (Zero-Preguiça).",
 	},
 	{
 		input: "nooa check src --json",
-		output: "Audit the src directory and output a JSON report.",
+		output: "Audit the src directory and output a JSON policy report.",
 	},
 	{
 		input: "nooa check --profile .nooa/guardrails/profiles/security.yaml",
 		output: "Run a guardrail check using the security profile.",
+	},
+	{
+		input: "nooa check --staged",
+		output: "Audit only staged files in git.",
 	},
 ];
 
@@ -242,14 +246,14 @@ const checkBuilder = new CommandBuilder<CheckRunInput, CheckRunResult>()
 		if (error.code === "check.policy_violation") {
 			const result = error.details?.result as
 				| {
-						violations: {
-							rule: string;
-							file: string;
-							line: number;
-							content: string;
-							message: string;
-						}[];
-				  }
+					violations: {
+						rule: string;
+						file: string;
+						line: number;
+						content: string;
+						message: string;
+					}[];
+				}
 				| undefined;
 			if (result) {
 				console.error(

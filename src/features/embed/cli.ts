@@ -98,8 +98,8 @@ export const embedExitCodes = [
 
 export const embedExamples = [
 	{
-		input: 'nooa embed text "hello"',
-		output: "Generate an embedding for the text 'hello'.",
+		input: 'nooa embed text "Embedding output"',
+		output: "Generate an embedding for the text 'Embedding output'.",
 	},
 	{
 		input: "nooa embed file README.md",

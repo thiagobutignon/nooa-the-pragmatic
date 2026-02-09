@@ -78,12 +78,12 @@ export const contextExitCodes = [
 
 export const contextExamples = [
 	{
-		input: "nooa context src/index.ts",
-		output: "Generate a context pack for 'src/index.ts'.",
+		input: 'nooa context "Context summary"',
+		output: "Generate a context summary for AI consumption.",
 	},
 	{
-		input: "nooa context SymbolName --json",
-		output: "Generate context for 'SymbolName' and output as JSON.",
+		input: 'nooa context "JSON output" --json',
+		output: "Generate context for 'JSON output' and return as JSON.",
 	},
 ];
 
@@ -184,8 +184,7 @@ const contextBuilder = new CommandBuilder<ContextRunInput, ContextRunResult>()
 		console.log(`Recent Commits: ${output.recentCommits.length}`);
 		if (output.mcpResources) {
 			console.log(
-				`MCP Resources: ${
-					output.mcpResources.map((r) => r.name).join(", ") || "none"
+				`MCP Resources: ${output.mcpResources.map((r) => r.name).join(", ") || "none"
 				}`,
 			);
 		}

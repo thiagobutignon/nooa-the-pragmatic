@@ -69,11 +69,11 @@ export const askExitCodes = [
 export const askExamples = [
 	{
 		input: 'nooa ask "find TODOs"',
-		output: "Search indexed code and memory for 'find TODOs'.",
+		output: "Search code and memory for 'find TODOs'.",
 	},
 	{
-		input: "nooa ask init --json",
-		output: "Search for 'init' relevance and return results as JSON.",
+		input: 'nooa ask "JSON results" --json',
+		output: "Search for 'JSON results' and return as JSON.",
 	},
 ];
 

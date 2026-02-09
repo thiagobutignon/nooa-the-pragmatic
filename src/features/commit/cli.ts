@@ -101,8 +101,11 @@ export const commitExamples = [
 	},
 	{
 		input: 'nooa commit -m "docs: api reference" --allow-lazy',
-		output:
-			"Commit changes with 'allow-lazy' flag to bypass strict policy checks.",
+		output: "Commit changes with 'allow-lazy' flag to bypass policy checks.",
+	},
+	{
+		input: 'nooa commit -m "fix: bug" --no-test',
+		output: "Commit changes without running tests.",
 	},
 ];
 

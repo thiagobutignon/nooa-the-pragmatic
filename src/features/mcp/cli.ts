@@ -86,11 +86,11 @@ export const mcpExitCodes = [
 export const mcpExamples = [
 	{
 		input: "nooa mcp list",
-		output: "List all installed and available MCP servers.",
+		output: "List installed and available MCP servers.",
 	},
 	{
 		input: "nooa mcp call filesystem read_file --path README.md",
-		output: "Call the 'read_file' tool from the 'filesystem' MCP server.",
+		output: "Execute an MCP tool call (e.g. read_file).",
 	},
 ];
 

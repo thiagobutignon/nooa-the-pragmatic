@@ -80,8 +80,18 @@ export class EvalEngine {
 			const registry = await loadCommands(featuresDir);
 			const toolsList = registry
 				.list()
-				.map((cmd) => `- ${cmd.name}: ${cmd.description}`)
-				.join("\n");
+				.map((cmd) => {
+					let examples = "";
+					if (cmd.examples && cmd.examples.length > 0) {
+						examples =
+							"\n  Examples:\n" +
+							cmd.examples
+								.map((ex) => `  - Input: "${ex.input}"\n    Output: "${ex.output}"`)
+								.join("\n");
+					}
+					return `- **${cmd.name}**: ${cmd.description}${examples}`;
+				})
+				.join("\n\n");
 
 			const systemPrompt = await promptEngine.renderPrompt(promptTemplate, {
 				...c.vars,

@@ -180,22 +180,22 @@ export async function run(
 		const steps: WorkflowStep[] = input.skipVerification
 			? []
 			: [
-					{
-						id: "spec",
-						gate: wrapGate("spec", new SpecGate()),
-						action: async () => {},
-					},
-					{
-						id: "tests",
-						gate: wrapGate("tests", new TestGate()),
-						action: async () => {},
-					},
-					{
-						id: "dogfood",
-						gate: wrapGate("dogfood", new DogfoodGate()),
-						action: async () => {},
-					},
-				];
+				{
+					id: "spec",
+					gate: wrapGate("spec", new SpecGate()),
+					action: async () => { },
+				},
+				{
+					id: "tests",
+					gate: wrapGate("tests", new TestGate()),
+					action: async () => { },
+				},
+				{
+					id: "dogfood",
+					gate: wrapGate("dogfood", new DogfoodGate()),
+					action: async () => { },
+				},
+			];
 
 		const workflow = new WorkflowEngine();
 		const workflowResult = await workflow.run(steps, ctx);
@@ -265,14 +265,14 @@ const actBuilder = new CommandBuilder<ActRunInput, ActRunResult>()
 		const goal = positionals[1];
 		// act.started is emitted by ActEngine now
 		/*
-        if (bus && traceId) {
-            bus.emit("act.started", {
-                type: "act.started",
-                traceId,
-                goal: goal ?? "",
-            });
-        }
-        */
+		if (bus && traceId) {
+			bus.emit("act.started", {
+				type: "act.started",
+				traceId,
+				goal: goal ?? "",
+			});
+		}
+		*/
 		return {
 			goal,
 			model: typeof values.model === "string" ? values.model : undefined,

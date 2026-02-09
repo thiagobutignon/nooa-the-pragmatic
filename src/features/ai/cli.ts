@@ -98,6 +98,10 @@ export const aiExitCodes = [
 export const aiExamples = [
 	{ input: 'nooa ai "Who are you?"', output: "Ask the AI a general question." },
 	{
+		input: 'nooa ai "Tell a joke"',
+		output: "Ask the AI to tell a joke.",
+	},
+	{
 		input: 'nooa ai "Tell a joke" --json',
 		output: "Ask the AI to tell a joke and return the response in JSON format.",
 	},
