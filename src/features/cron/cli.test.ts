@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execa } from "execa";
+import { baseEnv } from "../../test-utils/cli-env";
 
 const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 
@@ -14,7 +15,7 @@ describe("nooa cron CLI", () => {
 	const runCron = async (extraArgs: string[]) => {
 		return await execa("bun", [binPath, "cron", ...extraArgs], {
 			reject: false,
-			env: { ...process.env, NOOA_DB_PATH: dbPath },
+			env: { ...baseEnv, NOOA_DB_PATH: dbPath },
 		});
 	};
 

@@ -20,17 +20,17 @@ const manifest = {
 };
 
 describe("buildSystemPrompt", () => {
-	test("includes tool list with cli usage", () => {
-		const prompt = buildSystemPrompt(manifest);
-		expect(prompt).toContain("Ferramentas disponíveis");
+	test("includes tool list with cli usage", async () => {
+		const prompt = await buildSystemPrompt(manifest);
+		expect(prompt).toContain("You have access to the following CLI tools:");
 		expect(prompt).toContain("read");
 		expect(prompt).toContain("nooa read <path>");
 		expect(prompt).toContain("pwd");
 		expect(prompt).toContain("nooa pwd");
 	});
 
-	test("respects maxTools", () => {
-		const prompt = buildSystemPrompt(manifest, { maxTools: 1 });
+	test("respects maxTools", async () => {
+		const prompt = await buildSystemPrompt(manifest, { maxTools: 1 });
 		expect(prompt).toContain("read");
 		expect(prompt).not.toContain("pwd");
 	});

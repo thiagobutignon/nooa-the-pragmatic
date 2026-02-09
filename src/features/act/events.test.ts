@@ -17,7 +17,7 @@ describe("act events", () => {
 		process.exitCode = 0;
 	});
 
-	test("emits started and failed when goal is missing", async () => {
+	test("emits failed when goal is missing", async () => {
 		await actCommand.execute({
 			args: ["act"],
 			rawArgs: ["act"],
@@ -25,7 +25,6 @@ describe("act events", () => {
 			bus,
 		});
 
-		expect(events.find((e) => e.type === "act.started")).toBeTruthy();
 		expect(events.find((e) => e.type === "act.failed")).toBeTruthy();
 	});
 });

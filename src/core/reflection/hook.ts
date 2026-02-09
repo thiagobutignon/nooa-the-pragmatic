@@ -21,6 +21,19 @@ export async function autoReflect(
 			return;
 		}
 
+		// Skip help/version invocations to avoid slow reflection on CLI output-only paths
+		if (
+			args.some(
+				(arg) =>
+					arg === "--help" ||
+					arg === "-h" ||
+					arg === "--version" ||
+					arg === "-v",
+			)
+		) {
+			return;
+		}
+
 		// Determine outcome based on result (0 means success for shell-style commands)
 		const isSuccess = typeof result === "number" ? result === 0 : !!result;
 		const outcome = isSuccess ? "Success" : "Failure";

@@ -70,4 +70,30 @@ describe("Auto Reflection Hook", () => {
 			expect(e).toBeUndefined(); // Fail if it throws
 		}
 	});
+
+	test("autoReflect skips help invocations", async () => {
+		const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
+			addEntryMock as any,
+		);
+
+		await autoReflect("ai", ["--help"], { ok: true }, testDir);
+		await autoReflect("act", ["-h"], { ok: true }, testDir);
+
+		expect(addEntryMock).not.toHaveBeenCalled();
+		spy.mockRestore();
+	});
+
+	test("autoReflect skips version invocations", async () => {
+		const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
+			addEntryMock as any,
+		);
+
+		await autoReflect("ai", ["--version"], { ok: true }, testDir);
+		await autoReflect("ai", ["-v"], { ok: true }, testDir);
+		await autoReflect("ai", ["--version", "--foo"], { ok: true }, testDir);
+		await autoReflect("ai", ["-v", "--bar"], { ok: true }, testDir);
+
+		expect(addEntryMock).not.toHaveBeenCalled();
+		spy.mockRestore();
+	});
 });
