@@ -242,6 +242,7 @@ export async function run(
 						"zero-preguica",
 						"security",
 						"dangerous-patterns",
+						"semantic-sanitization",
 						"default",
 					];
 

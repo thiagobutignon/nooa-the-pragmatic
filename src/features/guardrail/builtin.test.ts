@@ -17,6 +17,7 @@ test("listBuiltinProfiles returns known profiles", () => {
 	const profiles = listBuiltinProfiles();
 	expect(profiles).toContain("default");
 	expect(profiles).toContain("security");
+	expect(profiles).toContain("semantic-sanitization");
 	expect(profiles.length).toBeGreaterThanOrEqual(4);
 });
 

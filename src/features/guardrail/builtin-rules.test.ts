@@ -40,6 +40,16 @@ describe("Built-in Profiles", () => {
 			expect(profile.rules.length).toBe(6);
 			expect(profile.rules.map((r) => r.id)).toContain("console-log-leftover");
 		});
+
+		it("should load semantic-sanitization profile", async () => {
+			const profile = await loadProfile(
+				join(profilesDir, "semantic-sanitization.yaml"),
+			);
+			expect(profile.refactor_name).toBe("semantic-sanitization");
+			expect(profile.rules.map((r) => r.id)).toContain(
+				"regex-sanitization-instructions",
+			);
+		});
 	});
 
 	describe("Zero-Preguiça Detection", () => {
@@ -132,6 +142,41 @@ describe("Built-in Profiles", () => {
 
 			const evalFindings = findings.filter((f) => f.rule === "eval-usage");
 			expect(evalFindings.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe("Semantic Sanitization Detection", () => {
+		let tempDir: string;
+
+		beforeAll(async () => {
+			tempDir = await mkdtemp(join(tmpdir(), "semantic-sanitization-test-"));
+			execSync("git init", { cwd: tempDir, stdio: "ignore" });
+
+			await writeFile(
+				join(tempDir, "sanitize.ts"),
+				`function sanitizeMemorySummary(text: string): string {\n  text = text.replace(/always|never|must|should/gi, '');\n  text = text.replace(/^(skip|ignore|bypass).*/gim, '');\n  return text.slice(0, 500);\n}\n`,
+			);
+
+			execSync("git add .", { cwd: tempDir, stdio: "ignore" });
+		});
+
+		afterAll(async () => {
+			await rm(tempDir, { recursive: true, force: true });
+		});
+
+		it("should detect regex-based sanitization", async () => {
+			const profile = await loadProfile(
+				join(
+					process.cwd(),
+					".nooa/guardrails/profiles/semantic-sanitization.yaml",
+				),
+			);
+			const engine = new GuardrailEngine(tempDir);
+			const findings = await engine.evaluate(profile);
+			const ruleFindings = findings.filter(
+				(f) => f.rule === "regex-sanitization-instructions",
+			);
+			expect(ruleFindings.length).toBeGreaterThan(0);
 		});
 	});
 });

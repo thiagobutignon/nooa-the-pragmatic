@@ -13,6 +13,7 @@ export type BuiltinProfileName =
 	| "zero-preguica"
 	| "security"
 	| "dangerous-patterns"
+	| "semantic-sanitization"
 	| "default";
 
 /**
@@ -39,5 +40,11 @@ export async function loadBuiltinProfile(
  * List all available built-in profile names.
  */
 export function listBuiltinProfiles(): BuiltinProfileName[] {
-	return ["zero-preguica", "security", "dangerous-patterns", "default"];
+	return [
+		"zero-preguica",
+		"security",
+		"dangerous-patterns",
+		"semantic-sanitization",
+		"default",
+	];
 }

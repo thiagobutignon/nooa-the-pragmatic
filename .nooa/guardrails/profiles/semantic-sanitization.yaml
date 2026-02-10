@@ -1,0 +1,31 @@
+# NOOA Built-in Profile: Semantic Sanitization Anti-Patterns
+# Detects regex-based prompt/memory sanitization that should be replaced with semantic selection.
+
+refactor_name: semantic-sanitization
+description: Detects regex-based sanitization of untrusted prompt context
+version: "1.0.0"
+
+rules:
+  - id: regex-sanitization-instructions
+    description: Regex sanitization of instruction keywords is brittle; prefer semantic filtering or scoped selection
+    severity: medium
+    category: prompt-safety
+    match:
+      anyOf:
+        - type: regex
+          value: "replace\\(\\/\\(?(always|never|must|should)(\\|.*)?\\)?\\/gi"
+        - type: regex
+          value: "replace\\(\\/\\^\\(?(skip|ignore|bypass)(\\|.*)?\\)?\\)\\.\\*\\/gim"
+        - type: regex
+          value: "sanitize.*(memory|summary|context|prompt)"
+    scope:
+      include:
+        - "**/*.ts"
+        - "**/*.tsx"
+        - "**/*.js"
+        - "**/*.jsx"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/docs/**"
+        - "**/.nooa/guardrails/**"
