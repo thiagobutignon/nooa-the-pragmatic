@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { execa } from "execa";
+import { Store } from "../../core/db/index";
 import { PromptConfig } from "./config";
 import type {
 	InjectionPatternEntry,
@@ -13,6 +15,7 @@ export type Mode = "plan" | "act" | "review" | "auto";
 export interface AssemblyContextHints {
 	isInteractive?: boolean;
 	hasGitChanges?: boolean;
+	memories?: Array<{ text: string; embedding: number[] | Float32Array }>;
 }
 
 export interface AssemblyOptions {
@@ -160,6 +163,7 @@ export class PromptAssembler {
 	}
 
 	async assemble(options: AssemblyOptions): Promise<string | AssemblyResult> {
+		this.hydrateContextMemories(options.context?.memories);
 		const mode = this.inferMode(options);
 		const taskEmbedding = await this.cache.embedTask(options.task);
 
@@ -281,16 +285,127 @@ export class PromptAssembler {
 
 	private async fetchContextFromEmbedding(
 		_taskEmbedding: Float32Array,
-		_root: string,
+		root: string,
 	): Promise<AssembledContext> {
-		await this.loadInjectionManifest();
+		const [git, env] = await Promise.all([
+			this.getGitState(root),
+			this.getEnvState(root),
+		]);
+		const injectionPatterns = await this.loadInjectionManifest();
+
+		const rawMemories = this.contextMemories.length
+			? this.contextMemories.map((m) => ({ ...m, score: 1 }))
+			: await this.loadSemanticMemories(_taskEmbedding);
+
+		const filtered = this.filterInjection(rawMemories, injectionPatterns);
+		const topRelevant = filtered.safe
+			.filter((m) => m.score >= 0.7)
+			.slice(0, 3);
+
 		return {
-			git: null,
-			env: null,
-			memories: [],
+			git,
+			env,
+			memories: topRelevant.map((m) => m.text),
 			activity: [],
-			filteredCount: 0,
+			filteredCount: filtered.filteredCount,
 		};
+	}
+
+	private contextMemories: Array<{
+		text: string;
+		embedding: Float32Array;
+	}> = [];
+
+	private hydrateContextMemories(
+		memories?: Array<{ text: string; embedding: number[] | Float32Array }>,
+	) {
+		this.contextMemories = (memories ?? []).map((m) => ({
+			text: m.text,
+			embedding:
+				m.embedding instanceof Float32Array
+					? m.embedding
+					: new Float32Array(m.embedding),
+		}));
+	}
+
+	private filterInjection(
+		memories: Array<{
+			text: string;
+			embedding: Float32Array;
+			score: number;
+		}>,
+		patterns: InjectionPatternEntry[],
+	) {
+		const safe: Array<{ text: string; embedding: Float32Array; score: number }> =
+			[];
+		let filteredCount = 0;
+		for (const memory of memories) {
+			let maxScore = 0;
+			for (const pattern of patterns) {
+				const score = cosineSim(
+					memory.embedding,
+					new Float32Array(pattern.embedding),
+				);
+				if (score > maxScore) maxScore = score;
+			}
+			if (maxScore >= PromptConfig.semantic.injectionMinScore) {
+				filteredCount += 1;
+			} else safe.push(memory);
+		}
+		return { safe, filteredCount };
+	}
+
+	private async loadSemanticMemories(taskEmbedding: Float32Array) {
+		const store = new Store();
+		try {
+			const results = await store.searchEmbeddings(
+				Array.from(taskEmbedding),
+				10,
+			);
+			return results
+				.filter((row) => row.score >= 0.5)
+				.map((row) => ({
+					text: row.chunk,
+					score: row.score,
+					embedding: new Float32Array(
+						row.vector.buffer,
+						row.vector.byteOffset,
+						row.vector.byteLength / 4,
+					),
+				}));
+		} finally {
+			store.close();
+		}
+	}
+
+	private async getGitState(root: string) {
+		try {
+			const { stdout: branch } = await execa(
+				"git",
+				["rev-parse", "--abbrev-ref", "HEAD"],
+				{ cwd: root },
+			);
+			const { stdout: status } = await execa(
+				"git",
+				["status", "--short"],
+				{ cwd: root },
+			);
+			const changes = status.split("\n").filter(Boolean).length;
+			return {
+				branch: branch.trim(),
+				summary: changes === 0 ? "clean" : `${changes} files changed`,
+			};
+		} catch {
+			return null;
+		}
+	}
+
+	private async getEnvState(root: string) {
+		try {
+			return { cwd: root, os: process.platform };
+		} catch {
+			return null;
+		}
 	}
 
 	private renderContext(context: AssembledContext) {
