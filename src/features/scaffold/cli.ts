@@ -108,7 +108,11 @@ export const scaffoldExamples = [
 	},
 	{
 		input: "nooa scaffold prompt review --with-docs",
-		output: "Scaffold a new prompt template named 'review' with documentation.",
+		output: "Scaffold a 'review' prompt template with documentation.",
+	},
+	{
+		input: "nooa scaffold command billing --dry-run",
+		output: "Simulate scaffolding a 'billing' command (dry-run).",
 	},
 ];
 

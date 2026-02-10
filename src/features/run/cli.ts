@@ -94,11 +94,15 @@ export const runExitCodes = [
 export const runExamples = [
 	{
 		input: 'nooa run -- code write foo.ts -- commit -m "feat: foo"',
-		output: "Run a pipeline to write a file and then commit it.",
+		output: "Run a pipeline: write 'foo.ts', then commit with message 'feat: foo'.",
 	},
 	{
 		input: 'nooa run "code write foo.ts" "commit -m \'feat: foo\'"',
-		output: "Run a pipeline using quoted strings (alternative syntax).",
+		output: "Run a pipeline using quoted strings: write file, then commit.",
+	},
+	{
+		input: "nooa run --continue-on-error -- code lint -- test",
+		output: "Run pipeline: lint, then test, continuing even if lint fails.",
 	},
 ];
 

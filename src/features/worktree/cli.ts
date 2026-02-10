@@ -128,17 +128,24 @@ export const worktreeExitCodes = [
 export const worktreeExamples = [
 	{
 		input: "nooa worktree create feat/login",
-		output: "Create a new isolated worktree for the login feature.",
+		output: "Create a worktree for 'feat/login'.",
 	},
 	{
 		input: "nooa worktree list --json",
-		output: "List all active worktrees in JSON format.",
+		output: "List all worktrees in JSON format.",
 	},
 	{
 		input: "nooa worktree remove feat/login",
-		output: "Remove the worktree for the login feature.",
+		output: "Remove the 'feat/login' worktree.",
 	},
-	{ input: "nooa worktree prune", output: "Prune stale worktrees." },
+	{
+		input: "nooa worktree prune",
+		output: "Prune stale worktrees.",
+	},
+	{
+		input: "nooa worktree lock feat/login",
+		output: "Lock the 'feat/login' worktree.",
+	},
 ];
 
 export interface WorktreeRunInput {

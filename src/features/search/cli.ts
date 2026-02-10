@@ -100,13 +100,15 @@ export const searchExitCodes = [
 export const searchExamples = [
 	{
 		input: 'nooa search "TODO" . --include "*.ts"',
-		output:
-			"Search for 'TODO' in all TypeScript files in the current directory.",
+		output: "Search for 'TODO' in .ts files in the current directory.",
 	},
 	{
 		input: 'nooa search "class User" src --json',
-		output:
-			"Find all occurrences of 'class User' in 'src/' and output as JSON.",
+		output: "Find 'class User' in 'src/' and output JSON.",
+	},
+	{
+		input: 'nooa search "error" logs --regex --context 2',
+		output: "Regex search for 'error' in 'logs/' with 2 lines of context.",
 	},
 ];
 
