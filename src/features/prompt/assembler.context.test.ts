@@ -17,8 +17,11 @@ const injectionManifest = [
 describe("PromptAssembler context", () => {
 	let root: string;
 	let manifestsDir: string;
+	let originalProvider: string | undefined;
 
 	beforeEach(async () => {
+		originalProvider = process.env.NOOA_EMBED_PROVIDER;
+		process.env.NOOA_EMBED_PROVIDER = "ollama";
 		root = await mkdtemp(join(tmpdir(), "nooa-assembler-ctx-"));
 		await mkdir(join(root, ".nooa/prompts/layers"), { recursive: true });
 		await writeFile(
@@ -47,6 +50,7 @@ describe("PromptAssembler context", () => {
 	});
 
 	afterEach(async () => {
+		process.env.NOOA_EMBED_PROVIDER = originalProvider;
 		await rm(root, { recursive: true, force: true });
 	});
 

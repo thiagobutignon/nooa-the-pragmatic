@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { execa } from "execa";
-import { Store } from "../../core/db/index";
+import { ContextEngine } from "../context/engine";
 import { PromptConfig } from "./config";
 import type {
 	InjectionPatternEntry,
@@ -147,6 +146,7 @@ export class PromptAssembler {
 	private toolManifest?: ToolManifestEntry[];
 	private skillManifest?: SkillManifestEntry[];
 	private injectionManifest?: InjectionPatternEntry[];
+	private contextEngine: ContextEngine;
 
 	constructor(options: ConstructorOptions = {}) {
 		const repoRoot = resolve(process.cwd());
@@ -160,6 +160,7 @@ export class PromptAssembler {
 				return result.embedding;
 			});
 		this.cache = new SmartCache(embedder);
+		this.contextEngine = new ContextEngine();
 	}
 
 	async assemble(options: AssemblyOptions): Promise<string | AssemblyResult> {
@@ -288,14 +289,14 @@ export class PromptAssembler {
 		root: string,
 	): Promise<AssembledContext> {
 		const [git, env] = await Promise.all([
-			this.getGitState(root),
-			this.getEnvState(root),
+			this.contextEngine.getGitState(root),
+			this.contextEngine.getEnvState(root),
 		]);
 		const injectionPatterns = await this.loadInjectionManifest();
 
 		const rawMemories = this.contextMemories.length
 			? this.contextMemories.map((m) => ({ ...m, score: 1 }))
-			: await this.loadSemanticMemories(_taskEmbedding);
+			: await this.contextEngine.searchMemories(_taskEmbedding);
 
 		const filtered = this.filterInjection(rawMemories, injectionPatterns);
 		const topRelevant = filtered.safe
@@ -358,58 +359,6 @@ export class PromptAssembler {
 		return { safe, filteredCount };
 	}
 
-	private async loadSemanticMemories(taskEmbedding: Float32Array) {
-		const store = new Store();
-		try {
-			const results = await store.searchEmbeddings(
-				Array.from(taskEmbedding),
-				10,
-			);
-			return results
-				.filter((row) => row.score >= 0.5)
-				.map((row) => ({
-					text: row.chunk,
-					score: row.score,
-					embedding: new Float32Array(
-						row.vector.buffer,
-						row.vector.byteOffset,
-						row.vector.byteLength / 4,
-					),
-				}));
-		} finally {
-			store.close();
-		}
-	}
-
-	private async getGitState(root: string) {
-		try {
-			const { stdout: branch } = await execa(
-				"git",
-				["rev-parse", "--abbrev-ref", "HEAD"],
-				{ cwd: root },
-			);
-			const { stdout: status } = await execa(
-				"git",
-				["status", "--short"],
-				{ cwd: root },
-			);
-			const changes = status.split("\n").filter(Boolean).length;
-			return {
-				branch: branch.trim(),
-				summary: changes === 0 ? "clean" : `${changes} files changed`,
-			};
-		} catch {
-			return null;
-		}
-	}
-
-	private async getEnvState(root: string) {
-		try {
-			return { cwd: root, os: process.platform };
-		} catch {
-			return null;
-		}
-	}
 
 	private renderContext(context: AssembledContext) {
 		const trustedLines: string[] = [];
