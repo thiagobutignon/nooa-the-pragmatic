@@ -1,0 +1,408 @@
+[
+  {
+    "name": "using-git-worktrees",
+    "description": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - creates isolated git worktrees with smart directory selection and safety verification",
+    "embedding": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "terminal-ui-design",
+    "description": "Use when building or redesigning CLI tools, TUI applications, or terminal-based interfaces where visual quality and interaction polish matter",
+    "embedding": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "test-driven-development",
+    "description": "Use when implementing any feature or bugfix, before writing implementation code",
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "systematic-debugging",
+    "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "prompt-engineer",
+    "description": "Expert prompt engineer specializing in advanced prompting",
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "using-superpowers",
+    "description": "Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions",
+    "embedding": [
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "name": "linkedin-post",
+    "description": "Create engaging LinkedIn posts that drive engagement and build authority. Use when the user wants to write LinkedIn content, needs posts for their LinkedIn strategy, or wants to repurpose content for LinkedIn.",
+    "embedding": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "dispatching-parallel-agents",
+    "description": "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "system-prompts",
+    "description": "Write system prompts, tool docs, and agent definitions. Combines research-backed prompt engineering (+15-30% measured improvements) with project XML conventions. Covers tag hierarchy, structural templates, high-impact interventions, anti-patterns.",
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "executing-plans",
+    "description": "Use when you have a written implementation plan to execute in a separate session with review checkpoints",
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "self-evolving-modules",
+    "description": "Use when creating new NOOA CLI features, commands, or refactoring existing ones to match the self-describing standard (Single Source of Truth).",
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "finishing-a-development-branch",
+    "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup",
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "voice-dna-creator",
+    "description": "Analyze writing samples to create a comprehensive voice DNA profile. Use when the user wants to capture their unique writing voice, needs to create a voice profile for AI content, or is setting up a new writing system.",
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "icp-creator",
+    "description": "Create detailed Ideal Client Profile through guided interview. Use when the user needs to define their target audience, understand their customers' problems and language, or build an ICP for content targeting.",
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "create-cli",
+    "description": ">",
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "brainstorming",
+    "description": "\" use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.\"",
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "dependency-driven-development",
+    "description": "Use when a feature depends on missing primitives (infra, commands, schemas, tooling) or when a roadmap step must be reordered due to a blocking dependency.",
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "telemetry-observability",
+    "description": "Use when a CLI/agent lacks structured logging, trace IDs, or persistent telemetry needed for debugging, MTTR tracking, OKR reporting, cost analytics, or reproducible audits.",
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "agent-cli-first",
+    "description": "Use when starting a new project or feature, or when an agent is drifting into UI/API work before core behavior is testable and deterministic via command execution.",
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "writing-plans",
+    "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "linkedin-profile-optimizer",
+    "description": "Optimize LinkedIn profile sections for maximum impact and conversions. Use when the user wants to improve their LinkedIn headline, about section, experience descriptions, or overall profile strategy.",
+    "embedding": [
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "name": "dogfooding",
+    "description": "Verify real-world behavior, help text consistency, and CLI contract satisfaction after implementing features or fixes. Required before claiming completion.",
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "requesting-code-review",
+    "description": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "frontend-design",
+    "description": "Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.",
+    "embedding": [
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "name": "receiving-code-review",
+    "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "writing-skills",
+    "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "verification-before-completion",
+    "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "subagent-driven-development",
+    "description": "Use when executing implementation plans with independent tasks in the current session",
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "refactoring-command-builder",
+    "description": "Use when refactoring a NOOA CLI feature to the CommandBuilder pattern or when multiple commands share duplicated CLI/SDK/docs/telemetry/exit-code logic",
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  }
+]

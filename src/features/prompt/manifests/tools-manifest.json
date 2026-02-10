@@ -1,0 +1,631 @@
+[
+  {
+    "name": "act",
+    "description": "Autonomous agent orchestrator",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "ai",
+    "description": "Query the AI engine",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "ask",
+    "description": "Query indexed code/memory",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "check",
+    "description": "Audit code against project policies (Zero-Preguiça)",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "ci",
+    "description": "Run local CI pipeline (test + lint + check)",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "code",
+    "description": "Code operations (write, patch, diff, format, refactor)",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "commit",
+    "description": "Commit staged changes with validation",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "name": "context",
+    "description": "Generate AI context pack",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "cron",
+    "description": "Manage recurring jobs",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "doctor",
+    "description": "Check environment health",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "embed",
+    "description": "Generate embeddings for text or files",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "eval",
+    "description": "Systematic evaluation of AI prompts and outputs",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "fix",
+    "description": "Autonomous bug fix loop",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "gate",
+    "description": "Verify project state against defined quality gates.",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "goal",
+    "description": "Manage focus and goals",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "guardrail",
+    "description": "Run guardrail profile checks on code",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "name": "identity",
+    "description": "Initialize agent identity artifacts (Legacy)",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "ignore",
+    "description": "Manage .nooa-ignore patterns",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "index",
+    "description": "Semantic indexing operations",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "init",
+    "description": "Initialize NOOA's Agentic Soul and Identity",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "mcp",
+    "description": "Manage MCP integrations (list, install, enable, disable, call, health)",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "name": "memory",
+    "description": "Manage NOOA's persistent memory",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "message",
+    "description": "Send a message to the AI agent",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "pr",
+    "description": "Manage GitHub Pull Requests",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "prompt",
+    "description": "Manage and render AI prompts",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "push",
+    "description": "Push changes to remote repository",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "pwd",
+    "description": "Print current working directory",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "read",
+    "description": "Read file contents",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "name": "replay",
+    "description": "Track agent steps as a replayable graph",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "review",
+    "description": "Perform a code review",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "name": "run",
+    "description": "Execute multiple commands in a pipeline",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      4,
+      5,
+      6,
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "name": "scaffold",
+    "description": "Standardize creation of new features and prompts",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  },
+  {
+    "name": "search",
+    "description": "Search files and file contents",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "skills",
+    "description": "Manage NOOA skills",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "tui",
+    "description": "Launch terminal user interfaces",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ]
+  },
+  {
+    "name": "workflow",
+    "description": "Run a verification workflow sequence.",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      6,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  {
+    "name": "worktree",
+    "description": "Manage git worktrees for isolated development",
+    "modes": [
+      "any"
+    ],
+    "embedding": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      0,
+      1,
+      2
+    ]
+  }
+]
