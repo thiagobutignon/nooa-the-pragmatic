@@ -30,6 +30,10 @@ const IMPERATIVE_PATTERNS = [
 	/\boverride\b/gi,
 ];
 
+const TOOL_HINTS: Record<string, string[]> = {
+	ci: ["tests", "unit tests", "testes unitarios", "test unitaire", "pruebas unitarias"],
+};
+
 export function normalizeDescription(input: string) {
 	let output = input;
 	for (const pattern of IMPERATIVE_PATTERNS) {
@@ -62,7 +66,8 @@ export async function buildToolManifest(
 	for (const command of commands) {
 		const description = normalizeDescription(command.description ?? "");
 		const cli = extractCliUsage(command.agentDoc);
-		const combined = [command.name, description, cli]
+		const hints = TOOL_HINTS[command.name]?.join(", ");
+		const combined = [command.name, description, cli, hints]
 			.filter(Boolean)
 			.join(" - ")
 			.trim();

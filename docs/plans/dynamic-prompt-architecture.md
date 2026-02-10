@@ -35,6 +35,7 @@ Store strict system prompts under `.nooa/prompts/` so they are versioned and tre
 
 **Step 1: Pre-compute Tool/Skill Embeddings**
 - Generate JSON manifests with `{ name, description, embedding, modes }`.
+- Append curated multilingual hints for high-value tools (e.g., CI/tests) before embedding.
 - Store embeddings once; runtime only computes cosine similarity.
 
 **Step 2: Pre-compute Injection Pattern Embeddings**
@@ -58,7 +59,7 @@ export const PromptConfig = {
     maxTools: 10,
     maxSkills: 3,
     semantic: {
-        minScore: 0.65,
+        minScore: 0.58,
         maxResults: 5,
         injectionMinScore: 0.75,
         enableModeSemantic: false

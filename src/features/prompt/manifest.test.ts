@@ -34,6 +34,27 @@ describe("prompt manifest builders", () => {
 		]);
 	});
 
+	test("buildToolManifest appends tool hints when available", async () => {
+		const commands: Command[] = [
+			{
+				name: "ci",
+				description: "Run local CI pipeline (test + lint + check)",
+				execute: async () => {},
+				agentDoc: "<instruction><usage><cli>nooa ci</cli></usage></instruction>",
+			},
+		];
+
+		const manifest = await buildToolManifest(commands, embedder);
+		const expectedCombined =
+			"ci - Run local CI pipeline (test + lint + check) - nooa ci - " +
+			"tests, unit tests, testes unitarios, test unitaire, pruebas unitarias";
+
+		expect(manifest[0]?.embedding).toEqual([
+			expectedCombined.length,
+			expectedCombined.length + 1,
+		]);
+	});
+
 	test("buildSkillManifest embeds skill descriptions", async () => {
 		const skills: Skill[] = [
 			{

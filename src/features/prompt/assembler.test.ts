@@ -83,4 +83,27 @@ describe("PromptAssembler", () => {
 		expect(result1.tools).toContain("ci");
 		expect(result1.tools).toContain("read");
 	});
+
+	test("includes semantic candidates above the relaxed threshold", async () => {
+		await writeFile(
+			join(manifestsDir, "tools-manifest.json"),
+			JSON.stringify([
+				{ name: "lint", description: "Lint code", modes: ["any"], embedding: [0.6, 0.8] },
+			]),
+		);
+
+		const assembler = new PromptAssembler({
+			manifestsDir,
+			embedder: async () => [1, 0],
+		});
+
+		const result = await assembler.assemble({
+			task: "run lint",
+			mode: "auto",
+			root,
+			json: true,
+		});
+
+		expect(result.tools).toContain("lint");
+	});
 });

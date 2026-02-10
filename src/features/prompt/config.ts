@@ -3,7 +3,7 @@ export const PromptConfig = {
 	maxTools: 10,
 	maxSkills: 3,
 	semantic: {
-		minScore: 0.65,
+		minScore: 0.58,
 		maxResults: 5,
 		injectionMinScore: 0.75,
 		enableModeSemantic: false,
