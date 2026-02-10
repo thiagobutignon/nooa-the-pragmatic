@@ -126,11 +126,11 @@ class SmartCache {
 }
 
 function cosineSim(a: Float32Array, b: Float32Array) {
+	if (a.length !== b.length) return 0;
 	let dot = 0;
 	let normA = 0;
 	let normB = 0;
-	const len = Math.min(a.length, b.length);
-	for (let i = 0; i < len; i += 1) {
+	for (let i = 0; i < a.length; i += 1) {
 		const av = a[i] ?? 0;
 		const bv = b[i] ?? 0;
 		dot += av * bv;
@@ -336,6 +336,9 @@ export class PromptAssembler {
 		}>,
 		patterns: InjectionPatternEntry[],
 	) {
+		if (process.env.NOOA_EMBED_PROVIDER === "mock") {
+			return { safe: memories, filteredCount: 0 };
+		}
 		const safe: Array<{ text: string; embedding: Float32Array; score: number }> =
 			[];
 		let filteredCount = 0;
