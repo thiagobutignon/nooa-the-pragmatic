@@ -14,16 +14,14 @@
 
 ---
 
-### Task 0: Namespace Isolation & Core Structure
+### Task 0: .nooa Prompt Layer Structure
 
 **Files:**
-- Create: `.nooa-internal/prompts/layers/constitution.md` (Extract from `tui-agent.md`)
-- Create: `.nooa-internal/prompts/layers/rules.md` (Extract from `tui-agent.md`)
-- Create: `.nooa-internal/.gitignore` (content: `*`)
-- Create: `.nooa-internal/README.md` (Warning to AI models)
+- Create: `.nooa/prompts/layers/constitution.md` (Extract from `tui-agent.md`)
+- Create: `.nooa/prompts/layers/rules.md` (Extract from `tui-agent.md`)
 
-**Step 1: Create Internal Structure**
-Isolate strict system prompts to preventing accidental context contamination by other agents (Claude/Cursor).
+**Step 1: Create .nooa Structure**
+Store strict system prompts under `.nooa/prompts/` so they are versioned and treated as system-owned artifacts.
 
 ---
 
@@ -66,8 +64,8 @@ export const PromptConfig = {
         enableModeSemantic: false
     },
     paths: {
-        constitution: ".nooa-internal/prompts/layers/constitution.md",
-        rules: ".nooa-internal/prompts/layers/rules.md"
+        constitution: ".nooa/prompts/layers/constitution.md",
+        rules: ".nooa/prompts/layers/rules.md"
     },
     // Trust Model: Untrusted content is wrapped in these tags
     untrustedWrapper: (content: string) => 
@@ -337,36 +335,3 @@ class SmartCache {
 - Metrics: `embeddingCalls === 1` per assembly.
 
 ---
-
-## Feedback
-
-**High Risk / Missing Requirements**
-1. **Security boundary still underspecified.** Even with heuristics, you’re injecting memory summary and tool/skill text into a system prompt. Define a trust model:
-   - Mark untrusted blocks (e.g., `BEGIN_UNTRUSTED_CONTEXT`) and keep them below Constitution/Rules.
-   - Prevent instruction precedence violations from memory summaries or skill text.
-2. **Heuristics need a deterministic spec.** The plan references keyword heuristics but doesn’t define:
-   - The exact mapping (keyword → tools/skills).
-   - Priority/ordering rules.
-   - How to handle conflicts or multiple matches.
-3. **No explicit caps.** Add limits for:
-   - Max tools and max skills per mode.
-   - Max context length per layer.
-   - Cache eviction behavior for `LRUCache`.
-
-**Design Clarity Gaps**
-1. **Namespace isolation is good, but path usage is unclear.** You’re adding `.nooa-internal/` while the assembler lives in `src/features/prompt/`. Specify how the assembler loads constitution/rules from the internal directory (path resolution, fallback if missing).
-2. **Context layer mixes runtime + memory summary.** Define a stable schema or ordering so downstream tools/tests can assert structure.
-3. **Metrics scope is vague.** You call out “Heuristic Quality,” but not how it’s measured. Define a simple metric (e.g., precision@K on a fixed eval set).
-
-**Testing Gaps**
-1. **Missing tests for heuristic selection.** Add deterministic tests for `detectMode`, `selectTools`, and `selectSkills` with fixed inputs.
-2. **No coverage for cache behavior.** Add a test that repeated assembly hits cache and does not re-read layers.
-3. **No tests for internal path fallback.** If `.nooa-internal/` is missing, define expected behavior and test it.
-
-**Suggested Adjustments**
-1. **Add `PromptAssemblerConfig`** with explicit limits, layer ordering, and toggles (e.g., includeMemorySummary).
-2. **Add `--json` to `nooa eval assemble`** so tests can assert selections without parsing markdown.
-3. **Define a minimal “capabilities manifest”** (tools + skills + descriptions) as a stable input for heuristics and future semantic phase.
-
-**Overall**
-The shift to heuristics-first is the right call for speed and reliability. To make it robust, nail down deterministic selection rules, explicit caps, and a clear trust model for injected content.
