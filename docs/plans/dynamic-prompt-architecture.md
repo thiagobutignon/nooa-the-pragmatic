@@ -14,16 +14,14 @@
 
 ---
 
-### Task 0: Namespace Isolation & Core Structure
+### Task 0: .nooa Prompt Layer Structure
 
 **Files:**
-- Create: `.nooa-internal/prompts/layers/constitution.md` (Extract from `tui-agent.md`)
-- Create: `.nooa-internal/prompts/layers/rules.md` (Extract from `tui-agent.md`)
-- Create: `.nooa-internal/.gitignore` (content: `*`)
-- Create: `.nooa-internal/README.md` (Warning to AI models)
+- Create: `.nooa/prompts/layers/constitution.md` (Extract from `tui-agent.md`)
+- Create: `.nooa/prompts/layers/rules.md` (Extract from `tui-agent.md`)
 
-**Step 1: Create Internal Structure**
-Isolate strict system prompts to preventing accidental context contamination by other agents (Claude/Cursor).
+**Step 1: Create .nooa Structure**
+Store strict system prompts under `.nooa/prompts/` so they are versioned and treated as system-owned artifacts.
 
 ---
 
@@ -37,6 +35,7 @@ Isolate strict system prompts to preventing accidental context contamination by 
 
 **Step 1: Pre-compute Tool/Skill Embeddings**
 - Generate JSON manifests with `{ name, description, embedding, modes }`.
+- Append curated multilingual hints for high-value tools (e.g., CI/tests) before embedding.
 - Store embeddings once; runtime only computes cosine similarity.
 
 **Step 2: Pre-compute Injection Pattern Embeddings**
@@ -60,14 +59,14 @@ export const PromptConfig = {
     maxTools: 10,
     maxSkills: 3,
     semantic: {
-        minScore: 0.65,
+        minScore: 0.58,
         maxResults: 5,
         injectionMinScore: 0.75,
         enableModeSemantic: false
     },
     paths: {
-        constitution: ".nooa-internal/prompts/layers/constitution.md",
-        rules: ".nooa-internal/prompts/layers/rules.md"
+        constitution: ".nooa/prompts/layers/constitution.md",
+        rules: ".nooa/prompts/layers/rules.md"
     },
     // Trust Model: Untrusted content is wrapped in these tags
     untrustedWrapper: (content: string) => 
@@ -337,15 +336,5 @@ class SmartCache {
 - Injection filtering: malicious memory is dropped and increments `filteredCount`.
 - Metrics: `embeddingCalls === 1` per assembly.
 - SmartCache: `constitution.md` read once across multiple assemblies.
-- SmartCache: `constitution.md` read once across multiple assemblies.
- - SmartCache: `constitution.md` read once across multiple assemblies.
-2. **No coverage for cache behavior.** Add a test that repeated assembly hits cache and does not re-read layers.
-3. **No tests for internal path fallback.** If `.nooa-internal/` is missing, define expected behavior and test it.
 
-**Suggested Adjustments**
-1. **Add `PromptAssemblerConfig`** with explicit limits, layer ordering, and toggles (e.g., includeMemorySummary).
-2. **Add `--json` to `nooa eval assemble`** so tests can assert selections without parsing markdown.
-3. **Define a minimal “capabilities manifest”** (tools + skills + descriptions) as a stable input for heuristics and future semantic phase.
-
-**Overall**
-The shift to heuristics-first is the right call for speed and reliability. To make it robust, nail down deterministic selection rules, explicit caps, and a clear trust model for injected content.
+---

@@ -9,6 +9,7 @@ import {
 	OpenAiProvider,
 } from "../ai/providers/mod";
 import { PromptEngine } from "../prompt/engine";
+import { PromptAssembler } from "../prompt/assembler";
 import type { Assertion, AssertionResult } from "./scorers/deterministic";
 import { DeterministicScorer } from "./scorers/deterministic";
 
@@ -37,6 +38,53 @@ export interface CaseResult {
 export class EvalEngine {
 	private scorer = new DeterministicScorer();
 
+	async buildSystemPrompt(options: {
+		promptName: string;
+		inputText: string;
+		vars: Record<string, unknown>;
+		root: string;
+	}) {
+		const templatesDir = join(options.root, "src/features/prompt/templates");
+		const promptEngine = new PromptEngine(templatesDir);
+		const promptTemplate = await promptEngine.loadPrompt(options.promptName);
+
+		const featuresDir = join(options.root, "src/features");
+		const registry = await loadCommands(featuresDir);
+		const toolsList = registry
+			.list()
+			.map((cmd) => {
+				let examples = "";
+				if (cmd.examples && cmd.examples.length > 0) {
+					examples =
+						"\n  Examples:\n" +
+						cmd.examples
+							.map(
+								(ex) =>
+									`  - Input: "${ex.input}"\n    Output: "${ex.output}"`,
+							)
+							.join("\n");
+				}
+				return `- **${cmd.name}**: ${cmd.description}${examples}`;
+			})
+			.join("\n\n");
+
+		const renderedPrompt = await promptEngine.renderPrompt(promptTemplate, {
+			...options.vars,
+			input: options.inputText,
+			repo_root: options.root,
+			tools: toolsList,
+		});
+
+		const assembler = new PromptAssembler();
+		const assembled = await assembler.assemble({
+			task: options.inputText,
+			mode: "auto",
+			root: options.root,
+		});
+
+		return [String(assembled), renderedPrompt].join("\n\n---\n\n");
+	}
+
 	async loadSuite(name: string): Promise<EvalSuite> {
 		const suitePath = join(
 			process.cwd(),
@@ -52,18 +100,17 @@ export class EvalEngine {
 		options: { judge?: "deterministic" | "llm"; filterCase?: string } = {},
 	): Promise<{ results: CaseResult[]; totalScore: number }> {
 		const results: CaseResult[] = [];
-		const templatesDir = join(process.cwd(), "src/features/prompt/templates");
-		const promptEngine = new PromptEngine(templatesDir);
 		const aiEngine = new AiEngine();
 		aiEngine.register(new OllamaProvider());
 		aiEngine.register(new OpenAiProvider());
 		aiEngine.register(new MockProvider());
 		aiEngine.register(new GroqProvider());
 
-		const promptTemplate = await promptEngine.loadPrompt(suite.prompt);
 		const judgeTemplate =
 			options.judge === "llm"
-				? await promptEngine.loadPrompt("eval-rubric")
+				? await new PromptEngine(
+						join(process.cwd(), "src/features/prompt/templates"),
+					).loadPrompt("eval-rubric")
 				: null;
 
 		const filteredCases = options.filterCase
@@ -76,28 +123,11 @@ export class EvalEngine {
 				inputText = await readFile(join(process.cwd(), c.input), "utf-8");
 			}
 
-			const featuresDir = join(process.cwd(), "src/features");
-			const registry = await loadCommands(featuresDir);
-			const toolsList = registry
-				.list()
-				.map((cmd) => {
-					let examples = "";
-					if (cmd.examples && cmd.examples.length > 0) {
-						examples =
-							"\n  Examples:\n" +
-							cmd.examples
-								.map((ex) => `  - Input: "${ex.input}"\n    Output: "${ex.output}"`)
-								.join("\n");
-					}
-					return `- **${cmd.name}**: ${cmd.description}${examples}`;
-				})
-				.join("\n\n");
-
-			const systemPrompt = await promptEngine.renderPrompt(promptTemplate, {
-				...c.vars,
-				input: inputText,
-				repo_root: process.cwd(),
-				tools: toolsList,
+			const systemPrompt = await this.buildSystemPrompt({
+				promptName: suite.prompt,
+				inputText,
+				vars: c.vars,
+				root: process.cwd(),
 			});
 
 			const messages: {
@@ -125,7 +155,9 @@ export class EvalEngine {
 			const assertions = [...deterministicResult.results];
 
 			if (judgeTemplate) {
-				const judgePrompt = await promptEngine.renderPrompt(
+				const judgePrompt = await new PromptEngine(
+					join(process.cwd(), "src/features/prompt/templates"),
+				).renderPrompt(
 					judgeTemplate,
 					{
 						original_prompt: promptTemplate.body,
