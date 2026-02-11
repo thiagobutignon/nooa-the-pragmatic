@@ -23,6 +23,7 @@ Systematic evaluation of AI prompts and outputs.
 Commands:
   run          Execute evaluation suite on a prompt.
   dataset      Generate golden dataset from CLI registry.
+  assemble     Assemble system prompt for a task (debug/dogfood).
   suggest      Analyze failures and suggest improvements.
   apply        Bump prompt version if evaluation passes.
   report       Show the latest evaluation record for a prompt/suite combo.
@@ -46,6 +47,7 @@ Examples:
   nooa eval run review --suite standard
   nooa eval apply code --suite smoke --bump minor
   nooa eval history review --suite standard --limit 3
+  nooa eval assemble "fix login bug" --json
 
 Exit Codes:
   0: Success
@@ -114,6 +116,10 @@ export const evalExamples = [
 		output: "Run the 'unit-tests' evaluation suite.",
 	},
 	{
+		input: 'nooa eval assemble "fix login bug" --json',
+		output: "Assemble the system prompt for a task and return JSON.",
+	},
+	{
 		input: "nooa eval optimize --prompt fix_code",
 		output: "Optimize the 'fix_code' prompt based on failures.",
 	},
@@ -161,7 +167,8 @@ export async function run(
 		command !== "dataset" &&
 		command !== "history" &&
 		command !== "compare" &&
-		command !== "report"
+		command !== "report" &&
+		command !== "assemble"
 	) {
 		if (!promptName || !suiteName) {
 			return {
@@ -182,6 +189,26 @@ export async function run(
 		(input.judge as "deterministic" | "llm") ?? "deterministic";
 
 	try {
+		if (command === "assemble") {
+			if (!promptName) {
+				return {
+					ok: false,
+					error: sdkError(
+						"eval.missing_args",
+						"Missing required arguments (task).",
+					),
+				};
+			}
+			const { PromptAssembler } = await import("../prompt/assembler");
+			const assembler = new PromptAssembler();
+			const assembled = await assembler.assemble({
+				task: promptName,
+				mode: "auto",
+				root: repoRoot,
+				json: true,
+			});
+			return { ok: true, data: { payload: assembled } };
+		}
 		if (command === "dataset") {
 			const { generateDataset, saveDataset } = await import("./dataset");
 			const entries = await generateDataset(repoRoot);
@@ -547,6 +574,11 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			console.log(
 				"The AI suggested adding stricter JSON schema enforcement to the 'Golden Rules' section.",
 			);
+			return;
+		}
+
+		if (payload?.prompt && payload?.mode && payload?.task) {
+			console.log(payload.prompt);
 			return;
 		}
 

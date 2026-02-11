@@ -7,7 +7,7 @@
 - **Semantic selection** for tools/skills with **precomputed embeddings** for fast lookup.
 - **Semantic filtering** for untrusted context (memory/activity) + injection detection.
 - **Deterministic assembly** with fixed ordering, explicit limits, and graceful degradation.
- - **Mode inference with explicit override and cheap fallback**, optional semantic fallback behind a flag.
+- **Mode inference with explicit override and cheap fallback**, optional semantic fallback behind a flag.
 
 **Architecture:** A 4-layer context injection system (Constitution, Context, Capabilities, Task).
 **Tech Stack:** TypeScript, `CommandRegistry`, `SkillManager`, `MemoryEngine`, Embeddings provider, precomputed manifest index.
@@ -197,13 +197,14 @@ Also add explicit rules inside Constitution:
 - Enforce strict thresholds (e.g., `score >= 0.7`, `maxResults <= 3`).
 - Exclude instruction-like entries (`system`, `meta`, `override`) from injection.
 - Wrap injected content using `PromptConfig.untrustedWrapper`.
- - **Do not re-embed memories at runtime**; reuse stored embeddings from `MemoryEngine`.
+- **Do not re-embed memories at runtime**; reuse stored embeddings from `MemoryEngine`.
 
 **Step 3: Injection Detection (Defense-in-Depth)**
 - Use precomputed injection-pattern embeddings.
 - Batch compare memory embeddings vs pattern matrix (fast).
 - Drop entries above `injectionMinScore` and count filtered entries.
- - Ensure patterns include multilingual examples and benign “false positive” phrases for threshold tuning.
+- Ensure patterns include multilingual examples and benign “false positive” phrases for threshold tuning.
+- Consider tagging patterns by category for telemetry (override-system, jailbreak, role-transfer).
 
 **Step 4: Deterministic Context Schema**
 - Define a fixed schema for context rendering (git, env, memories, activity).
@@ -335,31 +336,9 @@ class SmartCache {
 - Non-English queries: PT/FR tasks select expected tools via semantic selection.
 - Injection filtering: malicious memory is dropped and increments `filteredCount`.
 - Metrics: `embeddingCalls === 1` per assembly.
-
----
-
-## Feedback
-
-**High Risk / Missing Requirements**
-1. **Security boundary still underspecified.** Even with heuristics, you’re injecting memory summary and tool/skill text into a system prompt. Define a trust model:
-   - Mark untrusted blocks (e.g., `BEGIN_UNTRUSTED_CONTEXT`) and keep them below Constitution/Rules.
-   - Prevent instruction precedence violations from memory summaries or skill text.
-2. **Heuristics need a deterministic spec.** The plan references keyword heuristics but doesn’t define:
-   - The exact mapping (keyword → tools/skills).
-   - Priority/ordering rules.
-   - How to handle conflicts or multiple matches.
-3. **No explicit caps.** Add limits for:
-   - Max tools and max skills per mode.
-   - Max context length per layer.
-   - Cache eviction behavior for `LRUCache`.
-
-**Design Clarity Gaps**
-1. **Namespace isolation is good, but path usage is unclear.** You’re adding `.nooa-internal/` while the assembler lives in `src/features/prompt/`. Specify how the assembler loads constitution/rules from the internal directory (path resolution, fallback if missing).
-2. **Context layer mixes runtime + memory summary.** Define a stable schema or ordering so downstream tools/tests can assert structure.
-3. **Metrics scope is vague.** You call out “Heuristic Quality,” but not how it’s measured. Define a simple metric (e.g., precision@K on a fixed eval set).
-
-**Testing Gaps**
-1. **Missing tests for heuristic selection.** Add deterministic tests for `detectMode`, `selectTools`, and `selectSkills` with fixed inputs.
+- SmartCache: `constitution.md` read once across multiple assemblies.
+- SmartCache: `constitution.md` read once across multiple assemblies.
+ - SmartCache: `constitution.md` read once across multiple assemblies.
 2. **No coverage for cache behavior.** Add a test that repeated assembly hits cache and does not re-read layers.
 3. **No tests for internal path fallback.** If `.nooa-internal/` is missing, define expected behavior and test it.
 
