@@ -4,7 +4,7 @@ import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import { executeSearch } from "../index/execute";
+import { DEFAULT_SEARCH_LIMIT, executeSearch } from "../index/execute";
 
 export const askMeta: AgentDocMeta = {
 	name: "ask",
@@ -99,7 +99,8 @@ export async function run(
 	}
 
 	try {
-		const limit = typeof input.limit === "number" ? input.limit : 5;
+		const limit =
+			typeof input.limit === "number" ? input.limit : DEFAULT_SEARCH_LIMIT;
 		const results = await executeSearch(input.query, limit);
 		return { ok: true, data: { query: input.query, results } };
 	} catch (error) {
@@ -129,7 +130,10 @@ const askBuilder = new CommandBuilder<AskRunInput, AskRunResult>()
 	})
 	.parseInput(async ({ positionals, values }) => {
 		const query = positionals.slice(1).join(" ");
-		const limitValue = typeof values.limit === "string" ? values.limit : "5";
+		const limitValue =
+			typeof values.limit === "string"
+				? values.limit
+				: `${DEFAULT_SEARCH_LIMIT}`;
 		const limit = Number.parseInt(limitValue, 10);
 		return {
 			query: query || undefined,

@@ -299,9 +299,7 @@ export class PromptAssembler {
 			: await this.contextEngine.searchMemories(_taskEmbedding);
 
 		const filtered = this.filterInjection(rawMemories, injectionPatterns);
-		const topRelevant = filtered.safe
-			.filter((m) => m.score >= 0.7)
-			.slice(0, 3);
+		const topRelevant = filtered.safe.slice(0, 3);
 
 		return {
 			git,

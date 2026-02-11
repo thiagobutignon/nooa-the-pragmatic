@@ -7,6 +7,9 @@ import { MockProvider } from "../ai/providers/mock";
 import { OllamaProvider } from "../ai/providers/ollama";
 import { OpenAiProvider } from "../ai/providers/openai";
 
+export const DEFAULT_SEARCH_LIMIT = 5;
+export const DEFAULT_MIN_SCORE = 0.5;
+
 const ai = new AiEngine();
 ai.register(new OllamaProvider());
 ai.register(new OpenAiProvider());
@@ -89,7 +92,11 @@ export async function indexFile(fullPath: string, relPath: string) {
 	return { path: relPath, chunks: chunks.length };
 }
 
-export async function executeSearch(query: string, limit = 5) {
+export async function executeSearch(
+	query: string,
+	limit = DEFAULT_SEARCH_LIMIT,
+	minScore = DEFAULT_MIN_SCORE,
+) {
 	const cacheKey = getQueryCacheKey(query);
 	let embedding = queryEmbeddingCache.get(cacheKey);
 	if (!embedding) {
@@ -100,11 +107,13 @@ export async function executeSearch(query: string, limit = 5) {
 	}
 
 	const results = await store.searchEmbeddings(embedding, limit);
-	return results.map((r) => ({
-		path: r.path,
-		chunk: r.chunk,
-		score: r.score,
-	}));
+	return results
+		.filter((r) => r.score >= minScore)
+		.map((r) => ({
+			path: r.path,
+			chunk: r.chunk,
+			score: r.score,
+		}));
 }
 
 export async function clearIndex() {

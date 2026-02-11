@@ -1,5 +1,6 @@
 import { execa } from "execa";
 import { Store } from "../../core/db/index";
+import { DEFAULT_MIN_SCORE } from "../index/execute";
 
 export type GitState = { branch: string; summary: string };
 export type EnvState = { cwd: string; os: string };
@@ -42,7 +43,7 @@ export class ContextEngine {
 	): Promise<MemoryMatch[]> {
 		const store = new Store();
 		const limit = options.limit ?? 10;
-		const minScore = options.minScore ?? 0.5;
+		const minScore = options.minScore ?? DEFAULT_MIN_SCORE;
 		try {
 			const results = await store.searchEmbeddings(
 				Array.from(taskEmbedding),
