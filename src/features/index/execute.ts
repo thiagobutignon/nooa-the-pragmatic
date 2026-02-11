@@ -81,22 +81,109 @@ export async function rebuildIndex(root: string = ".") {
 	return await indexRepo(root);
 }
 
-function chunkText(text: string, size = 1000): string[] {
-	// Simple paragraph-based chunking
-	const paragraphs = text.split("\n\n");
-	const chunks: string[] = [];
-	let currentChunk = "";
+type ChunkOptions = {
+	maxChars?: number;
+	overlapLines?: number;
+};
 
-	for (const p of paragraphs) {
-		if (currentChunk.length + p.length > size && currentChunk.length > 0) {
-			chunks.push(currentChunk.trim());
-			currentChunk = "";
+const DEFAULT_CHUNK_OPTIONS: Required<ChunkOptions> = {
+	maxChars: 1000,
+	overlapLines: 3,
+};
+
+const BOUNDARY_PATTERNS = [
+	/^\s*export\s+(function|class|const)\b/i,
+	/^\s*function\s+\w+\s*\(/i,
+	/^\s*class\s+\w+/i,
+	/^\s*#\s+\S+/,
+];
+
+function hasBoundaryMarkers(lines: string[]) {
+	return lines.some((line) => BOUNDARY_PATTERNS.some((pattern) => pattern.test(line)));
+}
+
+function chunkLinesBySize(
+	lines: string[],
+	options: Required<ChunkOptions>,
+): string[] {
+	const chunks: string[] = [];
+	let current: string[] = [];
+	let currentSize = 0;
+
+	for (const line of lines) {
+		const nextSize = currentSize + line.length + 1;
+		if (current.length > 0 && nextSize > options.maxChars) {
+			chunks.push(current.join("\n"));
+			const overlap =
+				options.overlapLines > 0
+					? current.slice(-options.overlapLines)
+					: [];
+			current = [...overlap];
+			currentSize = current.join("\n").length;
 		}
-		currentChunk += `${p}\n\n`;
+		current.push(line);
+		currentSize += line.length + 1;
 	}
-	if (currentChunk.trim().length > 0) {
-		chunks.push(currentChunk.trim());
+
+	if (current.length > 0) {
+		chunks.push(current.join("\n"));
+	}
+
+	return chunks.filter((chunk) => chunk.trim().length > 0);
+}
+
+function chunkLinesByBoundaries(
+	lines: string[],
+	options: Required<ChunkOptions>,
+): string[] {
+	const boundaries: number[] = [];
+	for (let i = 0; i < lines.length; i += 1) {
+		if (BOUNDARY_PATTERNS.some((pattern) => pattern.test(lines[i] ?? ""))) {
+			boundaries.push(i);
+		}
+	}
+	if (boundaries.length === 0) return chunkLinesBySize(lines, options);
+
+	const segments: string[][] = [];
+	for (let i = 0; i < boundaries.length; i += 1) {
+		const start = boundaries[i];
+		const end = boundaries[i + 1] ?? lines.length;
+		const segment = lines.slice(start, end);
+		if (segment.length > 0) segments.push(segment);
+	}
+
+	const chunks: string[] = [];
+	let previous: string[] = [];
+
+	for (const segment of segments) {
+		const segmentChunks =
+			segment.join("\n").length > options.maxChars
+				? chunkLinesBySize(segment, options)
+				: [segment.join("\n")];
+		for (const chunk of segmentChunks) {
+			const chunkLines = chunk.split("\n");
+			const overlap =
+				options.overlapLines > 0
+					? previous.slice(-options.overlapLines)
+					: [];
+			const combined = [...overlap, ...chunkLines].join("\n").trim();
+			if (combined.length > 0) chunks.push(combined);
+			previous = chunkLines;
+		}
 	}
 
 	return chunks;
+}
+
+export function chunkText(text: string, options: ChunkOptions = {}): string[] {
+	const resolved = {
+		...DEFAULT_CHUNK_OPTIONS,
+		...options,
+	};
+	const lines = text.split("\n");
+	if (lines.length === 0) return [];
+	if (hasBoundaryMarkers(lines)) {
+		return chunkLinesByBoundaries(lines, resolved);
+	}
+	return chunkLinesBySize(lines, resolved);
 }

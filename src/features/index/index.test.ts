@@ -107,10 +107,33 @@ describe("Index Feature Execution", () => {
 
 		await execute.indexFile("test.ts", "test.ts");
 
-		// Should have 2 chunks
-		expect(storeSpy).toHaveBeenCalledTimes(2);
+		// Should split into multiple chunks
+		expect(storeSpy.mock.calls.length).toBeGreaterThan(1);
 
 		readFileSpy.mockRestore();
 		storeSpy.mockRestore();
+	});
+
+	test("chunkText splits with overlap and respects line boundaries", () => {
+		const input = Array.from({ length: 120 }, (_, i) => `line-${i}`).join("\n");
+		const chunks = execute.chunkText(input, { maxChars: 200, overlapLines: 5 });
+		expect(chunks.length).toBeGreaterThan(1);
+		expect(chunks[0]).toContain("line-0");
+		const lastLine = chunks[0].trim().split("\n").slice(-1)[0];
+		expect(chunks[1]).toContain(lastLine ?? "");
+	});
+
+	test("chunkText keeps top-level boundaries when markers exist", () => {
+		const input = [
+			"export function alpha() {}",
+			"",
+			"export function beta() {}",
+			"",
+			"export class Gamma {}",
+		].join("\n");
+		const chunks = execute.chunkText(input, { maxChars: 50, overlapLines: 2 });
+		expect(chunks.length).toBeGreaterThan(1);
+		expect(chunks[0]).toContain("alpha");
+		expect(chunks[1]).toContain("beta");
 	});
 });
