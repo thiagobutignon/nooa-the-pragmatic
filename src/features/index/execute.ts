@@ -45,12 +45,11 @@ async function listFiles(dir: string): Promise<string[]> {
 export async function indexFile(fullPath: string, relPath: string) {
 	const content = await readFile(fullPath, "utf-8");
 	const chunks = chunkText(content);
+	const embeddings = await embedChunks(chunks);
 
-	for (const chunk of chunks) {
-		const res = await ai.embed({ input: chunk });
-		if (res.embeddings[0]) {
-			await store.storeEmbedding(relPath, chunk, res.embeddings[0]);
-		}
+	for (const entry of embeddings) {
+		if (!entry.embedding) continue;
+		await store.storeEmbedding(relPath, entry.chunk, entry.embedding);
 	}
 
 	return { path: relPath, chunks: chunks.length };
@@ -79,6 +78,36 @@ export async function getIndexStats() {
 export async function rebuildIndex(root: string = ".") {
 	await clearIndex();
 	return await indexRepo(root);
+}
+
+async function embedChunks(chunks: string[]) {
+	const results: Array<{ chunk: string; embedding: number[] | null }> = [];
+	if (chunks.length === 0) return results;
+
+	try {
+		const batch = await ai.embed({ input: chunks });
+		if (batch.embeddings.length === chunks.length) {
+			for (let i = 0; i < chunks.length; i += 1) {
+				results.push({
+					chunk: chunks[i] ?? "",
+					embedding: batch.embeddings[i] ?? null,
+				});
+			}
+			return results;
+		}
+	} catch {
+		// fall through to per-chunk embedding
+	}
+
+	for (const chunk of chunks) {
+		try {
+			const res = await ai.embed({ input: chunk });
+			results.push({ chunk, embedding: res.embeddings[0] ?? null });
+		} catch {
+			results.push({ chunk, embedding: null });
+		}
+	}
+	return results;
 }
 
 type ChunkOptions = {

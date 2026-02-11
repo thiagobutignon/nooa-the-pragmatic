@@ -136,4 +136,31 @@ describe("Index Feature Execution", () => {
 		expect(chunks[0]).toContain("alpha");
 		expect(chunks[1]).toContain("beta");
 	});
+
+	test("indexFile batches embedding calls", async () => {
+		const content = Array.from({ length: 300 }, (_, i) => `line-${i}`).join(
+			"\n",
+		);
+		const expectedChunks = execute.chunkText(content);
+		const readFileSpy = spyOn(fs, "readFile").mockResolvedValue(content as any);
+		const storeSpy = spyOn(store, "storeEmbedding").mockResolvedValue(
+			undefined as never,
+		);
+		const embedSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
+			embeddings: Array.from({ length: expectedChunks.length }, () => [
+				0.1,
+				0.2,
+			]),
+		} as any);
+
+		const beforeCalls = embedSpy.mock.calls.length;
+		await execute.indexFile("test.ts", "test.ts");
+
+		expect(embedSpy.mock.calls.length - beforeCalls).toBe(1);
+		expect(storeSpy.mock.calls.length).toBeGreaterThan(1);
+
+		readFileSpy.mockRestore();
+		storeSpy.mockRestore();
+		embedSpy.mockRestore();
+	});
 });
