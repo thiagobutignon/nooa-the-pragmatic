@@ -163,4 +163,21 @@ describe("Index Feature Execution", () => {
 		storeSpy.mockRestore();
 		embedSpy.mockRestore();
 	});
+
+	test("executeSearch caches query embeddings with normalized keys", async () => {
+		const searchSpy = spyOn(store, "searchEmbeddings").mockResolvedValue([
+			{ path: "a.ts", chunk: "c1", score: 0.9 },
+		] as any);
+		const embedSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
+			embeddings: [[0.1, 0.2]],
+		} as any);
+
+		const beforeCalls = embedSpy.mock.calls.length;
+		await execute.executeSearch("Find   TODOs");
+		await execute.executeSearch("find todos");
+
+		expect(embedSpy.mock.calls.length - beforeCalls).toBe(1);
+		searchSpy.mockRestore();
+		embedSpy.mockRestore();
+	});
 });

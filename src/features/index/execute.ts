@@ -12,6 +12,40 @@ ai.register(new OllamaProvider());
 ai.register(new OpenAiProvider());
 ai.register(new MockProvider());
 
+class LruCache<K, V> {
+	private map = new Map<K, V>();
+	constructor(private max: number) {}
+
+	get(key: K): V | undefined {
+		const value = this.map.get(key);
+		if (value === undefined) return undefined;
+		this.map.delete(key);
+		this.map.set(key, value);
+		return value;
+	}
+
+	set(key: K, value: V) {
+		if (this.map.has(key)) this.map.delete(key);
+		this.map.set(key, value);
+		if (this.map.size > this.max) {
+			const firstKey = this.map.keys().next().value as K | undefined;
+			if (firstKey !== undefined) this.map.delete(firstKey);
+		}
+	}
+}
+
+const queryEmbeddingCache = new LruCache<string, number[]>(100);
+
+function normalizeQuery(query: string) {
+	return query.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
+function getQueryCacheKey(query: string) {
+	const provider = process.env.NOOA_AI_PROVIDER ?? "ollama";
+	const model = process.env.NOOA_AI_MODEL ?? "default";
+	return `${provider}:${model}:${normalizeQuery(query)}`;
+}
+
 export async function indexRepo(root: string = ".") {
 	const traceId = createTraceId();
 	const files = await listFiles(root);
@@ -56,10 +90,16 @@ export async function indexFile(fullPath: string, relPath: string) {
 }
 
 export async function executeSearch(query: string, limit = 5) {
-	const res = await ai.embed({ input: query });
-	if (!res.embeddings[0]) return [];
+	const cacheKey = getQueryCacheKey(query);
+	let embedding = queryEmbeddingCache.get(cacheKey);
+	if (!embedding) {
+		const res = await ai.embed({ input: query });
+		if (!res.embeddings[0]) return [];
+		embedding = res.embeddings[0];
+		queryEmbeddingCache.set(cacheKey, embedding);
+	}
 
-	const results = await store.searchEmbeddings(res.embeddings[0], limit);
+	const results = await store.searchEmbeddings(embedding, limit);
 	return results.map((r) => ({
 		path: r.path,
 		chunk: r.chunk,
