@@ -1,5 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { store } from "../../core/db";
 import { AiEngine } from "../ai/engine";
 import * as execute from "./execute";
@@ -179,5 +180,39 @@ describe("Index Feature Execution", () => {
 		expect(embedSpy.mock.calls.length - beforeCalls).toBe(1);
 		searchSpy.mockRestore();
 		embedSpy.mockRestore();
+	});
+
+	test("semantic search quality regression (fixtures)", async () => {
+		const originalProvider = process.env.NOOA_AI_PROVIDER;
+		process.env.NOOA_AI_PROVIDER = "mock";
+		const tempDir = await fs.mkdtemp(
+			`${tmpdir()}/nooa-search-fixtures-`,
+		);
+		try {
+			await fs.mkdir(`${tempDir}/auth`, { recursive: true });
+			await fs.mkdir(`${tempDir}/db`, { recursive: true });
+			await fs.writeFile(
+				`${tempDir}/auth/login.ts`,
+				"export function login() {}",
+			);
+			await fs.writeFile(
+				`${tempDir}/auth/jwt.ts`,
+				"export function signJwt() {}",
+			);
+			await fs.writeFile(
+				`${tempDir}/db/pool.ts`,
+				"export function connectDb() {}",
+			);
+
+			await execute.clearIndex();
+			await execute.indexRepo(tempDir);
+			const results = await execute.executeSearch("authentication logic", 5);
+			const top = results.slice(0, 3).map((r) => r.path);
+			expect(top).toContain("auth/login.ts");
+		} finally {
+			await execute.clearIndex();
+			await fs.rm(tempDir, { recursive: true, force: true });
+			process.env.NOOA_AI_PROVIDER = originalProvider;
+		}
 	});
 });
