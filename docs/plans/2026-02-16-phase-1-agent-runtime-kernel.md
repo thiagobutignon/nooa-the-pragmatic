@@ -8,9 +8,17 @@
 
 **Tech Stack:** TypeScript, Bun, AgentModelProvider + AiEngineAgentProvider (bridge para AiEngine existente), ToolRegistry (Phase 0), bun:test
 
-**Worktree:** `git worktree add ../nooa-phase-1 -b codex/phase-1-agent-runtime`
+**Worktree:** `git worktree add .worktrees/phase-1-agent-runtime -b codex/phase-1-agent-runtime`
 
 **Dependência:** Phase 0 concluída e mergeada em main.
+
+## Ajustes Pós-Merge (2026-02-16)
+
+- **Phase 0 já está ativa em `main`** (ToolRegistry + DangerousCommandGuard + ToolResult dual-output). A Phase 1 deve **reusar** `src/runtime/tool-registry.ts` e `src/runtime/types.ts`, sem duplicar contratos.
+- **Comandos de validação atualizados:** priorizar `bun run check:strict:changed` durante implementação, e usar `bun run check` na verificação final completa.
+- **Padrão de lint/tipos:** evitar `any` explícito e non-null assertion (`!`) no código novo da Phase 1; preferir narrowing com guards (`if (!x) return error`).
+- **Segurança de tools:** toda execução de command/tool no loop deve passar por `ToolRegistry.execute(...)` (não chamar executores diretamente), preservando o guard de comandos perigosos introduzido na Phase 0.
+- **Persistência:** manter escrita atômica no SessionManager (arquivo temporário + rename) e comportamento resiliente a JSON corrompido no load.
 
 ---
 
