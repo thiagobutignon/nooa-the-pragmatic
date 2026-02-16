@@ -352,4 +352,67 @@ describe("code command execute", () => {
 		expect(helpCalled).toBe(true);
 		logSpy.mockRestore();
 	});
+
+	test("delete: removes target file", async () => {
+		const filePath = join(TEST_DIR, "delete-me.txt");
+		await writeFile(filePath, "remove me");
+
+		const context = {
+			args: ["code", "delete", filePath],
+			rawArgs: ["code", "delete", filePath],
+			values: {} as CodeValues,
+			bus,
+		};
+
+		await codeCommand.execute(context);
+
+		const exists = await readFile(filePath)
+			.then(() => true)
+			.catch(() => false);
+		expect(exists).toBe(false);
+	});
+
+	test("remove alias: removes target file", async () => {
+		const filePath = join(TEST_DIR, "remove-alias.txt");
+		await writeFile(filePath, "remove alias");
+
+		const context = {
+			args: ["code", "remove", filePath],
+			rawArgs: ["code", "remove", filePath],
+			values: {} as CodeValues,
+			bus,
+		};
+
+		await codeCommand.execute(context);
+
+		const exists = await readFile(filePath)
+			.then(() => true)
+			.catch(() => false);
+		expect(exists).toBe(false);
+	});
+
+	test("delete: json output includes delete mode", async () => {
+		const filePath = join(TEST_DIR, "delete-json.txt");
+		await writeFile(filePath, "remove json");
+
+		const context = {
+			args: ["code", "delete", filePath],
+			rawArgs: ["code", "delete", filePath, "--json"],
+			values: { json: true } as CodeValues,
+			bus,
+		};
+
+		let output = "";
+		const logSpy = spyOn(console, "log").mockImplementation((msg: string) => {
+			output = msg;
+		});
+
+		await codeCommand.execute(context);
+
+		const parsed = JSON.parse(output);
+		expect(parsed.mode).toBe("delete");
+		expect(parsed.path).toBe(filePath);
+		expect(parsed.deleted).toBe(true);
+		logSpy.mockRestore();
+	});
 });

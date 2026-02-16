@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { buildStandardOptions } from "../../core/cli-flags";
 import { handleCommandError, renderJson } from "../../core/cli-output";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
@@ -12,7 +12,7 @@ import { writeCodeFile } from "./write";
 
 export const codeMeta: AgentDocMeta = {
 	name: "code",
-	description: "Code operations (write, patch, diff, format, refactor)",
+	description: "Code operations (write, patch, diff, format, refactor, delete)",
 	changelog: [{ version: "1.0.0", changes: ["Initial release"] }],
 };
 
@@ -27,6 +27,8 @@ Subcommands:
   diff [path]         Show git diff for path or all.
   format <path>       Format a file using biome.
   refactor <path> "instruction"  Refactor a file using AI.
+  delete <path>       Delete a file.
+  remove <path>       Alias for delete.
 
 Flags:
   --from <path>       Read content from a file (write mode).
@@ -43,6 +45,7 @@ Examples:
   nooa code diff src/
   nooa code format src/index.ts
   nooa code refactor src/utils.ts "rename process to handler"
+  nooa code delete src/legacy.ts
 `;
 
 export const codeSdkUsage = `
@@ -50,6 +53,7 @@ SDK Usage:
   await code.run({ action: "write", path: "app.ts", content: "hello" });
   await code.run({ action: "patch", path: "app.ts", patchText: "diff..." });
   await code.run({ action: "diff", path: "src/index.ts" });
+  await code.run({ action: "delete", path: "src/legacy.ts" });
 `;
 
 export const codeUsage = {
@@ -79,6 +83,7 @@ export const codeOutputFields = [
 	{ name: "overwritten", type: "boolean" },
 	{ name: "dryRun", type: "boolean" },
 	{ name: "patched", type: "boolean" },
+	{ name: "deleted", type: "boolean" },
 	{ name: "output", type: "string" },
 ];
 
@@ -105,6 +110,7 @@ export const codeErrors = [
 		code: "code.refactor_missing_args",
 		message: "Path and instructions required for refactor.",
 	},
+	{ code: "code.delete_missing_path", message: "Path required for delete." },
 	{ code: "code.runtime_error", message: "Runtime error." },
 ];
 
@@ -127,6 +133,10 @@ export const codeExamples = [
 		input: "nooa code diff src/",
 		output: "Show the git diff for the 'src/' directory.",
 	},
+	{
+		input: "nooa code delete src/legacy.ts",
+		output: "Delete the file 'src/legacy.ts'.",
+	},
 ];
 
 export type CodeAction =
@@ -135,6 +145,8 @@ export type CodeAction =
 	| "diff"
 	| "format"
 	| "refactor"
+	| "delete"
+	| "remove"
 	| "help";
 
 export interface CodeRunInput {
@@ -158,6 +170,7 @@ export interface CodeRunResult {
 	overwritten?: boolean;
 	dryRun?: boolean;
 	patched?: boolean;
+	deleted?: boolean;
 	output?: string;
 }
 
@@ -165,6 +178,7 @@ export async function run(
 	input: CodeRunInput,
 ): Promise<SdkResult<CodeRunResult>> {
 	const action = input.action;
+	const normalizedAction = action === "remove" ? "delete" : action;
 
 	if (!action) {
 		return {
@@ -173,16 +187,20 @@ export async function run(
 		};
 	}
 
-	if (!["write", "patch", "diff", "format", "refactor"].includes(action)) {
+	if (
+		!["write", "patch", "diff", "format", "refactor", "delete"].includes(
+			normalizedAction,
+		)
+	) {
 		return { ok: true, data: { mode: "help", output: codeHelp } };
 	}
 
-	if (action === "diff") {
+	if (normalizedAction === "diff") {
 		const diff = await executeDiff(input.path);
 		return { ok: true, data: { mode: "diff", path: input.path, output: diff } };
 	}
 
-	if (action === "format") {
+	if (normalizedAction === "format") {
 		if (!input.path) {
 			return {
 				ok: false,
@@ -196,7 +214,7 @@ export async function run(
 		return { ok: true, data: { mode: "format", path: input.path, output } };
 	}
 
-	if (action === "refactor") {
+	if (normalizedAction === "refactor") {
 		if (!input.path || !input.instruction) {
 			return {
 				ok: false,
@@ -210,6 +228,27 @@ export async function run(
 		return { ok: true, data: { mode: "refactor", path: input.path, output } };
 	}
 
+	if (normalizedAction === "delete") {
+		if (!input.path) {
+			return {
+				ok: false,
+				error: sdkError("code.delete_missing_path", "Path required for delete."),
+			};
+		}
+		if (!input["dry-run"]) {
+			await rm(input.path);
+		}
+		return {
+			ok: true,
+			data: {
+				mode: "delete",
+				path: input.path,
+				dryRun: Boolean(input["dry-run"]),
+				deleted: !Boolean(input["dry-run"]),
+			},
+		};
+	}
+
 	if (!input.path) {
 		return {
 			ok: false,
@@ -218,7 +257,7 @@ export async function run(
 	}
 
 	const isPatchMode =
-		action === "patch" || Boolean(input.patch || input["patch-from"]);
+		normalizedAction === "patch" || Boolean(input.patch || input["patch-from"]);
 
 	if (isPatchMode && input.from) {
 		return {
@@ -390,6 +429,7 @@ const codeBuilder = new CommandBuilder<CodeRunInput, CodeRunResult>()
 			"code.patch_with_from",
 			"code.format_missing_path",
 			"code.refactor_missing_args",
+			"code.delete_missing_path",
 		]);
 	})
 	.telemetry({
