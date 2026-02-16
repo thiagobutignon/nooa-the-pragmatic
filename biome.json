@@ -34,16 +34,11 @@
 			}
 		},
 		{
-			"includes": [
-				"src/**/*.test.ts",
-				"src/**/*.test.tsx",
-				"tests/**/*.ts",
-				"tests/**/*.tsx"
-			],
+			"includes": ["tests/**/*.ts", "tests/**/*.tsx"],
 			"linter": {
 				"rules": {
 					"suspicious": {
-						"noExplicitAny": "warn"
+						"noExplicitAny": "error"
 					}
 				}
 			}

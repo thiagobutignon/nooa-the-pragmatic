@@ -236,15 +236,25 @@ export async function run(
 		}
 
 		if (command === "run") {
-			const suite = await engine.loadSuite(suiteName!);
+			if (!promptName || !suiteName) {
+				return {
+					ok: false,
+					error: sdkError(
+						"eval.missing_args",
+						"Missing required arguments (prompt/suite).",
+					),
+				};
+			}
+
+			const suite = await engine.loadSuite(suiteName);
 			const judge = optionsJudge;
 			const filterCase = input.case;
 			const result = await engine.runSuite(suite, { judge, filterCase });
 
 			await appendHistory({
 				id: randomUUID(),
-				prompt: promptName!,
-				suite: suiteName!,
+				prompt: promptName,
+				suite: suiteName,
 				command: "run",
 				totalScore: result.totalScore,
 				judge,
@@ -277,7 +287,17 @@ export async function run(
 		}
 
 		if (command === "apply") {
-			const suite = await engine.loadSuite(suiteName!);
+			if (!promptName || !suiteName) {
+				return {
+					ok: false,
+					error: sdkError(
+						"eval.missing_args",
+						"Missing required arguments (prompt/suite).",
+					),
+				};
+			}
+
+			const suite = await engine.loadSuite(suiteName);
 			const level = (input.bump as "patch" | "minor" | "major") || "patch";
 			const judge = optionsJudge;
 			const result = await engine.runSuite(suite, { judge });
@@ -298,11 +318,11 @@ export async function run(
 				join(process.cwd(), "src/features/prompt/templates"),
 			);
 
-			const nextVersion = await promptEngine.bumpVersion(promptName!, level);
+			const nextVersion = await promptEngine.bumpVersion(promptName, level);
 			await appendHistory({
 				id: randomUUID(),
-				prompt: promptName!,
-				suite: suiteName!,
+				prompt: promptName,
+				suite: suiteName,
 				command: "apply",
 				totalScore: result.totalScore,
 				judge,
@@ -322,7 +342,17 @@ export async function run(
 		}
 
 		if (command === "suggest") {
-			const suite = await engine.loadSuite(suiteName!);
+			if (!promptName || !suiteName) {
+				return {
+					ok: false,
+					error: sdkError(
+						"eval.missing_args",
+						"Missing required arguments (prompt/suite).",
+					),
+				};
+			}
+
+			const suite = await engine.loadSuite(suiteName);
 			const judge = optionsJudge;
 			const result = await engine.runSuite(suite, { judge });
 
@@ -330,8 +360,8 @@ export async function run(
 			if (failures.length === 0) {
 				await appendHistory({
 					id: randomUUID(),
-					prompt: promptName!,
-					suite: suiteName!,
+					prompt: promptName,
+					suite: suiteName,
 					command: "suggest",
 					totalScore: result.totalScore,
 					judge,
@@ -343,7 +373,7 @@ export async function run(
 				};
 			}
 
-			const suggestions = await engine.optimizePrompt(promptName!, failures);
+			const suggestions = await engine.optimizePrompt(promptName, failures);
 
 			// Save the optimized prompt to a sidecar file
 			const optimizedPath = resolve(
@@ -355,8 +385,8 @@ export async function run(
 
 			await appendHistory({
 				id: randomUUID(),
-				prompt: promptName!,
-				suite: suiteName!,
+				prompt: promptName,
+				suite: suiteName,
 				command: "suggest",
 				totalScore: result.totalScore,
 				judge,

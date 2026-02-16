@@ -100,7 +100,8 @@ export class ReplayGraph {
 		const visited = new Set<string>();
 
 		while (stack.length > 0) {
-			const current = stack.pop()!;
+			const current = stack.pop();
+			if (!current) continue;
 			if (visited.has(current)) continue;
 			if (current === endNode) return true;
 
@@ -131,7 +132,8 @@ export class ReplayGraph {
 		// So targetId itself is NOT in impacted unless there's a loop (which shouldn't exist for 'next' edges).
 
 		while (stack.length > 0) {
-			const current = stack.pop()!;
+			const current = stack.pop();
+			if (!current) continue;
 			const neighbors = adjacency.get(current) ?? [];
 			for (const neighbor of neighbors) {
 				if (!impacted.has(neighbor)) {
