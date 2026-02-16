@@ -9,6 +9,7 @@ export interface AiRequest {
 	messages: AiMessage[];
 	model?: string;
 	temperature?: number;
+	topP?: number;
 	maxTokens?: number;
 	traceId?: string;
 }
@@ -26,6 +27,7 @@ export interface AiResponse {
 
 export interface AiStreamChunk {
 	content?: string;
+	reasoningContent?: string;
 	done?: boolean;
 	usage?: AiResponse["usage"];
 }

@@ -35,6 +35,7 @@ Arguments:
 Flags:
   --provider <name>   Provider name (default: ollama, fallback: openai).
   --model <name>      Model name override.
+  --top-p <value>     Sampling top_p override (OpenAI-compatible providers).
   --json              Output as JSON.
   --stream            Stream output tokens to stdout (CLI).
   --mcp-source <name> MCP server to execute a tool.
@@ -64,6 +65,7 @@ export const aiSchema = {
 	prompt: { type: "string", required: true },
 	provider: { type: "string", required: false },
 	model: { type: "string", required: false },
+	"top-p": { type: "number", required: false },
 	json: { type: "boolean", required: false },
 	stream: { type: "boolean", required: false, since: "1.1.0" },
 	"mcp-source": { type: "string", required: false },
@@ -111,6 +113,7 @@ export interface AiRunInput {
 	prompt?: string;
 	provider?: string;
 	model?: string;
+	topP?: number;
 	json?: boolean;
 	stream?: boolean;
 	"mcp-source"?: string;
@@ -148,6 +151,7 @@ export async function streamAi(
 		{
 			messages: [{ role: "user", content: input.prompt ?? "" }],
 			model: input.model,
+			topP: input.topP,
 		},
 		{
 			provider: input.provider,
@@ -229,6 +233,9 @@ export async function run(input: AiRunInput): Promise<SdkResult<AiRunResult>> {
 					content += next.value.content;
 					process.stdout.write(next.value.content);
 				}
+				if (next.value?.reasoningContent) {
+					process.stdout.write(next.value.reasoningContent);
+				}
 			}
 
 			return {
@@ -247,6 +254,7 @@ export async function run(input: AiRunInput): Promise<SdkResult<AiRunResult>> {
 			{
 				messages: [{ role: "user", content: prompt }],
 				model: input.model,
+				topP: input.topP,
 			},
 			{
 				provider: input.provider,
@@ -288,6 +296,7 @@ const aiBuilder = new CommandBuilder<AiRunInput, AiRunResult>()
 			...buildStandardOptions(),
 			provider: { type: "string" },
 			model: { type: "string" },
+			"top-p": { type: "string" },
 			stream: { type: "boolean" },
 			"mcp-source": { type: "string" },
 			"mcp-tool": { type: "string" },
@@ -295,6 +304,11 @@ const aiBuilder = new CommandBuilder<AiRunInput, AiRunResult>()
 		},
 	})
 	.parseInput(async ({ values, positionals }) => ({
+		topP: (() => {
+			if (typeof values["top-p"] !== "string") return undefined;
+			const parsed = Number.parseFloat(values["top-p"]);
+			return Number.isFinite(parsed) ? parsed : undefined;
+		})(),
 		prompt: positionals[1],
 		provider: values.provider as string | undefined,
 		model: values.model as string | undefined,

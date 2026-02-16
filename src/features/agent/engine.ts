@@ -61,19 +61,27 @@ export async function run(
 		maxIterations: input.maxIterations,
 	});
 
-	const result = await loop.processMessage(sessionKey, input.prompt);
-	if (result.isError) {
+	try {
+		const result = await loop.processMessage(sessionKey, input.prompt);
+		if (result.isError) {
+			return {
+				ok: false,
+				error: sdkError("agent.runtime_error", result.forLlm),
+			};
+		}
+
+		return {
+			ok: true,
+			data: {
+				sessionKey,
+				content: result.forLlm,
+			},
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
 		return {
 			ok: false,
-			error: sdkError("agent.runtime_error", result.forLlm),
+			error: sdkError("agent.runtime_error", message),
 		};
 	}
-
-	return {
-		ok: true,
-		data: {
-			sessionKey,
-			content: result.forLlm,
-		},
-	};
 }
