@@ -230,7 +230,7 @@ export async function run(
 	}
 }
 
-const ignoreBuilder = new CommandBuilder<IgnoreRunInput, IgnoreRunResult>()
+export const ignoreBuilder = new CommandBuilder<IgnoreRunInput, IgnoreRunResult>()
 	.meta(ignoreMeta)
 	.usage(ignoreUsage)
 	.schema(ignoreSchema)
@@ -314,8 +314,10 @@ const ignoreBuilder = new CommandBuilder<IgnoreRunInput, IgnoreRunResult>()
 				process.exitCode = payload.matched ? 0 : 2;
 				return;
 			}
+			/* c8 ignore start */
 			default:
 				break;
+			/* c8 ignore stop */
 		}
 	})
 	.onFailure((error) => {

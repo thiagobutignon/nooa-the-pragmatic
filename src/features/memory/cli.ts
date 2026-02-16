@@ -362,6 +362,7 @@ const memoryBuilder = new CommandBuilder<MemoryRunInput, MemoryRunResult>()
 		},
 	})
 	.parseInput(async ({ positionals, values }) => {
+		console.log("DEBUG positionals:", positionals);
 		const action = positionals[1];
 		const id = positionals[2];
 		const content = positionals.slice(2).join(" ");

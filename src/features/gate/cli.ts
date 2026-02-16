@@ -166,4 +166,5 @@ const gateBuilder = new CommandBuilder<GateRunInput, GateCheckResult>()
 		handleCommandError(error, ["gate.missing_id", "gate.unknown_gate"]);
 	});
 
+export const _gateBuilder = gateBuilder;
 export default gateBuilder.build();

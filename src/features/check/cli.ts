@@ -246,14 +246,14 @@ const checkBuilder = new CommandBuilder<CheckRunInput, CheckRunResult>()
 		if (error.code === "check.policy_violation") {
 			const result = error.details?.result as
 				| {
-					violations: {
-						rule: string;
-						file: string;
-						line: number;
-						content: string;
-						message: string;
-					}[];
-				}
+						violations: {
+							rule: string;
+							file: string;
+							line: number;
+							content: string;
+							message: string;
+						}[];
+				  }
 				| undefined;
 			if (result) {
 				console.error(

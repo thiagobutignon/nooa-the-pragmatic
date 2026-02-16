@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PromptAssembler } from "./assembler";
 
 const toolManifest = [
 	{ name: "ci", description: "Run tests", modes: ["any"], embedding: [1, 0] },
-	{ name: "git", description: "Git operations", modes: ["any"], embedding: [0, 1] },
+	{
+		name: "git",
+		description: "Git operations",
+		modes: ["any"],
+		embedding: [0, 1],
+	},
 ];
 const skillManifest = [
 	{ name: "tdd", description: "Test driven", embedding: [1, 0] },
@@ -27,10 +32,7 @@ describe("PromptAssembler", () => {
 			join(root, ".nooa/prompts/layers/constitution.md"),
 			"# CONSTITUTION\n",
 		);
-		await writeFile(
-			join(root, ".nooa/prompts/layers/rules.md"),
-			"# RULES\n",
-		);
+		await writeFile(join(root, ".nooa/prompts/layers/rules.md"), "# RULES\n");
 
 		manifestsDir = join(root, "manifests");
 		await mkdir(manifestsDir, { recursive: true });
@@ -88,7 +90,12 @@ describe("PromptAssembler", () => {
 		await writeFile(
 			join(manifestsDir, "tools-manifest.json"),
 			JSON.stringify([
-				{ name: "lint", description: "Lint code", modes: ["any"], embedding: [0.6, 0.8] },
+				{
+					name: "lint",
+					description: "Lint code",
+					modes: ["any"],
+					embedding: [0.6, 0.8],
+				},
 			]),
 		);
 

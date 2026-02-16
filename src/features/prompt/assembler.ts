@@ -1,13 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ContextEngine } from "../context/engine";
+import { embedText } from "../embed/engine";
 import { PromptConfig } from "./config";
 import type {
 	InjectionPatternEntry,
 	SkillManifestEntry,
 	ToolManifestEntry,
 } from "./manifest";
-import { embedText } from "../embed/engine";
 
 export type Mode = "plan" | "act" | "review" | "auto";
 
@@ -155,7 +155,8 @@ export class PromptAssembler {
 			process.env.NOOA_PROMPT_MANIFESTS_DIR ??
 			join(repoRoot, "src/features/prompt/manifests");
 		const embedder =
-			options.embedder ?? (async (input: string) => {
+			options.embedder ??
+			(async (input: string) => {
 				const result = await embedText(input, {});
 				return result.embedding;
 			});
@@ -174,7 +175,10 @@ export class PromptAssembler {
 			this.fetchContextFromEmbedding(taskEmbedding, options.root),
 		]);
 
-		const constitutionPath = resolve(options.root, PromptConfig.paths.constitution);
+		const constitutionPath = resolve(
+			options.root,
+			PromptConfig.paths.constitution,
+		);
 		const rulesPath = resolve(options.root, PromptConfig.paths.rules);
 		const layers = [
 			await this.cache.getConstitution(constitutionPath),
@@ -205,7 +209,8 @@ export class PromptAssembler {
 		if (options.mode && options.mode !== "auto") return options.mode;
 		if (options.context?.isInteractive) return "plan";
 		if (options.context?.hasGitChanges) return "act";
-		if (/\b(research|explore|analyze|investigate)\b/i.test(options.task)) return "plan";
+		if (/\b(research|explore|analyze|investigate)\b/i.test(options.task))
+			return "plan";
 		if (/\b(review|audit|verify|check)\b/i.test(options.task)) return "review";
 		if (PromptConfig.semantic.enableModeSemantic) {
 			const cached = this.cache.peekTaskEmbedding(options.task);
@@ -214,20 +219,28 @@ export class PromptAssembler {
 		return "act";
 	}
 
-	private inferModeFromEmbedding(_taskEmbedding: Float32Array): Exclude<Mode, "auto"> {
+	private inferModeFromEmbedding(
+		_taskEmbedding: Float32Array,
+	): Exclude<Mode, "auto"> {
 		return "act";
 	}
 
 	private async loadToolManifest() {
 		if (this.toolManifest) return this.toolManifest;
-		const content = await readFile(join(this.manifestsDir, "tools-manifest.json"), "utf-8");
+		const content = await readFile(
+			join(this.manifestsDir, "tools-manifest.json"),
+			"utf-8",
+		);
 		this.toolManifest = JSON.parse(content) as ToolManifestEntry[];
 		return this.toolManifest;
 	}
 
 	private async loadSkillManifest() {
 		if (this.skillManifest) return this.skillManifest;
-		const content = await readFile(join(this.manifestsDir, "skills-manifest.json"), "utf-8");
+		const content = await readFile(
+			join(this.manifestsDir, "skills-manifest.json"),
+			"utf-8",
+		);
 		this.skillManifest = JSON.parse(content) as SkillManifestEntry[];
 		return this.skillManifest;
 	}
@@ -248,7 +261,9 @@ export class PromptAssembler {
 	) {
 		const manifest = await this.loadToolManifest();
 		const candidates = manifest
-			.filter((tool) => tool.modes?.includes(mode) || tool.modes?.includes("any"))
+			.filter(
+				(tool) => tool.modes?.includes(mode) || tool.modes?.includes("any"),
+			)
 			.map((tool) => ({
 				name: tool.name,
 				description: tool.description,
@@ -260,13 +275,14 @@ export class PromptAssembler {
 
 		const merged = new Map<string, string>();
 		for (const base of BASE_TOOLS[mode]) merged.set(base, base);
-		for (const candidate of candidates) merged.set(candidate.name, candidate.description);
+		for (const candidate of candidates)
+			merged.set(candidate.name, candidate.description);
 		return Array.from(merged.keys()).slice(0, PromptConfig.maxTools);
 	}
 
 	private async selectSkillsFromEmbedding(
 		taskEmbedding: Float32Array,
-		mode: Exclude<Mode, "auto">,
+		_mode: Exclude<Mode, "auto">,
 	) {
 		const manifest = await this.loadSkillManifest();
 		const candidates = manifest
@@ -280,7 +296,8 @@ export class PromptAssembler {
 			.slice(0, PromptConfig.semantic.maxResults);
 
 		const merged = new Map<string, string>();
-		for (const candidate of candidates) merged.set(candidate.name, candidate.description);
+		for (const candidate of candidates)
+			merged.set(candidate.name, candidate.description);
 		return Array.from(merged.keys()).slice(0, PromptConfig.maxSkills);
 	}
 
@@ -338,8 +355,11 @@ export class PromptAssembler {
 		if (process.env.NOOA_EMBED_PROVIDER === "mock") {
 			return { safe: memories, filteredCount: 0 };
 		}
-		const safe: Array<{ text: string; embedding: Float32Array; score: number }> =
-			[];
+		const safe: Array<{
+			text: string;
+			embedding: Float32Array;
+			score: number;
+		}> = [];
 		let filteredCount = 0;
 		for (const memory of memories) {
 			let maxScore = 0;
@@ -357,7 +377,6 @@ export class PromptAssembler {
 		return { safe, filteredCount };
 	}
 
-
 	private renderContext(context: AssembledContext) {
 		const trustedLines: string[] = [];
 		if (context.git) {
@@ -366,7 +385,8 @@ export class PromptAssembler {
 		if (context.env) {
 			trustedLines.push(`Env: ${context.env.os} ${context.env.cwd}`);
 		}
-		const trustedBlock = trustedLines.length > 0 ? trustedLines.join("\n") : "(none)";
+		const trustedBlock =
+			trustedLines.length > 0 ? trustedLines.join("\n") : "(none)";
 
 		const untrustedParts = [
 			context.memories.length > 0
@@ -376,7 +396,9 @@ export class PromptAssembler {
 				? `Activity:\n${context.activity.map((a) => `- ${a}`).join("\n")}`
 				: "Activity: (none)",
 		];
-		const untrustedBlock = PromptConfig.untrustedWrapper(untrustedParts.join("\n"));
+		const untrustedBlock = PromptConfig.untrustedWrapper(
+			untrustedParts.join("\n"),
+		);
 
 		return [
 			"# RUNTIME CONTEXT (READ-ONLY, TRUSTED)",
@@ -388,7 +410,8 @@ export class PromptAssembler {
 
 	private renderCapabilities(tools: string[], skills: string[]) {
 		const toolList = tools.map((tool) => `- ${tool}`).join("\n") || "(none)";
-		const skillList = skills.map((skill) => `- ${skill}`).join("\n") || "(none)";
+		const skillList =
+			skills.map((skill) => `- ${skill}`).join("\n") || "(none)";
 		return [
 			"# TOOLS & SKILLS (REFERENCE)",
 			"Tools:",

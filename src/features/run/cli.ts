@@ -94,7 +94,8 @@ export const runExitCodes = [
 export const runExamples = [
 	{
 		input: 'nooa run -- code write foo.ts -- commit -m "feat: foo"',
-		output: "Run a pipeline: write 'foo.ts', then commit with message 'feat: foo'.",
+		output:
+			"Run a pipeline: write 'foo.ts', then commit with message 'feat: foo'.",
 	},
 	{
 		input: 'nooa run "code write foo.ts" "commit -m \'feat: foo\'"',
