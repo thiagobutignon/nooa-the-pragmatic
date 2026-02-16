@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PromptAssembler } from "../features/prompt/assembler";
 import { PromptEngine } from "../features/prompt/engine";

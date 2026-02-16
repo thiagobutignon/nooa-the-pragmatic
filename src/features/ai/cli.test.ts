@@ -1,70 +1,109 @@
-import { Database } from "bun:sqlite";
-import { afterAll, beforeAll, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { execa } from "execa";
-import { baseEnv, bunPath, repoRoot } from "../../test-utils/cli-env";
+import { describe, expect, spyOn, test, beforeEach, afterEach } from "bun:test";
+import { AiEngine } from "./engine";
+import { run, streamAi } from "./cli";
+import * as mcpDb from "../../core/mcp/db";
+import * as mcpAi from "../../core/mcp/integrations/ai";
 
-let tempDir: string;
-let mockDbPath: string;
+describe("AI CLI", () => {
+	let completeSpy: any;
+	let streamSpy: any;
 
-beforeAll(async () => {
-	tempDir = await mkdtemp(join(tmpdir(), "nooa-ai-mcp-"));
-	mockDbPath = join(tempDir, "nooa.db");
-	const db = new Database(mockDbPath, { create: true });
-	db.exec(`
-    CREATE TABLE IF NOT EXISTS mcp_servers (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      package TEXT,
-      command TEXT,
-      args TEXT,
-      enabled INTEGER
-    );
-  `);
-	db.exec(`
-    INSERT OR REPLACE INTO mcp_servers
-    (id, name, package, command, args, enabled)
-    VALUES ('mock', 'Mock MCP', 'mock', 'node', '["mock"]', 1);
-  `);
-	db.close();
-});
+	beforeEach(() => {
+		completeSpy = spyOn(AiEngine.prototype, "complete").mockResolvedValue({
+			content: "Mock response",
+			provider: "mock",
+			model: "mock-model",
+			usage: { total_tokens: 10 }
+		});
+		streamSpy = spyOn(AiEngine.prototype, "stream").mockImplementation(async function* () {
+			yield { content: "Mock", provider: "mock", model: "mock-model" };
+			yield { content: " stream", provider: "mock", model: "mock-model" };
+		});
+	});
 
-afterAll(async () => {
-	await rm(tempDir, { recursive: true, force: true });
-});
+	afterEach(() => {
+		completeSpy.mockRestore();
+		streamSpy.mockRestore();
+	});
 
-test("nooa ai can invoke an MCP tool", async () => {
-	const env = {
-		...baseEnv,
-		NOOA_DB_PATH: mockDbPath,
-		MCP_MOCK_RESPONSE: JSON.stringify({
-			message: "hello",
-		}),
-	};
+	test("run returns error if prompt is missing", async () => {
+		const result = await run({});
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.error.code).toBe("ai.missing_prompt");
+		}
+	});
 
-	const res = await execa(
-		bunPath,
-		[
-			"index.ts",
-			"ai",
-			"hello",
-			"--mcp-source",
-			"mock",
-			"--mcp-tool",
-			"echo",
-			"--mcp-args",
-			`{"message":"hello"}`,
-			"--json",
-		],
-		{ env, cwd: repoRoot, timeout: 3000, reject: false },
-	);
+	test("run executes simple prompt via engine", async () => {
+		const result = await run({ prompt: "Hello" });
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.content).toBe("Mock response");
+			expect(result.data.provider).toBe("mock");
+			expect(completeSpy).toHaveBeenCalled();
+		}
+	});
 
-	expect(res.exitCode).toBe(0);
-	const output = JSON.parse(res.stdout);
-	expect(output.server).toBe("mock");
-	expect(output.tool).toBe("echo");
-	expect(output.result).toBeDefined();
-	expect(output.result.message).toBe("hello");
+	test("run respects provider and model flags", async () => {
+		await run({ prompt: "Hello", provider: "openai", model: "gpt-4" });
+		expect(completeSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ model: "gpt-4" }),
+			expect.objectContaining({ provider: "openai" })
+		);
+	});
+
+	test("run handles streaming (CLI mode)", async () => {
+		const stdoutSpy = spyOn(process.stdout, "write").mockImplementation(() => true);
+		const result = await run({ prompt: "Hello", stream: true });
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.content).toBe("Mock stream");
+		}
+		expect(streamSpy).toHaveBeenCalled();
+		expect(stdoutSpy).toHaveBeenCalled();
+		stdoutSpy.mockRestore();
+	});
+
+	test("run executes MCP tool if flags provided", async () => {
+		const mockDb = { close: () => { } } as any;
+		const openDbSpy = spyOn(mcpDb, "openMcpDatabase").mockReturnValue(mockDb);
+		const execMcpSpy = spyOn(mcpAi, "executeMcpToolFromAi").mockResolvedValue("Tool Result");
+
+		const result = await run({
+			prompt: "ignored",
+			"mcp-source": "server",
+			"mcp-tool": "tool",
+			"mcp-args": '{"arg":"val"}'
+		});
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("mcp");
+			expect(result.data.result).toBe("Tool Result");
+		}
+		expect(openDbSpy).toHaveBeenCalled();
+		expect(execMcpSpy).toHaveBeenCalledWith(mockDb, "server", "tool", { arg: "val" });
+
+		openDbSpy.mockRestore();
+		execMcpSpy.mockRestore();
+	});
+
+	test("run handles invalid MCP args JSON", async () => {
+		const mockDb = { close: () => { } } as any;
+		const openDbSpy = spyOn(mcpDb, "openMcpDatabase").mockReturnValue(mockDb);
+
+		const result = await run({
+			prompt: "ignored",
+			"mcp-source": "server",
+			"mcp-tool": "tool",
+			"mcp-args": "{invalid-json}"
+		});
+
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.error.code).toBe("ai.mcp_invalid_args");
+		}
+		openDbSpy.mockRestore();
+	});
 });

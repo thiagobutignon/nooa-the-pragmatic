@@ -184,7 +184,8 @@ const contextBuilder = new CommandBuilder<ContextRunInput, ContextRunResult>()
 		console.log(`Recent Commits: ${output.recentCommits.length}`);
 		if (output.mcpResources) {
 			console.log(
-				`MCP Resources: ${output.mcpResources.map((r) => r.name).join(", ") || "none"
+				`MCP Resources: ${
+					output.mcpResources.map((r) => r.name).join(", ") || "none"
 				}`,
 			);
 		}

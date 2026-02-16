@@ -8,8 +8,8 @@ import {
 	OllamaProvider,
 	OpenAiProvider,
 } from "../ai/providers/mod";
-import { PromptEngine } from "../prompt/engine";
 import { PromptAssembler } from "../prompt/assembler";
+import { PromptEngine } from "../prompt/engine";
 import type { Assertion, AssertionResult } from "./scorers/deterministic";
 import { DeterministicScorer } from "./scorers/deterministic";
 
@@ -59,8 +59,7 @@ export class EvalEngine {
 						"\n  Examples:\n" +
 						cmd.examples
 							.map(
-								(ex) =>
-									`  - Input: "${ex.input}"\n    Output: "${ex.output}"`,
+								(ex) => `  - Input: "${ex.input}"\n    Output: "${ex.output}"`,
 							)
 							.join("\n");
 				}

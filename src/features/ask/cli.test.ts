@@ -1,6 +1,6 @@
-import { describe, expect, test, spyOn } from "bun:test";
-import { DEFAULT_SEARCH_LIMIT } from "../index/execute";
+import { describe, expect, spyOn, test } from "bun:test";
 import * as execute from "../index/execute";
+import { DEFAULT_SEARCH_LIMIT } from "../index/execute";
 import { run } from "./cli";
 
 describe("ask CLI", () => {

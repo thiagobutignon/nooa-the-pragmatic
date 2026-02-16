@@ -15,7 +15,7 @@ ai.register(new OllamaProvider());
 ai.register(new OpenAiProvider());
 ai.register(new MockProvider());
 
-class LruCache<K, V> {
+export class LruCache<K, V> {
 	private map = new Map<K, V>();
 	constructor(private max: number) {}
 
@@ -63,7 +63,7 @@ export async function indexRepo(root: string = ".") {
 	return { traceId, files: files.length, totalChunks };
 }
 
-async function listFiles(dir: string): Promise<string[]> {
+export async function listFiles(dir: string): Promise<string[]> {
 	const entries = await readdir(dir, { withFileTypes: true });
 	const files = await Promise.all(
 		entries.map((entry) => {
@@ -129,7 +129,7 @@ export async function rebuildIndex(root: string = ".") {
 	return await indexRepo(root);
 }
 
-async function embedChunks(chunks: string[]) {
+export async function embedChunks(chunks: string[]) {
 	const results: Array<{ chunk: string; embedding: number[] | null }> = [];
 	if (chunks.length === 0) return results;
 
@@ -177,7 +177,9 @@ const BOUNDARY_PATTERNS = [
 ];
 
 function hasBoundaryMarkers(lines: string[]) {
-	return lines.some((line) => BOUNDARY_PATTERNS.some((pattern) => pattern.test(line)));
+	return lines.some((line) =>
+		BOUNDARY_PATTERNS.some((pattern) => pattern.test(line)),
+	);
 }
 
 function chunkLinesBySize(
@@ -193,9 +195,7 @@ function chunkLinesBySize(
 		if (current.length > 0 && nextSize > options.maxChars) {
 			chunks.push(current.join("\n"));
 			const overlap =
-				options.overlapLines > 0
-					? current.slice(-options.overlapLines)
-					: [];
+				options.overlapLines > 0 ? current.slice(-options.overlapLines) : [];
 			current = [...overlap];
 			currentSize = current.join("\n").length;
 		}
@@ -241,9 +241,7 @@ function chunkLinesByBoundaries(
 		for (const chunk of segmentChunks) {
 			const chunkLines = chunk.split("\n");
 			const overlap =
-				options.overlapLines > 0
-					? previous.slice(-options.overlapLines)
-					: [];
+				options.overlapLines > 0 ? previous.slice(-options.overlapLines) : [];
 			const combined = [...overlap, ...chunkLines].join("\n").trim();
 			if (combined.length > 0) chunks.push(combined);
 			previous = chunkLines;

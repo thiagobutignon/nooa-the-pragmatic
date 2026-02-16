@@ -31,7 +31,13 @@ const IMPERATIVE_PATTERNS = [
 ];
 
 const TOOL_HINTS: Record<string, string[]> = {
-	ci: ["tests", "unit tests", "testes unitarios", "test unitaire", "pruebas unitarias"],
+	ci: [
+		"tests",
+		"unit tests",
+		"testes unitarios",
+		"test unitaire",
+		"pruebas unitarias",
+	],
 };
 
 export function normalizeDescription(input: string) {

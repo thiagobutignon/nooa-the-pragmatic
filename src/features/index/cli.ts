@@ -164,7 +164,7 @@ export async function run(
 	}
 }
 
-const indexBuilder = new CommandBuilder<IndexRunInput, IndexRunResult>()
+export const indexBuilder = new CommandBuilder<IndexRunInput, IndexRunResult>()
 	.meta(indexMeta)
 	.usage(indexUsage)
 	.schema(indexSchema)

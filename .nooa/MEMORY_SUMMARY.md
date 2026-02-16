@@ -2,43 +2,43 @@
 > Context curated for high-integrity results. Precedence: Constitution.
 
 ### Recent Observations
-- [2026-02-06] Ran command: prompt prompt
+- [2026-02-16] Ran command: fail-cmd 
+Outcome: Success
+- [2026-02-16] Ran command: mcp mcp list --json
 Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt --json
+- [2026-02-16] Ran command: mcp mcp list
 Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt --help
+- [2026-02-16] Ran command: replay replay add A --root /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/coverage-boost/src/features/replay/tmp-replay/cli-output
 Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt --help
+- [2026-02-16] Ran command: fail-cmd 
+Outcome: Success
+- [2026-02-16] Ran command: mcp mcp list --json
 Outcome: Failure
-- [2026-02-06] Ran command: search search TODO --max-results invalid
+- [2026-02-16] Ran command: mcp mcp list
 Outcome: Failure
-- [2026-02-06] Ran command: review review
+- [2026-02-16] Ran command: replay replay add A --root /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/coverage-boost/src/features/replay/tmp-replay/cli-output
 Outcome: Failure
-- [2026-02-06] Ran command: review review --json
+- [2026-02-16] Ran command: fail-cmd 
+Outcome: Success
+- [2026-02-16] Ran command: mcp mcp list --json
 Outcome: Failure
-- [2026-02-06] Ran command: review review --help
+- [2026-02-16] Ran command: mcp mcp list
 Outcome: Failure
-- [2026-02-06] Ran command: review review --help
+- [2026-02-16] Ran command: replay replay add A --root /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/coverage-boost/src/features/replay/tmp-replay/cli-output
 Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt
+- [2026-02-16] Ran command: fail-cmd 
+Outcome: Success
+- [2026-02-16] Ran command: mcp mcp list --json
 Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt --json
+- [2026-02-16] Ran command: mcp mcp list
 Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt --help
+- [2026-02-16] Ran command: replay replay add A --root /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/coverage-boost/src/features/replay/tmp-replay/cli-output
 Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt --help
+- [2026-02-16] Ran command: fail-cmd 
+Outcome: Success
+- [2026-02-16] Ran command: mcp mcp list --json
 Outcome: Failure
-- [2026-02-06] Ran command: search search TODO --max-results invalid
+- [2026-02-16] Ran command: mcp mcp list
 Outcome: Failure
-- [2026-02-06] Ran command: review review
-Outcome: Failure
-- [2026-02-06] Ran command: review review --json
-Outcome: Failure
-- [2026-02-06] Ran command: review review --help
-Outcome: Failure
-- [2026-02-06] Ran command: review review --help
-Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt
-Outcome: Failure
-- [2026-02-06] Ran command: prompt prompt --json
+- [2026-02-16] Ran command: replay replay add A --root /Users/thiagobutignon/dev/nooa-the-pragmatic/.worktrees/coverage-boost/src/features/replay/tmp-replay/cli-output
 Outcome: Failure

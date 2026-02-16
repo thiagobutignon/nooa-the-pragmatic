@@ -111,20 +111,20 @@ describe("nooa eval CLI extensions", () => {
 	});
 });
 
-	it("assemble returns prompt json", async () => {
-		const res = await execa(
-			bunPath,
-			[binPath, "eval", "assemble", "criar teste", "--json"],
-			{
-				reject: false,
-				env: { ...baseEnv, NOOA_EMBED_PROVIDER: "mock" },
-				cwd: repoRoot,
-			},
-		);
+it("assemble returns prompt json", async () => {
+	const res = await execa(
+		bunPath,
+		[binPath, "eval", "assemble", "criar teste", "--json"],
+		{
+			reject: false,
+			env: { ...baseEnv, NOOA_EMBED_PROVIDER: "mock" },
+			cwd: repoRoot,
+		},
+	);
 
-		expectZeroExit(res, "assemble");
-		const payload = JSON.parse(res.stdout);
-		expect(payload.mode).toBeDefined();
-		expect(Array.isArray(payload.tools)).toBe(true);
-		expect(payload.metrics.embeddingCalls).toBe(1);
-	});
+	expectZeroExit(res, "assemble");
+	const payload = JSON.parse(res.stdout);
+	expect(payload.mode).toBeDefined();
+	expect(Array.isArray(payload.tools)).toBe(true);
+	expect(payload.metrics.embeddingCalls).toBe(1);
+});

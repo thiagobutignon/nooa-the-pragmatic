@@ -4,7 +4,11 @@ import { DEFAULT_MIN_SCORE } from "../index/execute";
 
 export type GitState = { branch: string; summary: string };
 export type EnvState = { cwd: string; os: string };
-export type MemoryMatch = { text: string; score: number; embedding: Float32Array };
+export type MemoryMatch = {
+	text: string;
+	score: number;
+	embedding: Float32Array;
+};
 
 export class ContextEngine {
 	async getGitState(root: string): Promise<GitState | null> {
@@ -14,11 +18,9 @@ export class ContextEngine {
 				["rev-parse", "--abbrev-ref", "HEAD"],
 				{ cwd: root },
 			);
-			const { stdout: status } = await execa(
-				"git",
-				["status", "--short"],
-				{ cwd: root },
-			);
+			const { stdout: status } = await execa("git", ["status", "--short"], {
+				cwd: root,
+			});
 			const changes = status.split("\n").filter(Boolean).length;
 			return {
 				branch: branch.trim(),

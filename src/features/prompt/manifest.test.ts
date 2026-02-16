@@ -40,7 +40,8 @@ describe("prompt manifest builders", () => {
 				name: "ci",
 				description: "Run local CI pipeline (test + lint + check)",
 				execute: async () => {},
-				agentDoc: "<instruction><usage><cli>nooa ci</cli></usage></instruction>",
+				agentDoc:
+					"<instruction><usage><cli>nooa ci</cli></usage></instruction>",
 			},
 		];
 
