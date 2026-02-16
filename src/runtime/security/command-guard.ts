@@ -35,8 +35,6 @@ const DANGEROUS_PATTERNS: DangerousPattern[] = [
 ];
 
 export class DangerousCommandGuard {
-	constructor() {}
-
 	check(command: string): GuardResult {
 		for (const { pattern, description } of DANGEROUS_PATTERNS) {
 			if (pattern.test(command)) {
