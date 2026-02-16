@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import type { CronJobRecord, CronJobSpec } from "../../core/db/cron_store";
 import { CronStore } from "../../core/db/cron_store";
+import { SchedulerDaemon } from "../../runtime/scheduler/daemon";
 
 const DEFAULT_DB_PATH = process.env.NOOA_DB_PATH || "nooa.db";
 
@@ -73,6 +74,10 @@ class CronService {
 
 	listLogs(name: string, limit = 10, since?: string) {
 		return this.store.listLogs(name, limit, since);
+	}
+
+	createSchedulerDaemon(workspace: string = process.cwd()): SchedulerDaemon {
+		return new SchedulerDaemon(workspace);
 	}
 }
 
