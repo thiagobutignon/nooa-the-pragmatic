@@ -79,6 +79,7 @@ export async function executeInit(options: InitOptions, bus?: EventBus) {
 		{ tpl: "IDENTITY.md.tpl", path: join(nooaDir, "IDENTITY.md") },
 		{ tpl: "SOUL.md.tpl", path: join(nooaDir, "SOUL.md") },
 		{ tpl: "USER.md.tpl", path: join(nooaDir, "USER.md") },
+		{ tpl: "MEMORY.md.tpl", path: join(nooaDir, "MEMORY.md") },
 		{ tpl: "TOOLS.md.tpl", path: join(nooaDir, "TOOLS.md") },
 	];
 
