@@ -104,4 +104,19 @@ describe("ToolRegistry with DangerousCommandGuard", () => {
 		const result = await registry.execute("exec", { command: "ls -la" });
 		expect(result.isError).toBe(false);
 	});
+
+	it("blocks dangerous commands in non-command string args", async () => {
+		const registry = new ToolRegistry({ enableCommandGuard: true });
+		registry.register({
+			name: "exec_alt",
+			description: "Execute shell command using cmd arg",
+			parameters: { cmd: { type: "string", required: true } },
+			execute: async (args) => toolResult(`Executed: ${args.cmd}`),
+			isShellTool: true,
+		});
+
+		const result = await registry.execute("exec_alt", { cmd: "rm -rf /" });
+		expect(result.isError).toBe(true);
+		expect(result.forLlm).toContain("Blocked");
+	});
 });

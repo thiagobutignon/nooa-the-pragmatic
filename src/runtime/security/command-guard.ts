@@ -21,7 +21,7 @@ const DANGEROUS_PATTERNS: DangerousPattern[] = [
 	{ pattern: /\bformat\s+[A-Z]:/i, description: "Disk format (Windows)" },
 	{ pattern: /\bmkfs\b/i, description: "Filesystem create (mkfs)" },
 	{ pattern: /\bdiskpart\b/i, description: "Disk partition tool" },
-	{ pattern: /\bdd\s+if=/i, description: "Disk image/write (dd)" },
+	{ pattern: /\bdd\b(?=.*\bif=)/i, description: "Disk image/write (dd)" },
 	{ pattern: /\/dev\/sd[a-z]/i, description: "Direct disk device access" },
 	{ pattern: /:\(\)\{\s*:\|:&\s*\};:/i, description: "Fork bomb" },
 	{ pattern: /\bshutdown\b/i, description: "System shutdown" },

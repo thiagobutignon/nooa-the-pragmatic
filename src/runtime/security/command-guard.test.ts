@@ -12,6 +12,7 @@ describe("DangerousCommandGuard", () => {
 			["format C:", "disk format"],
 			["mkfs.ext4 /dev/sda", "filesystem create"],
 			["dd if=/dev/zero of=/dev/sda", "disk image"],
+			["dd of=/dev/sda if=/dev/zero", "disk image (inverted args)"],
 			[":(){ :|:& };:", "fork bomb"],
 			["shutdown -h now", "system shutdown"],
 			["reboot", "system reboot"],

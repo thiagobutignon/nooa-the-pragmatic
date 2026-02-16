@@ -60,10 +60,17 @@ export class ToolRegistry {
 		}
 
 		if (this.guard && tool.isShellTool) {
-			const command = typeof args.command === "string" ? args.command : "";
-			const guardResult = this.guard.check(command);
-			if (guardResult.blocked) {
-				return errorResult(guardResult.reason ?? "Blocked dangerous command");
+			for (const [argName, value] of Object.entries(args)) {
+				if (typeof value !== "string") {
+					continue;
+				}
+
+				const guardResult = this.guard.check(value);
+				if (guardResult.blocked) {
+					return errorResult(
+						guardResult.reason ?? `Blocked dangerous command in "${argName}"`,
+					);
+				}
 			}
 		}
 
