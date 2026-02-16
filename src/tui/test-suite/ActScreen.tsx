@@ -8,6 +8,7 @@ interface ActScreenProps {
 }
 
 type LogLine = {
+	id: string;
 	type:
 		| "info"
 		| "error"
@@ -48,7 +49,14 @@ export function ActScreen({ onBack }: ActScreenProps) {
 	});
 
 	const addLog = (type: LogLine["type"], content: string) => {
-		setLogs((prev) => [...prev, { type, content }]);
+		setLogs((prev) => [
+			...prev,
+			{
+				id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+				type,
+				content,
+			},
+		]);
 		setScrollOffset(0); // Auto-scroll to bottom
 	};
 
@@ -79,8 +87,8 @@ export function ActScreen({ onBack }: ActScreenProps) {
 			} else {
 				addLog("error", result.error?.message || "Unknown error");
 			}
-		} catch (err: any) {
-			addLog("error", err.message);
+		} catch (err: unknown) {
+			addLog("error", err instanceof Error ? err.message : String(err));
 		} finally {
 			setIsRunning(false);
 		}
@@ -119,8 +127,8 @@ export function ActScreen({ onBack }: ActScreenProps) {
 				{visibleLogs.length === 0 && (
 					<Text dimColor>Ready. Enter a goal below.</Text>
 				)}
-				{visibleLogs.map((log, i) => (
-					<Box key={startIndex + i} marginBottom={0} flexDirection="column">
+				{visibleLogs.map((log) => (
+					<Box key={log.id} marginBottom={0} flexDirection="column">
 						{log.type === "user" && (
 							<Text color="green" bold>
 								{log.content}

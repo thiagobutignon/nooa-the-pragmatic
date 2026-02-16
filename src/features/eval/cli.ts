@@ -377,17 +377,6 @@ export async function run(
 					},
 				},
 			};
-
-			return {
-				ok: true,
-				data: {
-					payload: {
-						ok: true,
-						message: "Suggestions generated",
-						failures,
-					},
-				},
-			};
 		}
 
 		if (
@@ -542,9 +531,22 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			return;
 		}
 
-		const payload = output.payload as any;
-		if (payload?.cases) {
-			for (const r of payload.cases) {
+		const payload = output.payload;
+		const payloadRecord =
+			typeof payload === "object" && payload !== null && !Array.isArray(payload)
+				? (payload as Record<string, unknown>)
+				: null;
+
+		if (payloadRecord && Array.isArray(payloadRecord.cases)) {
+			const cases = payloadRecord.cases as Array<{
+				id: string;
+				score: number;
+				passed: boolean;
+				assertions: Array<{ passed: boolean; message: string }>;
+			}>;
+			const totalScore = Number(payloadRecord.totalScore ?? 0);
+
+			for (const r of cases) {
 				const status = r.passed ? "✅" : "❌";
 				console.log(
 					`${status} Case: ${r.id} (Score: ${(r.score * 100).toFixed(0)}%)`,
@@ -553,22 +555,23 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 					console.log(`  - ${a.passed ? "pass" : "fail"}: ${a.message}`);
 				}
 			}
-			console.log(`\nOverall Score: ${(payload.totalScore * 100).toFixed(0)}%`);
+			console.log(`\nOverall Score: ${(totalScore * 100).toFixed(0)}%`);
 			return;
 		}
 
-		if (payload?.result && payload?.totalScore !== undefined) {
-			console.log(`\n✅ Applied! ${payload.result ?? ""}`);
+		if (payloadRecord?.result && payloadRecord.totalScore !== undefined) {
+			console.log(`\n✅ Applied! ${String(payloadRecord.result ?? "")}`);
 			return;
 		}
 
-		if (payload?.failures) {
-			if (!payload.failures || payload.failures.length === 0) {
+		if (payloadRecord && Array.isArray(payloadRecord.failures)) {
+			const failures = payloadRecord.failures as unknown[];
+			if (failures.length === 0) {
 				console.log("Everything passed! No suggestions needed.");
 				return;
 			}
 			console.log(
-				`\nFound ${payload.failures.length} failing cases. Prompting AI Optimizer...`,
+				`\nFound ${failures.length} failing cases. Prompting AI Optimizer...`,
 			);
 			console.log("\n[DRAFT SUGGESTION]");
 			console.log(
@@ -577,29 +580,38 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			return;
 		}
 
-		if (payload?.prompt && payload?.mode && payload?.task) {
-			console.log(payload.prompt);
+		if (payloadRecord?.prompt && payloadRecord.mode && payloadRecord.task) {
+			console.log(String(payloadRecord.prompt));
 			return;
 		}
 
 		if (
-			payload?.prompt &&
-			payload?.suite &&
-			payload?.command &&
-			payload?.totalScore !== undefined
+			payloadRecord?.prompt &&
+			payloadRecord.suite &&
+			payloadRecord.command &&
+			payloadRecord.totalScore !== undefined
 		) {
+			const score = Number(payloadRecord.totalScore);
 			console.log(
-				`Report for ${payload.prompt} (suite: ${payload.suite})\nCommand: ${payload.command}\nScore: ${(payload.totalScore * 100).toFixed(1)}% (${payload.timestamp})`,
+				`Report for ${String(payloadRecord.prompt)} (suite: ${String(payloadRecord.suite)})\nCommand: ${String(payloadRecord.command)}\nScore: ${(score * 100).toFixed(1)}% (${String(payloadRecord.timestamp)})`,
 			);
 			return;
 		}
 
 		if (Array.isArray(payload)) {
-			const first = payload[0];
+			const entries = payload as Array<{
+				id: string;
+				command: string;
+				prompt: string;
+				suite: string;
+				totalScore: number;
+				timestamp: string;
+			}>;
+			const first = entries[0];
 			console.log(
 				`History for ${first?.prompt ?? "prompt"} (suite: ${first?.suite ?? "suite"}):`,
 			);
-			for (const entry of payload) {
+			for (const entry of entries) {
 				console.log(
 					`[${entry.id}] ${entry.command} • ${(entry.totalScore * 100).toFixed(1)}% • ${entry.timestamp}`,
 				);
@@ -607,16 +619,28 @@ const evalBuilder = new CommandBuilder<EvalRunInput, EvalRunResult>()
 			return;
 		}
 
-		if (payload?.base && payload?.head) {
+		if (payloadRecord?.base && payloadRecord.head) {
+			const base = payloadRecord.base as {
+				command: string;
+				id: string;
+				totalScore: number;
+			};
+			const head = payloadRecord.head as {
+				command: string;
+				id: string;
+				totalScore: number;
+				timestamp: string;
+			};
+			const delta = Number(payloadRecord.delta ?? 0);
 			console.log(
-				`Comparing ${payload.base.command} (${payload.base.id}) → ${payload.head.command} (${payload.head.id})`,
+				`Comparing ${base.command} (${base.id}) → ${head.command} (${head.id})`,
 			);
 			console.log(
-				`Score delta: ${(payload.delta * 100).toFixed(2)}pp (${(
-					payload.base.totalScore * 100
-				).toFixed(1)}% → ${(payload.head.totalScore * 100).toFixed(1)}%)`,
+				`Score delta: ${(delta * 100).toFixed(2)}pp (${(
+					base.totalScore * 100
+				).toFixed(1)}% → ${(head.totalScore * 100).toFixed(1)}%)`,
 			);
-			console.log(`Head recorded at ${payload.head.timestamp}`);
+			console.log(`Head recorded at ${head.timestamp}`);
 			return;
 		}
 	})

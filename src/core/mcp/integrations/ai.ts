@@ -37,10 +37,8 @@ export async function executeMcpToolFromAi(
 	db: Database,
 	mcpSource: string,
 	toolName: string,
-	// biome-ignore lint/suspicious/noExplicitAny: Tool args are dynamic JSON-RPC params
-	args: any,
-	// biome-ignore lint/suspicious/noExplicitAny: Tool result is dynamic JSON-RPC response
-): Promise<any> {
+	args: Record<string, unknown>,
+): Promise<unknown> {
 	if (process.env.MCP_MOCK_RESPONSE) {
 		try {
 			return JSON.parse(process.env.MCP_MOCK_RESPONSE);

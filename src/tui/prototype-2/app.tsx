@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { Box, Text, useApp, useInput, useStdout } from "ink";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const palette = {
 	amber: "#FFF",
@@ -89,12 +89,12 @@ export function Prototype2App() {
 		rows: stdout?.rows ?? 28,
 	}));
 
-	const clearScreen = () => {
+	const clearScreenCallback = useCallback(() => {
 		stdout?.write("\u001b[2J\u001b[H");
-	};
+	}, [stdout]);
 
 	useEffect(() => {
-		clearScreen();
+		clearScreenCallback();
 		const handleResize = () => {
 			if (resizeTimer.current) clearTimeout(resizeTimer.current);
 			resizeTimer.current = setTimeout(() => {
@@ -102,7 +102,7 @@ export function Prototype2App() {
 					columns: stdout?.columns ?? 100,
 					rows: stdout?.rows ?? 28,
 				});
-				clearScreen();
+				clearScreenCallback();
 			}, 120);
 		};
 		stdout?.on("resize", handleResize);
@@ -110,7 +110,7 @@ export function Prototype2App() {
 			stdout?.off("resize", handleResize);
 			if (resizeTimer.current) clearTimeout(resizeTimer.current);
 		};
-	}, [stdout, clearScreen]);
+	}, [stdout, clearScreenCallback]);
 
 	useInput((input, key) => {
 		if (key.escape || input === "q") exit();

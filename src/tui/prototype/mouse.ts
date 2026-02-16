@@ -1,9 +1,13 @@
 export type MouseScrollDirection = "up" | "down";
 
 export function parseMouseScroll(payload: string): MouseScrollDirection | null {
-	const match = payload.match(/\u001b\[<([0-9]+);([0-9]+);([0-9]+)([mM])/);
-	if (!match) return null;
-	const code = Number.parseInt(match[1] ?? "", 10);
+	const prefix = "\u001b[<";
+	if (!payload.startsWith(prefix)) return null;
+	const body = payload.slice(prefix.length);
+	const terminatorIndex = body.search(/[mM]/);
+	if (terminatorIndex < 0) return null;
+	const parts = body.slice(0, terminatorIndex).split(";");
+	const code = Number.parseInt(parts[0] ?? "", 10);
 	if (Number.isNaN(code)) return null;
 	if (code === 64) return "up";
 	if (code === 65) return "down";

@@ -49,10 +49,11 @@ export class TestGate implements Gate {
 			// Using `bun test`
 			await execa("bun", ["test"], { cwd: ctx.cwd });
 			return { ok: true };
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
 			return {
 				ok: false,
-				reason: `Tests failed: ${error.message}`,
+				reason: `Tests failed: ${message}`,
 				suggestions: ["Fix failing tests", "Run `bun test` to see details"],
 			};
 		}
@@ -85,10 +86,11 @@ export class DogfoodGate implements Gate {
 			// Run the target command help or version as smoke test
 			await execa("bun", ["index.ts", target, "--help"], { cwd: ctx.cwd });
 			return { ok: true };
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
 			return {
 				ok: false,
-				reason: `Dogfood check failed for '${target}': ${error.message}`,
+				reason: `Dogfood check failed for '${target}': ${message}`,
 				suggestions: ["Check command syntax", "Verify command registration"],
 			};
 		}

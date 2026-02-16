@@ -29,6 +29,14 @@ function parseMetadata(row: TelemetryRow): Record<string, unknown> {
 	return {};
 }
 
+function getMetadataString(
+	metadata: Record<string, unknown>,
+	key: string,
+): string | undefined {
+	const value = metadata[key];
+	return typeof value === "string" ? value : undefined;
+}
+
 export function reconstituteState(rows: TelemetryRow[]): WorkerView[] {
 	const workers = new Map<string, WorkerView>();
 
@@ -44,7 +52,7 @@ export function reconstituteState(rows: TelemetryRow[]): WorkerView[] {
 		const metadata = parseMetadata(row);
 
 		if (eventType === "workflow.started" || eventType === "act.started") {
-			const goal = (metadata as any)?.goal || "Unknown Goal";
+			const goal = getMetadataString(metadata, "goal") ?? "Unknown Goal";
 			worker = {
 				id: traceId,
 				goal,
@@ -74,17 +82,20 @@ export function reconstituteState(rows: TelemetryRow[]): WorkerView[] {
 		worker.lastEventTime = row.timestamp;
 
 		if (eventType === "workflow.step.start") {
-			worker.currentStep = (metadata as any)?.stepId;
+			worker.currentStep = getMetadataString(metadata, "stepId");
 		}
 		if (eventType === "workflow.gate.pass") {
-			const gateId = (metadata as any)?.gateId;
+			const gateId = getMetadataString(metadata, "gateId");
 			worker.lastGate = { id: gateId, status: "pass" };
 			if (gateId && !worker.gates.includes(gateId)) {
 				worker.gates.push(gateId);
 			}
 		}
 		if (eventType === "workflow.gate.fail") {
-			worker.lastGate = { id: (metadata as any)?.gateId, status: "fail" };
+			worker.lastGate = {
+				id: getMetadataString(metadata, "gateId") ?? "unknown-gate",
+				status: "fail",
+			};
 			worker.status = "failed";
 		}
 		if (eventType === "workflow.completed" || eventType === "act.completed") {

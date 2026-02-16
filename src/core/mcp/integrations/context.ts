@@ -7,6 +7,12 @@
 import type { Database } from "bun:sqlite";
 import type { McpResource } from "../types";
 
+type McpServerRow = {
+	id: string;
+	name: string;
+	package: string;
+};
+
 /**
  * Integration point for Context command
  * Note: This helper reads metadata from the MCP registry table
@@ -19,12 +25,12 @@ export async function getMcpResourcesForContext(
 		const rows = db
 			.query(
 				`
-        SELECT id, name, package FROM mcp_servers WHERE enabled = 1
-      `,
+	        SELECT id, name, package FROM mcp_servers WHERE enabled = 1
+	      `,
 			)
-			.all();
+			.all() as McpServerRow[];
 
-		return rows.map((row: any) => ({
+		return rows.map((row) => ({
 			id: row.id,
 			name: row.name,
 			package: row.package,

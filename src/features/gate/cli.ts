@@ -91,7 +91,7 @@ export async function run(
 	if (input.action !== "check") {
 		return {
 			ok: true,
-			data: { ok: true, gateId: "help", reason: gateHelp } as any,
+			data: { ok: true, gateId: "help", reason: gateHelp },
 		};
 	}
 
@@ -157,7 +157,9 @@ const gateBuilder = new CommandBuilder<GateRunInput, GateCheckResult>()
 			if (output.reason) console.error(`Reason: ${output.reason}`);
 			if (output.suggestions?.length) {
 				console.error("Suggestions:");
-				output.suggestions.forEach((s) => console.error(`  - ${s}`));
+				output.suggestions.forEach((s) => {
+					console.error(`  - ${s}`);
+				});
 			}
 			process.exitCode = 1;
 		}

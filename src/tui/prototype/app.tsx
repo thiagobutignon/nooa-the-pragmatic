@@ -5,7 +5,7 @@ import { Box, Text, useApp, useInput, useStdout } from "ink";
 import Gradient from "ink-gradient";
 import TextInput from "ink-text-input";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { telemetry } from "../../core/telemetry";
 import { reconstituteState, type WorkerView } from "../shared/state";
 import { runAiStream } from "./ai-runner";
@@ -115,6 +115,11 @@ type ChatMessage = {
 	text: string;
 };
 
+type LogLine = {
+	id: string;
+	text: string;
+};
+
 function ChatMessage({ role, text }: { role: ChatRole; text: string }) {
 	const roleColor =
 		role === "user"
@@ -184,7 +189,7 @@ export function PrototypeApp() {
 			text: "You are NOOA. Optimize for speed and clarity.",
 		},
 	]);
-	const [logs, setLogs] = useState<string[]>([]);
+	const [logs, setLogs] = useState<LogLine[]>([]);
 	const logFileRef = useRef<string | null>(null);
 	const scrollStateRef = useRef(
 		buildScrollState({ totalLines: 0, viewportLines: 10 }),
@@ -214,11 +219,11 @@ export function PrototypeApp() {
 		return () => clearInterval(timer);
 	}, []);
 
-	const clearScreen = () => {
+	const clearScreen = useCallback(() => {
 		if (stdout) {
 			stdout.write("\u001b[2J\u001b[H\u001b[3J");
 		}
-	};
+	}, [stdout]);
 
 	useEffect(() => {
 		clearScreen();
@@ -326,15 +331,23 @@ export function PrototypeApp() {
 
 	const logPanel = useMemo(() => {
 		const lines = logs.slice(-12);
-		return lines.map((line, index) => (
-			<Text key={`${line}-${index}`} color={theme.muted}>
-				{line}
+		return lines.map((line) => (
+			<Text key={line.id} color={theme.muted}>
+				{line.text}
 			</Text>
 		));
 	}, [logs]);
 
 	const appendLog = (line: string, event?: LogEvent) => {
-		setLogs((prev) => [...prev, line].slice(-200));
+		setLogs((prev) =>
+			[
+				...prev,
+				{
+					id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+					text: line,
+				},
+			].slice(-200),
+		);
 		const logPath = logFileRef.current;
 		if (logPath && event) {
 			appendLogLine(logPath, event).catch(() => {});

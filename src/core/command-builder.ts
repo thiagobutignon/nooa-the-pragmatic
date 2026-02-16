@@ -308,7 +308,7 @@ ${outputXml}
 			const parsed = parseArgs({
 				args: rawArgs,
 				options: parseOptions.options,
-				strict: (parseOptions as any).strict ?? true,
+				strict: parseOptions.strict ?? true,
 				allowPositionals: true,
 			});
 

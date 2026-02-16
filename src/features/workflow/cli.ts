@@ -88,7 +88,7 @@ export async function run(
 	if (input.action !== "run") {
 		return {
 			ok: true,
-			data: { ok: true, failedStepId: "help", reason: workflowHelp } as any,
+			data: { ok: true, failedStepId: "help", reason: workflowHelp },
 		};
 	}
 

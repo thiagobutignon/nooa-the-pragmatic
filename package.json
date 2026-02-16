@@ -27,6 +27,7 @@
 		"test:coverage": "bun test --coverage",
 		"check": "biome check .",
 		"check:changed": "biome check --changed --since=main --no-errors-on-unmatched .",
+		"check:strict:changed": "biome check --changed --since=main --error-on-warnings --no-errors-on-unmatched .",
 		"check:staged": "biome check --staged --no-errors-on-unmatched .",
 		"linter": "biome lint .",
 		"lint:fix": "biome check --write --unsafe .",

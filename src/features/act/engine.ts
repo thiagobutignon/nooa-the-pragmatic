@@ -30,13 +30,18 @@ interface ActOptions {
 	model?: string;
 	provider?: string;
 	onEvent?: (event: ActEvent) => void;
-	bus?: any; // EventBus; using any to match untyped usages if needed, or import EventBus
+	bus?: EventBus;
 	skipVerification?: boolean;
 }
 
+type ConversationEntry = {
+	role: "user" | "assistant" | "system";
+	content: string;
+};
+
 interface ActResult {
 	ok: boolean;
-	history: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+	history: ConversationEntry[];
 	finalAnswer: string;
 }
 
@@ -73,8 +78,8 @@ export class ActEngine {
 	private async saveAuditLog(
 		root: string,
 		goal: string,
-		history: any[],
-		result: any,
+		history: ConversationEntry[],
+		result: SdkResult<ActResult>,
 	) {
 		try {
 			const logsDir = join(root, ".nooa", "logs");
@@ -151,10 +156,7 @@ RULES:
 - Output RAW JSON only.
 `;
 
-		const history: Array<{
-			role: "user" | "assistant" | "system";
-			content: string;
-		}> = [
+		const history: ConversationEntry[] = [
 			{ role: "system", content: systemPrompt },
 			{ role: "user", content: `GOAL: ${goal}` },
 		];

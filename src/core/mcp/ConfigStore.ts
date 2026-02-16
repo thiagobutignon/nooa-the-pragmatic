@@ -2,6 +2,36 @@ import type { Database } from "bun:sqlite";
 import { createMcpServersTable } from "../db/schema/mcp_servers";
 import type { McpServer } from "./types";
 
+type ServerRow = {
+	id: string;
+	name: string;
+	package: string | null;
+	command: string;
+	args: string;
+	env: string | null;
+	enabled: number;
+	installed_at: number | null;
+	updated_at: number | null;
+};
+
+function parseStringArray(raw: string): string[] {
+	const parsed: unknown = JSON.parse(raw);
+	return Array.isArray(parsed) &&
+		parsed.every((item) => typeof item === "string")
+		? parsed
+		: [];
+}
+
+function parseEnv(raw: string | null): Record<string, string> | undefined {
+	if (!raw) return undefined;
+	const parsed: unknown = JSON.parse(raw);
+	if (!parsed || typeof parsed !== "object") return undefined;
+	const env = Object.entries(parsed).filter(
+		([key, value]) => typeof key === "string" && typeof value === "string",
+	);
+	return Object.fromEntries(env);
+}
+
 export class ConfigStore {
 	constructor(private db: Database) {
 		createMcpServersTable(db);
@@ -42,8 +72,7 @@ export class ConfigStore {
 	async get(name: string): Promise<McpServer | undefined> {
 		const row = this.db
 			.query("SELECT * FROM mcp_servers WHERE name = ?")
-			// biome-ignore lint/suspicious/noExplicitAny: SQLite results are dynamic
-			.get(name) as any;
+			.get(name) as ServerRow | null;
 
 		if (!row) return undefined;
 
@@ -51,8 +80,9 @@ export class ConfigStore {
 	}
 
 	async listAll(): Promise<McpServer[]> {
-		// biome-ignore lint/suspicious/noExplicitAny: SQLite results are dynamic
-		const rows = this.db.query("SELECT * FROM mcp_servers").all() as any[];
+		const rows = this.db
+			.query("SELECT * FROM mcp_servers")
+			.all() as ServerRow[];
 		return rows.map((row) => this.rowToServer(row));
 	}
 
@@ -60,15 +90,14 @@ export class ConfigStore {
 		this.db.run("DELETE FROM mcp_servers WHERE name = ?", [name]);
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: SQLite rows are dynamic
-	private rowToServer(row: any): McpServer {
+	private rowToServer(row: ServerRow): McpServer {
 		return {
 			id: row.id,
 			name: row.name,
 			package: row.package || undefined,
 			command: row.command,
-			args: JSON.parse(row.args),
-			env: row.env ? JSON.parse(row.env) : undefined,
+			args: parseStringArray(row.args),
+			env: parseEnv(row.env),
 			enabled: row.enabled === 1,
 			installedAt: row.installed_at || undefined,
 			updatedAt: row.updated_at || undefined,

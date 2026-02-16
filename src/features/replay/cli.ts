@@ -207,13 +207,14 @@ export async function run(
 					edge: { from, to, kind: "next" },
 				},
 			};
-		} catch (e: any) {
-			const code = e.message.includes("Cycle")
+		} catch (e: unknown) {
+			const message = e instanceof Error ? e.message : String(e);
+			const code = message.includes("Cycle")
 				? "replay.cycle_detected"
 				: "replay.not_found";
 			return {
 				ok: false,
-				error: sdkError(code, e.message),
+				error: sdkError(code, message),
 			};
 		}
 	}
@@ -229,10 +230,11 @@ export async function run(
 					node: fixNode,
 				},
 			};
-		} catch (e: any) {
+		} catch (e: unknown) {
+			const message = e instanceof Error ? e.message : String(e);
 			return {
 				ok: false,
-				error: sdkError("replay.not_found", e.message),
+				error: sdkError("replay.not_found", message),
 			};
 		}
 	}
