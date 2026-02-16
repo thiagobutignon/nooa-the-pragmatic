@@ -232,7 +232,10 @@ export async function run(
 		if (!input.path) {
 			return {
 				ok: false,
-				error: sdkError("code.delete_missing_path", "Path required for delete."),
+				error: sdkError(
+					"code.delete_missing_path",
+					"Path required for delete.",
+				),
 			};
 		}
 		if (!input["dry-run"]) {
@@ -244,7 +247,7 @@ export async function run(
 				mode: "delete",
 				path: input.path,
 				dryRun: Boolean(input["dry-run"]),
-				deleted: !Boolean(input["dry-run"]),
+				deleted: !input["dry-run"],
 			},
 		};
 	}
