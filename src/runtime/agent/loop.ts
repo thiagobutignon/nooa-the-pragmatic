@@ -115,7 +115,9 @@ export class AgentLoop {
 
 					const sessionKey = this.buildSubagentSessionKey("spawn", label);
 					queueMicrotask(() => {
-						void this.processMessage(sessionKey, task);
+						void this.processMessage(sessionKey, task).catch(() => {
+							// Keep spawn fire-and-forget isolated from parent flow.
+						});
 					});
 					return toolResult(`spawn accepted: ${task}`);
 				}),

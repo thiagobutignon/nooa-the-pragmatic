@@ -158,6 +158,9 @@ export class SchedulerDaemon {
 		nowMs: number,
 	): SchedulerJobSchedule {
 		if (typeof input.everySeconds === "number") {
+			if (input.everySeconds <= 0) {
+				throw new Error("everySeconds must be greater than 0");
+			}
 			return {
 				kind: "every",
 				everySeconds: input.everySeconds,

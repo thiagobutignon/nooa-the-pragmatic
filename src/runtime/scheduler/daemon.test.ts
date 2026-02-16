@@ -75,4 +75,30 @@ describe("SchedulerDaemon", () => {
 		const due = daemon.getDueJobs();
 		expect(due.length).toBeGreaterThanOrEqual(1);
 	});
+
+	it("rejects recurring jobs with non-positive everySeconds", () => {
+		const daemon = new SchedulerDaemon(workspace, {
+			enableHeartbeatJob: false,
+		});
+
+		expect(() =>
+			daemon.addJob({
+				name: "bad-every-zero",
+				message: "bad",
+				everySeconds: 0,
+				channel: "cli",
+				chatId: "direct",
+			}),
+		).toThrow("everySeconds must be greater than 0");
+
+		expect(() =>
+			daemon.addJob({
+				name: "bad-every-negative",
+				message: "bad",
+				everySeconds: -10,
+				channel: "cli",
+				chatId: "direct",
+			}),
+		).toThrow("everySeconds must be greater than 0");
+	});
 });

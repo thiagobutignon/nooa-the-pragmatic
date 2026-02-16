@@ -158,4 +158,35 @@ describe("AgentLoop", () => {
 		expect(result?.isError).toBe(true);
 		expect(result?.forLlm).toContain("cannot call spawn");
 	});
+
+	it("does not emit unhandledRejection when spawned subagent fails", async () => {
+		const provider = {
+			generate: mock(async () => {
+				throw new Error("boom");
+			}),
+		};
+
+		const registry = new ToolRegistry();
+		const loop = new AgentLoop({
+			provider,
+			tools: registry,
+			sessions: new SessionManager(sessionStorage),
+			workspace: "/tmp/nooa",
+			maxIterations: 2,
+		});
+		void loop;
+
+		let hasUnhandledRejection = false;
+		const onUnhandled = () => {
+			hasUnhandledRejection = true;
+		};
+		process.on("unhandledRejection", onUnhandled);
+
+		const spawn = registry.get("spawn");
+		await spawn?.execute({ task: "analyze repo status" });
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		process.off("unhandledRejection", onUnhandled);
+		expect(hasUnhandledRejection).toBe(false);
+	});
 });
