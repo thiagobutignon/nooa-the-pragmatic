@@ -14,7 +14,7 @@ import { MemoryEngine } from "../../features/memory/engine";
 import { autoReflect } from "./hook";
 
 // We will use spyOn locally in beforeEach or tests
-const addEntryMock = mock(async () => ({ id: "mem-123" }) as any);
+const addEntryMock = mock(async () => ({ id: "mem-123" }) as unknown);
 
 describe("Auto Reflection Hook", () => {
 	let testDir: string;
@@ -41,7 +41,7 @@ describe("Auto Reflection Hook", () => {
 
 	test("autoReflect adds observable memory entry", async () => {
 		const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
-			addEntryMock as any,
+			addEntryMock as unknown,
 		);
 		await autoReflect("test-cmd", ["--arg", "val"], { success: true }, testDir);
 
@@ -73,7 +73,7 @@ describe("Auto Reflection Hook", () => {
 
 	test("autoReflect skips help invocations", async () => {
 		const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
-			addEntryMock as any,
+			addEntryMock as unknown,
 		);
 
 		await autoReflect("ai", ["--help"], { ok: true }, testDir);
@@ -85,7 +85,7 @@ describe("Auto Reflection Hook", () => {
 
 	test("autoReflect skips version invocations", async () => {
 		const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
-			addEntryMock as any,
+			addEntryMock as unknown,
 		);
 
 		await autoReflect("ai", ["--version"], { ok: true }, testDir);

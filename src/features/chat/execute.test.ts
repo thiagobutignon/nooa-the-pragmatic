@@ -22,7 +22,7 @@ describe("executeMessage", () => {
 	});
 
 	it("formatOutput formats as JSON", () => {
-		const msg = { role: "user", content: "hi", timestamp: "now" } as any;
+		const msg = { role: "user", content: "hi", timestamp: "now" } as unknown;
 		const result = formatOutput(msg, true);
 		expect(JSON.parse(result)).toEqual(msg);
 	});
@@ -32,7 +32,7 @@ describe("executeMessage", () => {
 			role: "assistant",
 			content: "hello",
 			timestamp: "now",
-		} as any;
+		} as unknown;
 		const result = formatOutput(msg, false);
 		expect(result).toBe("[assistant] hello");
 	});

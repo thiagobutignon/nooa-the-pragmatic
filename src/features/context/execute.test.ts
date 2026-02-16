@@ -6,12 +6,12 @@ import { buildContext } from "./execute";
 describe("Context Builder", () => {
 	test("extracts context for a given file", async () => {
 		const readFileSpy = spyOn(fsPromises, "readFile").mockResolvedValue(
-			"import { foo } from './foo';\nexport class Bar {}" as any,
+			"import { foo } from './foo';\nexport class Bar {}" as unknown,
 		);
 		const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: "commit\n",
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const result = await buildContext("src/test.ts");
 
@@ -28,7 +28,7 @@ describe("Context Builder", () => {
 	test("falls back to symbol lookup when file not found", async () => {
 		const readFileSpy = spyOn(fsPromises, "readFile")
 			.mockRejectedValueOnce(new Error("FILE_NOT_FOUND"))
-			.mockResolvedValueOnce("content" as any);
+			.mockResolvedValueOnce("content" as unknown);
 
 		const execaSpy = spyOn(execaModule, "execa").mockImplementation(
 			(cmd: string, _args: string[]) => {
@@ -36,9 +36,9 @@ describe("Context Builder", () => {
 					return Promise.resolve({
 						stdout: "src/found.ts\n",
 						exitCode: 0,
-					} as any);
+					} as unknown);
 				if (cmd === "git")
-					return Promise.resolve({ stdout: "", exitCode: 0 } as any);
+					return Promise.resolve({ stdout: "", exitCode: 0 } as unknown);
 				return Promise.reject(new Error("Unknown command"));
 			},
 		);
@@ -60,7 +60,7 @@ describe("Context Builder", () => {
 		const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: "",
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		await expect(buildContext("TotallyMissing")).rejects.toThrow(
 			"File or symbol 'TotallyMissing' not found.",

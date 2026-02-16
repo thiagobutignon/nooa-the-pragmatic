@@ -9,7 +9,7 @@ import embedCommand from "./cli";
 describe("nooa embed cli direct", () => {
 	let testDir: string;
 	let bus: EventBus;
-	let trackSpy: any;
+	let trackSpy: unknown;
 
 	beforeEach(async () => {
 		testDir = join(
@@ -19,7 +19,7 @@ describe("nooa embed cli direct", () => {
 		await mkdir(testDir, { recursive: true });
 		bus = new EventBus();
 		// Mock telemetry to avoid DB issues and ensures coverage of the call itself
-		trackSpy = spyOn(telemetry, "track").mockReturnValue(1 as any);
+		trackSpy = spyOn(telemetry, "track").mockReturnValue(1 as unknown);
 		process.env.NOOA_EMBED_PROVIDER = "mock";
 	});
 

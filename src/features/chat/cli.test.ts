@@ -20,7 +20,7 @@ describe("Chat CLI", () => {
 	});
 
 	test("run returns error if role is invalid", async () => {
-		const result = await run({ content: "Hi", role: "invalid" as any });
+		const result = await run({ content: "Hi", role: "invalid" as unknown });
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.error.code).toBe("message.invalid_role");

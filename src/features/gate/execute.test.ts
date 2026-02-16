@@ -5,7 +5,7 @@ import { checkGate } from "./execute";
 // Mock the gate classes
 const _MockGate = class {
 	id = "mock-gate";
-	async check(_ctx: any) {
+	async check(_ctx: unknown) {
 		return { ok: true };
 	}
 };
@@ -88,7 +88,7 @@ describe("Gate Execute", () => {
 	});
 
 	test("passes context correctly", async () => {
-		let capturedCtx: any;
+		let capturedCtx: unknown;
 		const checkSpy = spyOn(
 			gates.SpecGate.prototype,
 			"check",

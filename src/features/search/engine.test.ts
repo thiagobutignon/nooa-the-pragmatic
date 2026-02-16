@@ -138,11 +138,11 @@ describe("Search Engine", () => {
 			exitCode: 0,
 			kill: () => {},
 			unref: () => {},
-		})) as any);
+		})) as unknown);
 
 		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const results = await runSearch({
 			query: "test",
@@ -189,10 +189,10 @@ describe("Search Engine", () => {
 		const spawnSpy = spyOn(Bun, "spawn").mockImplementation((() => ({
 			stdout: new Response(mockStdout).body,
 			exitCode: 0,
-		})) as any);
+		})) as unknown);
 		const spawnSyncSpy = spyOn(Bun, "spawnSync").mockReturnValue({
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const results = await runSearch({
 			query: "match",

@@ -3,10 +3,10 @@ import gateCommand, { run } from "./cli";
 import * as execute from "./execute";
 
 describe("Gate CLI", () => {
-	let consoleLogSpy: any;
-	let consoleErrorSpy: any;
-	let exitCode: any;
-	const mockBus = { emit: () => {} } as any;
+	let consoleLogSpy: unknown;
+	let consoleErrorSpy: unknown;
+	let exitCode: unknown;
+	const mockBus = { emit: () => {} } as unknown;
 
 	beforeEach(() => {
 		consoleLogSpy = spyOn(console, "log").mockImplementation(() => {});
@@ -40,7 +40,7 @@ describe("Gate CLI", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok) {
 				// It returns data.gateId = "help"
-				expect((result.data as any).gateId).toBe("help");
+				expect((result.data as unknown).gateId).toBe("help");
 			}
 		});
 
@@ -63,7 +63,7 @@ describe("Gate CLI", () => {
 			await gateCommand.execute({
 				rawArgs: ["gate", "check", "--id", "spec"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(spy).toHaveBeenCalled();
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -87,7 +87,7 @@ describe("Gate CLI", () => {
 			await gateCommand.execute({
 				rawArgs: ["gate", "check", "--id", "spec"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Gate 'spec' failed"),
@@ -109,7 +109,7 @@ describe("Gate CLI", () => {
 			await gateCommand.execute({
 				rawArgs: ["gate"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Usage: nooa gate"),
@@ -125,7 +125,7 @@ describe("Gate CLI", () => {
 			await gateCommand.execute({
 				rawArgs: ["gate", "check", "--id", "spec", "--json"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining('"gateId":"spec"'),
@@ -137,7 +137,7 @@ describe("Gate CLI", () => {
 			await gateCommand.execute({
 				rawArgs: ["gate", "check"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Gate ID is required"),
@@ -148,13 +148,13 @@ describe("Gate CLI", () => {
 		test("handles unknown gate error", async () => {
 			const spy = spyOn(execute, "checkGate").mockResolvedValue({
 				ok: false,
-				error: { code: "gate.unknown_gate", message: "Unknown" } as any,
+				error: { code: "gate.unknown_gate", message: "Unknown" } as unknown,
 			});
 
 			await gateCommand.execute({
 				rawArgs: ["gate", "check", "--id", "magic"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Unknown"),

@@ -27,7 +27,7 @@ class MockProvider implements AiProvider {
 
 	async embed(_request: AiEmbeddingRequest): Promise<AiEmbeddingResponse> {
 		const vector = this.embeddingResponses.shift() || [0.1, 0.2];
-		if (Array.isArray(vector) && (vector as any)[0] === -1)
+		if (Array.isArray(vector) && (vector as unknown)[0] === -1)
 			throw new Error("Embed failure");
 		return {
 			vector,

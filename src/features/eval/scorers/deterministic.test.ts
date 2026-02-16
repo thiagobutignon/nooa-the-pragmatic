@@ -166,7 +166,7 @@ describe("DeterministicScorer", () => {
 						throw new Error("Path error");
 					},
 				},
-			} as any,
+			} as unknown,
 		]);
 		expect(res.results[1].passed).toBe(false);
 		expect(res.results[1].message).toContain(

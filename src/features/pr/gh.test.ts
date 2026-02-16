@@ -19,7 +19,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: "https://example.com/pr/1",
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const res = await ghPrCreate({
 			base: "b",
@@ -40,7 +40,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stderr: "error message",
 			exitCode: 1,
-		} as any);
+		} as unknown);
 
 		await expect(
 			ghPrCreate({ base: "b", head: "h", title: "t", body: "b" }),
@@ -52,7 +52,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: JSON.stringify([{ number: 1, title: "T" }]),
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const res = await ghPrList();
 		expect(res).toHaveLength(1);
@@ -64,7 +64,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: "diff content",
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const res = await ghPrDiff(1);
 		expect(res).toBe("diff content");
@@ -75,7 +75,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: JSON.stringify({ merged: true }),
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const res = await ghMergePr({
 			number: 1,
@@ -96,7 +96,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: "{}",
 			exitCode: 0,
-		} as any);
+		} as unknown);
 		await ghMergePr({ number: 1, method: "rebase" });
 		expect(spy).toHaveBeenCalledWith(
 			"gh",
@@ -110,7 +110,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: "{}",
 			exitCode: 0,
-		} as any);
+		} as unknown);
 		await ghMergePr({ number: 1, method: "merge" });
 		expect(spy).toHaveBeenCalledWith(
 			"gh",
@@ -124,7 +124,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: JSON.stringify({ state: "CLOSED" }),
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const res = await ghClosePr(1);
 		expect(res.state).toBe("CLOSED");
@@ -135,7 +135,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: JSON.stringify({ id: "123" }),
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const res = await ghCommentPr(1, "msg");
 		expect(res.id).toBe("123");
@@ -146,7 +146,7 @@ describe("GitHub Automation (gh.ts)", () => {
 		const spy = spyOn(execaModule, "execa").mockResolvedValue({
 			stdout: JSON.stringify({ number: 1, state: "OPEN" }),
 			exitCode: 0,
-		} as any);
+		} as unknown);
 
 		const res = await ghStatusPr(1);
 		expect(res.state).toBe("OPEN");

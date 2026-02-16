@@ -3,10 +3,10 @@ import indexCommand, { indexBuilder, run } from "./cli";
 import * as execute from "./execute";
 
 describe("Index CLI", () => {
-	let consoleLogSpy: any;
-	let consoleErrorSpy: any;
-	let exitCode: any;
-	const mockBus = { emit: () => {} } as any;
+	let consoleLogSpy: unknown;
+	let consoleErrorSpy: unknown;
+	let exitCode: unknown;
+	const mockBus = { emit: () => {} } as unknown;
 
 	beforeEach(() => {
 		consoleLogSpy = spyOn(console, "log").mockImplementation(() => {});
@@ -64,7 +64,7 @@ describe("Index CLI", () => {
 
 		test("calls clearIndex when action is clear", async () => {
 			const spy = spyOn(execute, "clearIndex").mockResolvedValue(
-				undefined as any,
+				undefined as unknown,
 			);
 			const result = await run({ action: "clear" });
 			expect(result.ok).toBe(true);
@@ -135,7 +135,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index", "repo"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(spy).toHaveBeenCalled();
 			expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -156,7 +156,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index", "file", "foo.ts"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(spy).toHaveBeenCalled();
 			expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -167,13 +167,13 @@ describe("Index CLI", () => {
 
 		test("executes clear command and prints output", async () => {
 			const spy = spyOn(execute, "clearIndex").mockResolvedValue(
-				undefined as any,
+				undefined as unknown,
 			);
 
 			await indexCommand.execute({
 				rawArgs: ["index", "clear"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(spy).toHaveBeenCalled();
 			expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -191,7 +191,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index", "stats"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(spy).toHaveBeenCalled();
 			expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -210,7 +210,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index", "rebuild"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(spy).toHaveBeenCalled();
 			expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -228,7 +228,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index", "stats", "--json"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(spy).toHaveBeenCalled();
 			expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -241,7 +241,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			// Should print help
 			expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -254,7 +254,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index", "file"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("File path required"),
@@ -271,7 +271,7 @@ describe("Index CLI", () => {
 			await indexCommand.execute({
 				rawArgs: ["index", "repo"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Index operation failed"),
@@ -291,12 +291,12 @@ describe("Index CLI", () => {
 			});
 
 			// We cast to any because we are injecting a weird run function compatible signature-wise
-			const testCommand = indexBuilder.run(mockRun as any).build();
+			const testCommand = indexBuilder.run(mockRun as unknown).build();
 
 			await testCommand.execute({
 				rawArgs: ["index", "repo"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 
 			// Should just break and do nothing (no logs for unknown mode)
 			expect(consoleLogSpy).not.toHaveBeenCalled();

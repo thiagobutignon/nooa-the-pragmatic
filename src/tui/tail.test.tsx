@@ -7,10 +7,12 @@ describe("TailView", () => {
 	it("renders the event tail header", () => {
 		const element = TailView({ events: [] });
 		expect(element).toBeTruthy();
-		const children = (element as any).props?.children ?? [];
+		const children = (element as unknown).props?.children ?? [];
 		const text = Array.isArray(children)
-			? children.map((child) => (child as any)?.props?.children ?? "").join(" ")
-			: ((children as any)?.props?.children ?? "");
+			? children
+					.map((child) => (child as unknown)?.props?.children ?? "")
+					.join(" ")
+			: ((children as unknown)?.props?.children ?? "");
 		expect(String(text)).toContain("Event Tail");
 	});
 });

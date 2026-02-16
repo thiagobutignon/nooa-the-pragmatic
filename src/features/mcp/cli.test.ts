@@ -10,8 +10,8 @@ import {
 import { mcpCommand } from "./cli";
 
 describe("MCP CLI Dispatcher", () => {
-	let logSpy: any;
-	let errorSpy: any;
+	let logSpy: unknown;
+	let errorSpy: unknown;
 
 	beforeEach(() => {
 		logSpy = spyOn(console, "log").mockImplementation(() => {});

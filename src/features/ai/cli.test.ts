@@ -5,8 +5,8 @@ import { run } from "./cli";
 import { AiEngine } from "./engine";
 
 describe("AI CLI", () => {
-	let completeSpy: any;
-	let streamSpy: any;
+	let completeSpy: unknown;
+	let streamSpy: unknown;
 
 	beforeEach(() => {
 		completeSpy = spyOn(AiEngine.prototype, "complete").mockResolvedValue({
@@ -70,7 +70,7 @@ describe("AI CLI", () => {
 	});
 
 	test("run executes MCP tool if flags provided", async () => {
-		const mockDb = { close: () => {} } as any;
+		const mockDb = { close: () => {} } as unknown;
 		const openDbSpy = spyOn(mcpDb, "openMcpDatabase").mockReturnValue(mockDb);
 		const execMcpSpy = spyOn(mcpAi, "executeMcpToolFromAi").mockResolvedValue(
 			"Tool Result",
@@ -98,7 +98,7 @@ describe("AI CLI", () => {
 	});
 
 	test("run handles invalid MCP args JSON", async () => {
-		const mockDb = { close: () => {} } as any;
+		const mockDb = { close: () => {} } as unknown;
 		const openDbSpy = spyOn(mcpDb, "openMcpDatabase").mockReturnValue(mockDb);
 
 		const result = await run({

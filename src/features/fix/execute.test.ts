@@ -35,7 +35,7 @@ describe("executeFix", () => {
 		// Mock all dependencies
 		const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
 			exitCode: 0,
-		} as any);
+		} as unknown);
 		const searchSpy = spyOn(indexExecute, "executeSearch").mockResolvedValue([
 			{ path: "src/file.ts", chunk: "chunk content", score: 0.9 },
 		]);
@@ -46,7 +46,7 @@ describe("executeFix", () => {
 			content: "Fix applied",
 			model: "mock-model",
 			provider: "mock",
-		} as any);
+		} as unknown);
 
 		const result = await runFix({ issue: "broken test", dryRun: false });
 
@@ -76,7 +76,7 @@ describe("executeFix", () => {
 		const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
 			exitCode: 1,
 			stderr: "Worktree error",
-		} as any);
+		} as unknown);
 
 		const result = await runFix({ issue: "worktree fail", dryRun: false });
 
@@ -90,7 +90,7 @@ describe("executeFix", () => {
 	it("should handle error when goal or search fails", async () => {
 		const execaSpy = spyOn(execaModule, "execa").mockResolvedValue({
 			exitCode: 0,
-		} as any);
+		} as unknown);
 		const goalSpy = spyOn(goalExecute, "getGoal").mockRejectedValue(
 			new Error("Database error"),
 		);

@@ -65,10 +65,10 @@ describe("IO Utilities", () => {
 		process.stdin.isTTY = false;
 		const originalStdin = process.stdin;
 
-		const handlers: any = {};
+		const handlers: unknown = {};
 		const mockStdin = {
 			isTTY: false,
-			on: (event: string, cb: any) => {
+			on: (event: string, cb: unknown) => {
 				handlers[event] = cb;
 			},
 			off: () => {},
@@ -118,10 +118,10 @@ describe("IO Utilities", () => {
 		process.stdin.isTTY = false;
 		const originalStdin = process.stdin;
 
-		const handlers: any = {};
+		const handlers: unknown = {};
 		const mockStdin = {
 			isTTY: false,
-			on: (event: string, cb: any) => {
+			on: (event: string, cb: unknown) => {
 				handlers[event] = cb;
 			},
 			off: () => {},

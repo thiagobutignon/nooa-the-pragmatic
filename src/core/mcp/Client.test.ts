@@ -38,7 +38,7 @@ test("callTool retries until transient failures resolve", async () => {
 		"echo",
 		{ message: "hi" },
 		{ retries: 3, backoff: 1 },
-	)) as any;
+	)) as unknown;
 	expect(result.attempts).toBe(3);
 	expect(result.params.name).toBe("echo");
 	expect(result.params.arguments).toEqual({ message: "hi" });
@@ -57,7 +57,7 @@ test("Client methods delegate to sendRequest", async () => {
 	expect(resources).toEqual(["r1"]);
 
 	const read = await client.readResource("uri");
-	expect((read as any).params).toEqual({ uri: "uri" });
+	expect((read as unknown).params).toEqual({ uri: "uri" });
 
 	const tools = await client.listTools();
 	expect(tools).toEqual(["t1"]);
@@ -80,12 +80,12 @@ test("Real Client flow with mock process", async () => {
 	};
 
 	const _spawnSpy = spyOn(keyModule(), "spawn").mockReturnValue(
-		mockProcess as any,
+		mockProcess as unknown,
 	);
 
-	(client as any).process = mockProcess;
+	(client as unknown).process = mockProcess;
 
-	const _promise = (client as any).sendRequest("test", {});
+	const _promise = (client as unknown).sendRequest("test", {});
 });
 
 function keyModule() {

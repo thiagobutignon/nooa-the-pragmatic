@@ -169,7 +169,7 @@ test("init honors env var NOOA_NON_INTERACTIVE", async () => {
 	try {
 		await withDb(async () => {
 			// We want to ensure prompt is NOT called
-			const promptFactorySpy = (): any => {
+			const promptFactorySpy = () => {
 				throw new Error("Should not be called");
 			};
 			setInitPromptFactory(promptFactorySpy);

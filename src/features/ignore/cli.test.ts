@@ -3,10 +3,10 @@ import ignoreCommand, { run } from "./cli";
 import * as execute from "./execute";
 
 describe("Ignore CLI", () => {
-	let consoleLogSpy: any;
-	let consoleErrorSpy: any;
-	let exitCode: any;
-	const mockBus = { emit: () => {} } as any;
+	let consoleLogSpy: unknown;
+	let consoleErrorSpy: unknown;
+	let exitCode: unknown;
+	const mockBus = { emit: () => {} } as unknown;
 
 	beforeEach(() => {
 		consoleLogSpy = spyOn(console, "log").mockImplementation(() => {});
@@ -79,7 +79,7 @@ describe("Ignore CLI", () => {
 			});
 			expect(result.ok).toBe(true);
 			if (result.ok) {
-				const res = result.data.result as any;
+				const res = result.data.result as unknown;
 				expect(res.matched).toBe(true);
 				expect(res.results).toHaveLength(1);
 			}
@@ -141,7 +141,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "add", "foo"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Pattern 'foo' added"),
 			);
@@ -153,7 +153,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "add", "foo"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Pattern 'foo' already exists"),
 			);
@@ -165,7 +165,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "remove", "foo"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("removed"),
 			);
@@ -180,7 +180,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "list"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Current ignore patterns"),
 			);
@@ -195,7 +195,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "list"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("No patterns found"),
 			);
@@ -210,7 +210,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "check", "app.log"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("is ignored by *.log"),
 			);
@@ -225,7 +225,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "check", "app.log"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("is not ignored"),
 			);
@@ -238,7 +238,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "test", "*.log", "app.log"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Testing pattern: *.log"),
 			);
@@ -252,7 +252,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "test", "*.log", "readme.md"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining("No matches for pattern"),
 			);
@@ -266,7 +266,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "list"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Error: Boom"),
 			);
@@ -278,7 +278,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			// onFailure checks error code
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Error: Unknown subcommand"),
@@ -299,7 +299,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "list", "--json"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleLogSpy).toHaveBeenCalledWith(
 				expect.stringContaining('"mode": "list"'),
 			);
@@ -313,7 +313,7 @@ describe("Ignore CLI", () => {
 			await ignoreCommand.execute({
 				rawArgs: ["ignore", "add"],
 				bus: mockBus,
-			} as any);
+			} as unknown);
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Pattern required"),
 			);
@@ -352,7 +352,7 @@ describe("Ignore CLI", () => {
 		await ignoreCommand.execute({
 			rawArgs: ["ignore", "remove", "foo"],
 			bus: mockBus,
-		} as any);
+		} as unknown);
 		expect(consoleLogSpy).toHaveBeenCalledWith(
 			expect.stringContaining("not found"),
 		);

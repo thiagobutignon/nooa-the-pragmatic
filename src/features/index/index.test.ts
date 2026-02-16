@@ -42,26 +42,26 @@ describe("Index Feature Execution (Unit)", () => {
 
 	test("indexRepo recursively lists and indexes files", async () => {
 		const readdirSpy = spyOn(fs, "readdir").mockImplementation(
-			async (path: any) => {
+			async (path: unknown) => {
 				if (path === ".")
 					return [
 						{ name: "a.ts", isDirectory: () => false },
 						{ name: "dir", isDirectory: () => true },
-					] as any;
+					] as unknown;
 				if (path === "dir")
 					return [
 						{ name: "b.md", isDirectory: () => false },
 						{ name: "node_modules", isDirectory: () => true },
-					] as any;
+					] as unknown;
 				return [];
 			},
 		);
 		const readFileSpy = spyOn(fs, "readFile").mockResolvedValue(
-			"content" as any,
+			"content" as unknown,
 		);
 		const _aiSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
 			embeddings: [[0.1, 0.2]],
-		} as any);
+		} as unknown);
 
 		const result = await execute.indexRepo(".");
 
@@ -80,7 +80,7 @@ describe("Index Feature Execution (Unit)", () => {
 		]);
 		const _aiSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
 			embeddings: [[0.1, 0.2]],
-		} as any);
+		} as unknown);
 
 		const results = await execute.executeSearch("query");
 
@@ -91,7 +91,7 @@ describe("Index Feature Execution (Unit)", () => {
 	});
 
 	test("rebuildIndex calls clear and indexRepo", async () => {
-		const readdirSpy = spyOn(fs, "readdir").mockResolvedValue([] as any);
+		const readdirSpy = spyOn(fs, "readdir").mockResolvedValue([] as unknown);
 
 		await execute.rebuildIndex(".");
 
@@ -101,16 +101,16 @@ describe("Index Feature Execution (Unit)", () => {
 
 	test("chunking logic with large text", async () => {
 		const readFileSpy = spyOn(fs, "readFile").mockResolvedValue(
-			"p1\n\np2" as any,
+			"p1\n\np2" as unknown,
 		);
 
 		const largeParagraph = "a".repeat(1100);
 		readFileSpy.mockResolvedValue(
-			`${largeParagraph}\n\n${largeParagraph}` as any,
+			`${largeParagraph}\n\n${largeParagraph}` as unknown,
 		);
 		const _aiSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
 			embeddings: [[0.1, 0.2]],
-		} as any);
+		} as unknown);
 
 		await execute.indexFile("test.ts", "test.ts");
 
@@ -149,13 +149,15 @@ describe("Index Feature Execution (Unit)", () => {
 			"\n",
 		);
 		const expectedChunks = execute.chunkText(content);
-		const readFileSpy = spyOn(fs, "readFile").mockResolvedValue(content as any);
+		const readFileSpy = spyOn(fs, "readFile").mockResolvedValue(
+			content as unknown,
+		);
 
 		const embedSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
 			embeddings: Array.from({ length: expectedChunks.length }, () => [
 				0.1, 0.2,
 			]),
-		} as any);
+		} as unknown);
 
 		const beforeCalls = embedSpy.mock.calls.length;
 		await execute.indexFile("test.ts", "test.ts");
@@ -173,7 +175,7 @@ describe("Index Feature Execution (Unit)", () => {
 		]);
 		const embedSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
 			embeddings: [[0.1, 0.2]],
-		} as any);
+		} as unknown);
 
 		const beforeCalls = embedSpy.mock.calls.length;
 		await execute.executeSearch("Find   TODOs");

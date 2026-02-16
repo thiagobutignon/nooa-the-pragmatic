@@ -87,7 +87,7 @@ describe("SkillManager", () => {
 
 	test("parseFrontmatter edge cases", async () => {
 		// Access private method for edge cases
-		const m = manager as any;
+		const m = manager as unknown;
 
 		// No frontmatter
 		expect(m.parseFrontmatter("no fm")).toEqual({ name: "", description: "" });

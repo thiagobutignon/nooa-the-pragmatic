@@ -14,7 +14,7 @@ describe("GitHubClient", () => {
 				new Response(JSON.stringify({ ok: true }), { status: 200 }),
 			),
 		);
-		const result = (await client.listPRs(owner, repo)) as any;
+		const result = (await client.listPRs(owner, repo)) as unknown;
 		expect(result.ok).toBe(true);
 	});
 

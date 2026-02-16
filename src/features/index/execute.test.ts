@@ -58,21 +58,21 @@ describe("Index Execute Internals", () => {
 				{ name: "dist", isDirectory: () => true },
 				{ name: "src", isDirectory: () => true },
 				{ name: "foo.ts", isDirectory: () => false },
-			] as any);
+			] as unknown);
 
 			// We need to mock the recursive call behavior or just check that it calls readdir for src but not others
 			// Since listFiles is recursive, mocking it is tricky if we want to test the recursion logic itself.
 			// Instead we can mock readdir to return files for "src" on second call?
 			// Simpler: mock readdir to return empty for "src" to stop recursion
-			readdirSpy.mockImplementation(async (path: any) => {
+			readdirSpy.mockImplementation(async (path: unknown) => {
 				if (path === "root")
 					return [
 						{ name: "node_modules", isDirectory: () => true },
 						{ name: "src", isDirectory: () => true },
 						{ name: "foo.ts", isDirectory: () => false },
-					] as any;
+					] as unknown;
 				if (path === "root/src")
-					return [{ name: "bar.ts", isDirectory: () => false }] as any;
+					return [{ name: "bar.ts", isDirectory: () => false }] as unknown;
 				return [];
 			});
 
@@ -89,7 +89,7 @@ describe("Index Execute Internals", () => {
 				{ name: "a.ts", isDirectory: () => false },
 				{ name: "b.md", isDirectory: () => false },
 				{ name: "c.json", isDirectory: () => false },
-			] as any);
+			] as unknown);
 
 			const files = await listFiles("root");
 			expect(files).toContain("root/a.ts");
@@ -104,7 +104,7 @@ describe("Index Execute Internals", () => {
 		test("uses batch embedding when possible", async () => {
 			const embedSpy = spyOn(AiEngine.prototype, "embed").mockResolvedValue({
 				embeddings: [[0.1], [0.2], [0.3]],
-			} as any);
+			} as unknown);
 
 			const chunks = ["a", "b", "c"];
 			const results = await embedChunks(chunks);
@@ -122,10 +122,10 @@ describe("Index Execute Internals", () => {
 			const embedSpy = spyOn(AiEngine.prototype, "embed")
 				.mockResolvedValueOnce({
 					embeddings: [[0.1]], // Only 1, but we sent 2
-				} as any)
+				} as unknown)
 				.mockResolvedValue({
 					embeddings: [[0.5]],
-				} as any); // Subsequent calls
+				} as unknown); // Subsequent calls
 
 			const chunks = ["a", "b"];
 			const results = await embedChunks(chunks);

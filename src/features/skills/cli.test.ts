@@ -31,14 +31,20 @@ describe("Skills CLI", () => {
 		mockManager.listSkills.mockImplementation(async () => [
 			{ name: "s1", description: "d1", enabled: true },
 		]);
-		const result = await run({ action: "list", manager: mockManager as any });
+		const result = await run({
+			action: "list",
+			manager: mockManager as unknown,
+		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.listSkills).toHaveBeenCalled();
 	});
 
 	test("list subcommand empty", async () => {
 		mockManager.listSkills.mockImplementation(async () => []);
-		const result = await run({ action: "list", manager: mockManager as any });
+		const result = await run({
+			action: "list",
+			manager: mockManager as unknown,
+		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.listSkills).toHaveBeenCalled();
 	});
@@ -48,7 +54,7 @@ describe("Skills CLI", () => {
 			action: "add",
 			name: "new-skill",
 			description: "a description",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.createSkill).toHaveBeenCalledWith(
@@ -58,7 +64,10 @@ describe("Skills CLI", () => {
 	});
 
 	test("add subcommand error on missing name", async () => {
-		const result = await run({ action: "add", manager: mockManager as any });
+		const result = await run({
+			action: "add",
+			manager: mockManager as unknown,
+		});
 		expect(result.ok).toBe(false);
 	});
 
@@ -66,7 +75,7 @@ describe("Skills CLI", () => {
 		const result = await run({
 			action: "remove",
 			name: "old-skill",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.deleteSkill).toHaveBeenCalledWith("old-skill");
@@ -75,7 +84,7 @@ describe("Skills CLI", () => {
 	test("remove subcommand error on missing name", async () => {
 		const result = await run({
 			action: "remove",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(false);
 	});
@@ -84,7 +93,7 @@ describe("Skills CLI", () => {
 		const result = await run({
 			action: "enable",
 			name: "s1",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.enableSkill).toHaveBeenCalledWith("s1");
@@ -93,7 +102,7 @@ describe("Skills CLI", () => {
 	test("enable subcommand error on missing name", async () => {
 		const result = await run({
 			action: "enable",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(false);
 	});
@@ -102,7 +111,7 @@ describe("Skills CLI", () => {
 		const result = await run({
 			action: "disable",
 			name: "s1",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.disableSkill).toHaveBeenCalledWith("s1");
@@ -111,7 +120,7 @@ describe("Skills CLI", () => {
 	test("disable subcommand error on missing name", async () => {
 		const result = await run({
 			action: "disable",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(false);
 	});
@@ -120,7 +129,7 @@ describe("Skills CLI", () => {
 		const result = await run({
 			action: "show",
 			name: "s1",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.showSkill).toHaveBeenCalledWith("s1");
@@ -129,7 +138,7 @@ describe("Skills CLI", () => {
 	test("show subcommand error on missing name", async () => {
 		const result = await run({
 			action: "show",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(false);
 	});
@@ -138,7 +147,7 @@ describe("Skills CLI", () => {
 		const result = await run({
 			action: "update",
 			name: "s1",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(true);
 		expect(mockManager.updateSkill).toHaveBeenCalledWith("s1");
@@ -147,13 +156,16 @@ describe("Skills CLI", () => {
 	test("update subcommand error on missing name", async () => {
 		const result = await run({
 			action: "update",
-			manager: mockManager as any,
+			manager: mockManager as unknown,
 		});
 		expect(result.ok).toBe(false);
 	});
 
 	test("help output", async () => {
-		const result = await run({ action: "help", manager: mockManager as any });
+		const result = await run({
+			action: "help",
+			manager: mockManager as unknown,
+		});
 		expect(result.ok).toBe(true);
 	});
 });

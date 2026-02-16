@@ -39,7 +39,7 @@ describe("Index Feature Integration", () => {
 					model: "mock",
 					provider: "mock",
 					usage: { total_tokens: 0, prompt_tokens: 0, completion_tokens: 0 },
-				} as any;
+				} as unknown;
 			},
 		);
 

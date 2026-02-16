@@ -13,11 +13,11 @@ describe("Integration: Act Events", () => {
 		});
 
 		const bus = new EventBus();
-		const emitSpy = mock((_event: string, _payload: any) => {});
+		const emitSpy = mock((_event: string, _payload: unknown) => {});
 		// We can't spy on bus.emit directly if it's not a method call we control easily from outside in the same way,
 		// but we can overwrite the emit method or listen.
 		// Better: bind a listener to '*' if supported, or just overwrite emit.
-		bus.emit = emitSpy as any;
+		bus.emit = emitSpy as unknown;
 
 		// Mock internal engine to avoid actual AI calls?
 		// For this integration test, we might want to mock the Engine or just let it fail fast/mock the provider.

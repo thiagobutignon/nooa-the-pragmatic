@@ -6,8 +6,8 @@ import worktreeCommand from "../../src/features/worktree/cli";
 describe("Integration: Worktree Events", () => {
 	it("should emit worktree.acquired and worktree.released events", async () => {
 		const bus = new EventBus();
-		const emitSpy = mock((_event: string, _payload: any) => {});
-		bus.emit = emitSpy as any;
+		const emitSpy = mock((_event: string, _payload: unknown) => {});
+		bus.emit = emitSpy as unknown;
 
 		// We need to run 'worktree create' on a dummy branch
 		// Use --no-test to speed it up and avoid failures
