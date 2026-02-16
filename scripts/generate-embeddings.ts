@@ -2,12 +2,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { loadCommands } from "../src/core/registry";
 import { embedText } from "../src/features/embed/engine";
-import { SkillManager } from "../src/features/skills/manager";
 import {
 	buildInjectionManifest,
 	buildSkillManifest,
 	buildToolManifest,
 } from "../src/features/prompt/manifest";
+import { SkillManager } from "../src/features/skills/manager";
 
 const INJECTION_PATTERNS = [
 	"ignore previous instructions",

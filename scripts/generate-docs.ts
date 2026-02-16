@@ -1,4 +1,4 @@
-import { access, readdir, writeFile, mkdir } from "node:fs/promises";
+import { access, mkdir, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { AgentDocMeta } from "../src/core/types";
 
@@ -34,7 +34,10 @@ function findExportBySuffix<T>(
 	return undefined;
 }
 
-export function generateFeatureDoc(feature: FeatureModule, includeChangelog: boolean) {
+export function generateFeatureDoc(
+	feature: FeatureModule,
+	includeChangelog: boolean,
+) {
 	const featureDoc = findExportBySuffix<(include: boolean) => string>(
 		feature,
 		"FeatureDoc",
@@ -43,11 +46,14 @@ export function generateFeatureDoc(feature: FeatureModule, includeChangelog: boo
 
 	const meta = findMeta(feature);
 	const help = (findExportBySuffix<string>(feature, "Help") ?? "").trim();
-	const agentDoc =
-		(findExportBySuffix<string>(feature, "AgentDoc") ??
-			feature.default?.agentDoc ??
-			"").trim();
-	const sdkUsage = (findExportBySuffix<string>(feature, "SdkUsage") ?? "").trim();
+	const agentDoc = (
+		findExportBySuffix<string>(feature, "AgentDoc") ??
+		feature.default?.agentDoc ??
+		""
+	).trim();
+	const sdkUsage = (
+		findExportBySuffix<string>(feature, "SdkUsage") ?? ""
+	).trim();
 
 	return `# ${meta?.name ?? "unknown"}\n\n${
 		meta?.description ?? ""
@@ -96,11 +102,19 @@ async function main() {
 
 			await mkdir(join(root, "docs/features"), { recursive: true });
 			await writeFile(
-				join(root, "docs/features", `${findMeta(feature)?.name ?? entry.name}.md`),
+				join(
+					root,
+					"docs/features",
+					`${findMeta(feature)?.name ?? entry.name}.md`,
+				),
 				generateFeatureDoc(feature, includeChangelog),
 			);
 		} catch (error) {
-			if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+			if (
+				error instanceof Error &&
+				"code" in error &&
+				error.code === "ENOENT"
+			) {
 				continue;
 			}
 			console.error(`Failed to process ${entry.name}:`, error);

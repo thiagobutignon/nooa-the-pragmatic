@@ -1,4 +1,4 @@
-import { describe, expect, spyOn, test, mock } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { run } from "./cli";
 
 // Mock execute module
@@ -7,7 +7,7 @@ const mockFormatOutput = mock();
 
 mock.module("./execute", () => ({
 	executeMessage: mockExecuteMessage,
-	formatOutput: mockFormatOutput
+	formatOutput: mockFormatOutput,
 }));
 
 describe("Chat CLI", () => {
@@ -39,7 +39,11 @@ describe("Chat CLI", () => {
 			expect(result.data.output).toBe("Formatted Output");
 			expect(result.data.message).toEqual(mockMsg);
 		}
-		expect(mockExecuteMessage).toHaveBeenCalledWith("Hi", { role: "user", json: false }, undefined);
+		expect(mockExecuteMessage).toHaveBeenCalledWith(
+			"Hi",
+			{ role: "user", json: false },
+			undefined,
+		);
 		expect(mockFormatOutput).toHaveBeenCalledWith(mockMsg, false);
 	});
 
@@ -51,7 +55,11 @@ describe("Chat CLI", () => {
 		const result = await run({ content: "Hi", json: true });
 
 		expect(result.ok).toBe(true);
-		expect(mockExecuteMessage).toHaveBeenCalledWith("Hi", { role: "user", json: true }, undefined);
+		expect(mockExecuteMessage).toHaveBeenCalledWith(
+			"Hi",
+			{ role: "user", json: true },
+			undefined,
+		);
 		expect(mockFormatOutput).toHaveBeenCalledWith(mockMsg, true);
 	});
 

@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { generateFeatureDoc, generateManifest } from "../../scripts/generate-docs";
+import {
+	generateFeatureDoc,
+	generateManifest,
+} from "../../scripts/generate-docs";
 
 describe("docs generator", () => {
 	const mockFeature = {
@@ -12,7 +15,7 @@ describe("docs generator", () => {
 			],
 		},
 		readHelp: "Usage: nooa read <path>",
-		readAgentDoc: "<instruction version=\"1.2.0\" name=\"read\">...</instruction>",
+		readAgentDoc: '<instruction version="1.2.0" name="read">...</instruction>',
 		readSdkUsage: "const result = await read.run({ path: 'file.txt' });",
 	};
 

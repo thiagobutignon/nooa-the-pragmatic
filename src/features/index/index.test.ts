@@ -1,6 +1,5 @@
-import { describe, expect, spyOn, test, mock, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import * as fs from "node:fs/promises";
-import { store } from "../../core/db";
 import { AiEngine } from "../ai/engine";
 import * as execute from "./execute";
 

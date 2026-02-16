@@ -230,7 +230,10 @@ export async function run(
 	}
 }
 
-export const ignoreBuilder = new CommandBuilder<IgnoreRunInput, IgnoreRunResult>()
+export const ignoreBuilder = new CommandBuilder<
+	IgnoreRunInput,
+	IgnoreRunResult
+>()
 	.meta(ignoreMeta)
 	.usage(ignoreUsage)
 	.schema(ignoreSchema)
