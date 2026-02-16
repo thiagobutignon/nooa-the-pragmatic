@@ -3,7 +3,7 @@ import { handleCommandError } from "../../core/cli-output";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
-import { runWorkflow, type WorkflowRunResult } from "./execute";
+import { runWorkflow, type WorkflowRunInput, type WorkflowRunResult } from "./execute";
 
 export const workflowMeta: AgentDocMeta = {
 	name: "workflow",
@@ -82,8 +82,13 @@ export interface WorkflowRunCliInput {
 	traceId?: string;
 }
 
+// Type for the runner function
+type WorkflowRunner = (input: WorkflowRunInput) => Promise<SdkResult<WorkflowRunResult>>;
+
 export async function run(
 	input: WorkflowRunCliInput,
+	// Injection for testing
+	runner: WorkflowRunner = runWorkflow
 ): Promise<SdkResult<WorkflowRunResult>> {
 	if (input.action !== "run") {
 		return {
@@ -96,12 +101,46 @@ export async function run(
 		? input.gates.split(",").map((s) => s.trim())
 		: undefined;
 
-	return runWorkflow({
+	return runner({
 		gates: gateList,
 		target: input.target,
 		bus: input.bus,
 		traceId: input.traceId,
 	});
+}
+
+// Exported for testing
+export async function parseWorkflowInput({ positionals, values, bus, traceId }: any): Promise<WorkflowRunCliInput> {
+	const action = positionals[1] === "run" ? "run" : undefined;
+	return {
+		action,
+		gates: typeof values.gates === "string" ? values.gates : undefined,
+		target: typeof values.target === "string" ? values.target : undefined,
+		json: Boolean(values.json),
+		bus,
+		traceId,
+	};
+}
+
+// Exported for testing
+export function handleWorkflowSuccess(output: any, values: any) {
+	if (values.json) {
+		console.log(JSON.stringify(output));
+		return;
+	}
+
+	if (output.failedStepId === "help") {
+		console.log(output.reason);
+		return;
+	}
+
+	if (output.ok) {
+		console.error("✅ Workflow passed.");
+	} else {
+		console.error(`❌ Workflow failed at step: ${output.failedStepId} `);
+		if (output.reason) console.error(`Reason: ${output.reason} `);
+		process.exitCode = 1;
+	}
 }
 
 const workflowBuilder = new CommandBuilder<
@@ -124,37 +163,9 @@ const workflowBuilder = new CommandBuilder<
 			target: { type: "string" },
 		},
 	})
-	.parseInput(async ({ positionals, values, bus, traceId }) => {
-		const action = positionals[1] === "run" ? "run" : undefined;
-		return {
-			action,
-			gates: typeof values.gates === "string" ? values.gates : undefined,
-			target: typeof values.target === "string" ? values.target : undefined,
-			json: Boolean(values.json),
-			bus,
-			traceId,
-		};
-	})
+	.parseInput(parseWorkflowInput)
 	.run(run)
-	.onSuccess((output, values) => {
-		if (values.json) {
-			console.log(JSON.stringify(output));
-			return;
-		}
-
-		if (output.failedStepId === "help") {
-			console.log(output.reason);
-			return;
-		}
-
-		if (output.ok) {
-			console.error("✅ Workflow passed.");
-		} else {
-			console.error(`❌ Workflow failed at step: ${output.failedStepId} `);
-			if (output.reason) console.error(`Reason: ${output.reason} `);
-			process.exitCode = 1;
-		}
-	})
+	.onSuccess(handleWorkflowSuccess)
 	.onFailure((error) => {
 		handleCommandError(error, ["workflow.unknown_gate"]);
 	});
