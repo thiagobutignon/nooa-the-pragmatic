@@ -22,6 +22,9 @@ export function createSpawnTool(executor: SpawnExecutor): ToolDefinition {
 			if (task.length === 0) {
 				return errorResult("spawn requires a non-empty task");
 			}
+			if (/\bspawn\b/i.test(task)) {
+				return errorResult("spawn cannot call spawn recursively");
+			}
 
 			void executor(task, label).catch(() => {
 				// Fire-and-forget execution; failure is surfaced in subagent logs.

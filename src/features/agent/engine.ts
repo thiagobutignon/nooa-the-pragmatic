@@ -52,10 +52,11 @@ export async function run(
 	const sessionKey = input.sessionKey ?? "cli:direct";
 	const sessionStore = join(workspace, ".nooa", "sessions");
 	const sessions = new SessionManager(sessionStore);
+	const tools = new ToolRegistry({ enableCommandGuard: true });
 
 	const loop = new AgentLoop({
 		provider: input.provider ?? createDefaultProvider(),
-		tools: new ToolRegistry({ enableCommandGuard: true }),
+		tools,
 		sessions,
 		workspace,
 		maxIterations: input.maxIterations,

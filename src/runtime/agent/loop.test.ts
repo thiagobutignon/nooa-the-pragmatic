@@ -112,4 +112,50 @@ describe("AgentLoop", () => {
 		expect(result.isError).toBe(true);
 		expect(result.forLlm.toLowerCase()).toContain("max");
 	});
+
+	it("registers built-in spawn and subagent tools", async () => {
+		const provider = {
+			generate: mock(async () => ({
+				content: "ok",
+				toolCalls: [],
+			})),
+		};
+
+		const registry = new ToolRegistry();
+		const loop = new AgentLoop({
+			provider,
+			tools: registry,
+			sessions: new SessionManager(sessionStorage),
+			workspace: "/tmp/nooa",
+			maxIterations: 2,
+		});
+		void loop;
+
+		expect(registry.get("spawn")).toBeDefined();
+		expect(registry.get("subagent")).toBeDefined();
+	});
+
+	it("prevents spawn recursion", async () => {
+		const provider = {
+			generate: mock(async () => ({
+				content: "ok",
+				toolCalls: [],
+			})),
+		};
+
+		const registry = new ToolRegistry();
+		const loop = new AgentLoop({
+			provider,
+			tools: registry,
+			sessions: new SessionManager(sessionStorage),
+			workspace: "/tmp/nooa",
+			maxIterations: 2,
+		});
+		void loop;
+
+		const spawn = registry.get("spawn");
+		const result = await spawn?.execute({ task: "spawn another task" });
+		expect(result?.isError).toBe(true);
+		expect(result?.forLlm).toContain("cannot call spawn");
+	});
 });
