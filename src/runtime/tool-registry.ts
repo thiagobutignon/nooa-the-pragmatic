@@ -1,3 +1,4 @@
+import { DangerousCommandGuard } from "./security/command-guard";
 import { errorResult, type ToolResult } from "./types";
 
 export interface ToolParam {
@@ -27,8 +28,19 @@ export interface ToolSchema {
 	};
 }
 
+export interface ToolRegistryOptions {
+	enableCommandGuard?: boolean;
+}
+
 export class ToolRegistry {
 	private tools = new Map<string, ToolDefinition>();
+	private guard?: DangerousCommandGuard;
+
+	constructor(options: ToolRegistryOptions = {}) {
+		this.guard = options.enableCommandGuard
+			? new DangerousCommandGuard()
+			: undefined;
+	}
 
 	register(tool: ToolDefinition): void {
 		this.tools.set(tool.name, tool);
@@ -45,6 +57,14 @@ export class ToolRegistry {
 		const tool = this.tools.get(name);
 		if (!tool) {
 			return errorResult(`Tool not found: ${name}`);
+		}
+
+		if (this.guard && tool.isShellTool) {
+			const command = typeof args.command === "string" ? args.command : "";
+			const guardResult = this.guard.check(command);
+			if (guardResult.blocked) {
+				return errorResult(guardResult.reason ?? "Blocked dangerous command");
+			}
 		}
 
 		try {

@@ -74,3 +74,34 @@ describe("ToolRegistry", () => {
 		expect(schema[0].function.name).toBe("search");
 	});
 });
+
+describe("ToolRegistry with DangerousCommandGuard", () => {
+	it("blocks dangerous commands in exec-like tools", async () => {
+		const registry = new ToolRegistry({ enableCommandGuard: true });
+		registry.register({
+			name: "exec",
+			description: "Execute shell command",
+			parameters: { command: { type: "string", required: true } },
+			execute: async (args) => toolResult(`Executed: ${args.command}`),
+			isShellTool: true,
+		});
+
+		const result = await registry.execute("exec", { command: "rm -rf /" });
+		expect(result.isError).toBe(true);
+		expect(result.forLlm).toContain("Blocked");
+	});
+
+	it("allows safe commands through guard", async () => {
+		const registry = new ToolRegistry({ enableCommandGuard: true });
+		registry.register({
+			name: "exec",
+			description: "Execute shell command",
+			parameters: { command: { type: "string", required: true } },
+			execute: async (args) => toolResult(`Executed: ${args.command}`),
+			isShellTool: true,
+		});
+
+		const result = await registry.execute("exec", { command: "ls -la" });
+		expect(result.isError).toBe(false);
+	});
+});
