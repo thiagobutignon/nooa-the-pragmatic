@@ -4,13 +4,13 @@
 
 **Goal:** Conectar o runtime agentic a canais externos (Telegram/Discord) via gateway, integrar CLI-as-Provider, e wiring completo com a TUI Ink.js existente.
 
-**Architecture:** Gateway é o control plane que recebe mensagens de múltiplos canais e roteia para o AgentLoop via MessageBus. A TUI ganha tela de chat agentic em tempo real. CLI-as-Provider wrapa `claude` como backend LLM alternativo. Ordem desta fase: **CLI First (gateway e provider) -> depois TUI**.
+**Architecture:** Gateway é o control plane que recebe mensagens de múltiplos canais e roteia para o AgentLoop via `EventBus` existente (`src/core/event-bus.ts`). A TUI ganha tela de chat agentic em tempo real. CLI-as-Provider wrapa `claude` como backend LLM alternativo. Agendamento periódico permanece no plano de controle de `cron` (Phase 2) via `CronDaemon` + `CronStore` (SQLite), sem scheduler paralelo no gateway. Ordem desta fase: **CLI First (gateway e provider) -> depois TUI**.
 
 **Tech Stack:** TypeScript, Bun, Ink.js/React (TUI existente), node-telegram-bot-api, AgentLoop (Phase 1), bun:test
 
 **Worktree:** `git worktree add ../nooa-phase-3 -b codex/phase-3-gateway`
 
-**Dependência:** Phase 2 concluída e mergeada em main.
+**Dependência:** Phase 2 concluída e mergeada em main, com `cron` como scheduler único (`nooa cron --daemon start|stop|status`).
 
 ---
 
@@ -31,11 +31,12 @@ git commit -m "chore(gateway): add telegram channel dependency"
 
 ---
 
-### Task 1: MessageBus (pub/sub interno)
+### Task 1: Contratos de mensagem para Gateway (reutilizando EventBus)
 
 **Files:**
-- Create: `src/runtime/bus/message-bus.ts`
-- Test: `src/runtime/bus/message-bus.test.ts`
+- Create: `src/runtime/gateway/messages.ts`
+- Test: `src/runtime/gateway/messages.test.ts`
+- Reuse: `src/core/event-bus.ts` (não criar bus novo)
 
 **Step 1: Criar worktree**
 
@@ -47,121 +48,58 @@ cd ../nooa-phase-3
 **Step 2: Escrever teste que falha**
 
 ```typescript
-// src/runtime/bus/message-bus.test.ts
-import { describe, expect, it, mock } from "bun:test";
-import { MessageBus } from "./message-bus";
+// src/runtime/gateway/messages.test.ts
+import { describe, expect, it } from "bun:test";
+import type { GatewayInboundMessage, GatewayOutboundMessage } from "./messages";
 
-describe("MessageBus", () => {
-  it("publishes and consumes inbound messages", async () => {
-    const bus = new MessageBus();
-
-    bus.publishInbound({
+describe("gateway message contracts", () => {
+  it("defines inbound message shape", () => {
+    const msg: GatewayInboundMessage = {
       channel: "telegram",
       chatId: "123456",
       senderId: "user1",
       content: "Hello NOOA",
-    });
-
-    const msg = bus.consumeInbound();
-    expect(msg).toBeDefined();
-    expect(msg!.content).toBe("Hello NOOA");
-    expect(msg!.channel).toBe("telegram");
+    };
+    expect(msg.channel).toBe("telegram");
   });
 
-  it("publishes outbound messages", () => {
-    const bus = new MessageBus();
-    const handler = mock(() => {});
-    bus.onOutbound(handler);
-
-    bus.publishOutbound({
+  it("defines outbound message shape", () => {
+    const msg: GatewayOutboundMessage = {
       channel: "telegram",
       chatId: "123456",
       content: "Response from NOOA",
-    });
-
-    expect(handler).toHaveBeenCalledTimes(1);
-  });
-
-  it("routes messages by channel", () => {
-    const bus = new MessageBus();
-    const telegramHandler = mock(() => {});
-    const discordHandler = mock(() => {});
-
-    bus.registerHandler("telegram", telegramHandler);
-    bus.registerHandler("discord", discordHandler);
-
-    bus.publishOutbound({ channel: "telegram", chatId: "1", content: "hi" });
-    expect(telegramHandler).toHaveBeenCalledTimes(1);
-    expect(discordHandler).not.toHaveBeenCalled();
-  });
-
-  it("returns undefined when no inbound messages", () => {
-    const bus = new MessageBus();
-    expect(bus.consumeInbound()).toBeUndefined();
+    };
+    expect(msg.content).toContain("NOOA");
   });
 });
 ```
 
-**Step 3: Implementar MessageBus**
+**Step 3: Implementar contratos de mensagem (sem novo bus)**
 
 ```typescript
-// src/runtime/bus/message-bus.ts
-export interface InboundMessage {
+// src/runtime/gateway/messages.ts
+export interface GatewayInboundMessage {
   channel: string;
   chatId: string;
   senderId: string;
   content: string;
 }
 
-export interface OutboundMessage {
+export interface GatewayOutboundMessage {
   channel: string;
   chatId: string;
   content: string;
-}
-
-type OutboundHandler = (msg: OutboundMessage) => void;
-
-export class MessageBus {
-  private inbound: InboundMessage[] = [];
-  private outboundHandlers: OutboundHandler[] = [];
-  private channelHandlers = new Map<string, OutboundHandler>();
-
-  publishInbound(msg: InboundMessage): void {
-    this.inbound.push(msg);
-  }
-
-  consumeInbound(): InboundMessage | undefined {
-    return this.inbound.shift();
-  }
-
-  publishOutbound(msg: OutboundMessage): void {
-    const handler = this.channelHandlers.get(msg.channel);
-    if (handler) {
-      handler(msg);
-    }
-    for (const h of this.outboundHandlers) {
-      h(msg);
-    }
-  }
-
-  onOutbound(handler: OutboundHandler): void {
-    this.outboundHandlers.push(handler);
-  }
-
-  registerHandler(channel: string, handler: OutboundHandler): void {
-    this.channelHandlers.set(channel, handler);
-  }
 }
 ```
 
 **Step 4: Rodar teste, verificar, commit**
 
-Run: `bun test src/runtime/bus/message-bus.test.ts`
+Run: `bun test src/runtime/gateway/messages.test.ts`
 Expected: PASS
 
 ```bash
-git add src/runtime/bus/
-git commit -m "feat(runtime): add MessageBus pub/sub for channel routing"
+git add src/runtime/gateway/messages.ts src/runtime/gateway/messages.test.ts
+git commit -m "feat(gateway): add typed gateway message contracts and reuse EventBus"
 ```
 
 ---
@@ -179,16 +117,16 @@ git commit -m "feat(runtime): add MessageBus pub/sub for channel routing"
 // src/runtime/channels/cli-channel.test.ts
 import { describe, expect, it } from "bun:test";
 import { CliChannel } from "./cli-channel";
-import { MessageBus } from "../bus/message-bus";
+	import { EventBus } from "../../core/event-bus";
 
 describe("CliChannel", () => {
   it("has name 'cli'", () => {
-    const channel = new CliChannel(new MessageBus());
+	    const channel = new CliChannel(new EventBus());
     expect(channel.name).toBe("cli");
   });
 
   it("sends message to bus on input", () => {
-    const bus = new MessageBus();
+	    const bus = new EventBus();
     const channel = new CliChannel(bus);
     channel.handleInput("hello");
 
@@ -232,11 +170,11 @@ git commit -m "feat(runtime): add Channel interface and CliChannel implementatio
 // src/runtime/gateway/gateway.test.ts
 import { describe, expect, it, mock } from "bun:test";
 import { Gateway } from "./gateway";
-import { MessageBus } from "../bus/message-bus";
+	import { EventBus } from "../../core/event-bus";
 
 describe("Gateway", () => {
   it("registers a channel", () => {
-    const bus = new MessageBus();
+	    const bus = new EventBus();
     const gateway = new Gateway(bus);
     const mockChannel = { name: "test", start: mock(async () => {}), stop: mock(async () => {}) };
 
@@ -245,7 +183,7 @@ describe("Gateway", () => {
   });
 
   it("starts all channels", async () => {
-    const bus = new MessageBus();
+	    const bus = new EventBus();
     const gateway = new Gateway(bus);
     const mockChannel = { name: "test", start: mock(async () => {}), stop: mock(async () => {}) };
 
@@ -256,7 +194,7 @@ describe("Gateway", () => {
   });
 
   it("stops all channels", async () => {
-    const bus = new MessageBus();
+	    const bus = new EventBus();
     const gateway = new Gateway(bus);
     const mockChannel = { name: "test", start: mock(async () => {}), stop: mock(async () => {}) };
 
@@ -271,7 +209,7 @@ describe("Gateway", () => {
 
 **Step 2: Implementar Gateway**
 
-Gateway registra canais, inicia/para todos, e processa mensagens inbound via MessageBus → AgentLoop.
+Gateway registra canais, inicia/para todos, e processa mensagens inbound via `EventBus` → AgentLoop.
 
 **Step 3: Commit**
 
@@ -346,7 +284,8 @@ git commit -m "feat(ai): add ClaudeCliProvider - wraps claude CLI as LLM provide
 
 **Step 1: Criar comando usando CommandBuilder**
 
-`nooa gateway` inicia o Gateway com canais configurados, MessageBus, AgentLoop, e SchedulerDaemon. Roda como daemon (long-running).
+`nooa gateway` inicia o Gateway com canais configurados, `EventBus` e AgentLoop. Roda como daemon (long-running).  
+Não criar `SchedulerDaemon` novo aqui: quando precisar de agendamento, usar o daemon já existente de `cron` (Phase 2).
 
 **Step 2: Commit**
 
@@ -377,7 +316,7 @@ Seguir padrões da TUI existente (`src/tui/hooks/`, `src/tui/screens/`). Chat sc
 
 ```typescript
 // src/tui/hooks/useAgent.ts (atualizado)
-// Hook que conecta a TUI ao AgentLoop via MessageBus
+// Hook que conecta a TUI ao AgentLoop via EventBus
 ```
 
 **Step 3: Commit**
@@ -398,5 +337,6 @@ git commit -m "feat(tui): add ChatScreen with MessageList, InputBar for agent in
 **Step 5:** `bun index.ts gateway --help` — mostra help
 **Step 6:** `bun index.ts agent --help` — funciona com CLI-as-Provider
 **Step 7:** `bun index.ts tui --help` — comando TUI disponível
-**Step 8:** `bun test src/features/gateway/` — gateway testado
-**Step 9:** Features existentes intactas: `bun test src/features/ src/core/`
+**Step 8:** `bun index.ts cron --daemon status --json` — integração com scheduler único preservada
+**Step 9:** `bun test src/features/gateway/` — gateway testado
+**Step 10:** Features existentes intactas: `bun test src/features/ src/core/`
