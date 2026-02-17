@@ -4,6 +4,7 @@ import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { CronJobRecord, CronJobSpec } from "../../core/db/cron_store";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
+import { CronDaemon } from "./daemon";
 import { cronService } from "./service";
 
 export const cronMeta: AgentDocMeta = {
@@ -30,6 +31,7 @@ Subcommands:
   pause <name> [--json]                            Pause (disable) a job temporarily.
   resume <name> [--json]                           Resume a paused job.
   history <name> [--limit <n>] [--since <date>] [--json]  Alias for logs.
+  daemon <start|stop|status> [--json]              Manage cron daemon lifecycle.
 
 Flags:
   --every <schedule>      Cron schedule (5m, 0 2 * * *, etc).
@@ -56,6 +58,8 @@ Examples:
   nooa cron logs daily-index --limit 5
   nooa cron edit daily-index --schedule "0 3 * * *"
   nooa cron remove daily-index --force --json
+  nooa cron daemon status --json
+  nooa cron --daemon start
 
 Exit Codes:
   0: Success
@@ -174,6 +178,10 @@ export interface CronRunResult {
 	jobs?: CronJobRecord[];
 	job?: CronJobRecord;
 	logs?: unknown[];
+	daemon?: {
+		running: boolean;
+		pid: number | null;
+	};
 }
 
 const numberFromValue = (value?: string) => {
@@ -200,7 +208,9 @@ export async function run(
 ): Promise<SdkResult<CronRunResult>> {
 	try {
 		const action = input.action;
-		if (!action) {
+		const daemonAction =
+			input.daemon ?? (action === "daemon" ? input.name : undefined);
+		if (!action && !daemonAction) {
 			return {
 				ok: false,
 				error: sdkError("cron.missing_action", "Missing subcommand."),
@@ -209,7 +219,74 @@ export async function run(
 
 		const name = input.name;
 
+		if (daemonAction) {
+			const daemon = new CronDaemon(cronService, { workspace: process.cwd() });
+			const entrypoint = process.argv[1];
+			if (!entrypoint) {
+				return {
+					ok: false,
+					error: sdkError("cron.runtime_error", "Could not resolve entrypoint."),
+				};
+			}
+			switch (daemonAction) {
+				case "start": {
+					const status = await daemon.startDetached(entrypoint);
+					return {
+						ok: true,
+						data: {
+							mode: "daemon",
+							result: status.running
+								? "Cron daemon running."
+								: "Cron daemon is not running.",
+							daemon: status,
+						},
+					};
+				}
+				case "stop": {
+					const status = await daemon.stop();
+					return {
+						ok: true,
+						data: {
+							mode: "daemon",
+							result: "Cron daemon stopped.",
+							daemon: status,
+						},
+					};
+				}
+				case "status": {
+					const status = await daemon.status();
+					return {
+						ok: true,
+						data: {
+							mode: "daemon",
+							result: status.running
+								? "Cron daemon running."
+								: "Cron daemon is stopped.",
+							daemon: status,
+						},
+					};
+				}
+				default: {
+					return {
+						ok: false,
+						error: sdkError(
+							"cron.runtime_error",
+							"Invalid --daemon action. Use start|stop|status.",
+						),
+					};
+				}
+			}
+		}
+
 		switch (action) {
+			case "daemon-run": {
+				const daemon = new CronDaemon(cronService, { workspace: process.cwd() });
+				await daemon.runLoop();
+				return {
+					ok: true,
+					data: { mode: "daemon", result: "Cron daemon stopped." },
+				};
+			}
 			case "add": {
 				if (!name) {
 					return {
@@ -524,6 +601,10 @@ const cronBuilder = new CommandBuilder<CronRunInput, CronRunResult>()
 	.onSuccess((output, values) => {
 		if (values.json) {
 			renderJson(output);
+			return;
+		}
+		if (output.mode === "daemon" && output.result) {
+			console.log(output.result);
 			return;
 		}
 		if (output.mode === "list" && output.jobs) {

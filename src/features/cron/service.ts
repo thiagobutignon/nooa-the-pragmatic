@@ -17,7 +17,7 @@ export type CronLogEntry = {
 	created_at: string;
 };
 
-class CronService {
+export class CronService {
 	private _store: CronStore | undefined;
 
 	constructor(private dbPath: string = DEFAULT_DB_PATH) {}
@@ -30,7 +30,7 @@ class CronService {
 	}
 
 	addJob(spec: CronJobSpec) {
-		this.store.createJob(spec);
+		return this.store.createJob(spec);
 	}
 
 	listJobs(): CronJobRecord[] {
@@ -54,6 +54,17 @@ class CronService {
 	}
 
 	editJob(name: string, updates: Partial<CronJobSpec>) {
+		this.store.updateJobByName(name, updates);
+	}
+
+	updateRuntime(
+		name: string,
+		updates: {
+			last_run_at?: string;
+			last_status?: string;
+			next_run_at?: string;
+		},
+	) {
 		this.store.updateJobByName(name, updates);
 	}
 

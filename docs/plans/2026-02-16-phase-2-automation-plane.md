@@ -4,7 +4,7 @@
 
 **Goal:** Transformar NOOA de reativo para proativo: heartbeat automático via HEARTBEAT.md, subagentes (spawn async + subagent sync), e cron daemon real.
 
-**Architecture:** Heartbeat lê `.nooa/HEARTBEAT.md` periodicamente e executa tarefas via AgentLoop. Subagentes são instâncias isoladas do AgentLoop com ToolRegistry restrito. Cron daemon executa jobs persistidos, integrando com o AgentLoop para tarefas complexas.
+**Architecture:** Heartbeat lê `.nooa/HEARTBEAT.md` periodicamente e executa tarefas via cron. Subagentes são instâncias isoladas do AgentLoop com ToolRegistry restrito. O daemon roda sobre `CronStore` (SQLite) como fonte única de verdade, sem scheduler paralelo em arquivo.
 
 **Tech Stack:** TypeScript, Bun, AgentLoop (Phase 1), ToolRegistry (Phase 0), bun:test
 
@@ -203,97 +203,45 @@ git commit -m "feat(runtime): add subagent tool for sync task delegation"
 
 **Files:**
 - Modify: `src/features/cron/service.ts`
-- Create: `src/runtime/scheduler/daemon.ts`
-- Test: `src/runtime/scheduler/daemon.test.ts`
+- Create: `src/features/cron/daemon.ts`
+- Modify: `src/features/cron/cli.ts`
+- Test: `src/features/cron/daemon.test.ts`
+- Test: `src/features/cron/cli.test.ts`
 
 **Step 1: Escrever teste que falha**
 
-```typescript
-// src/runtime/scheduler/daemon.test.ts
-import { describe, expect, it, mock } from "bun:test";
-import { SchedulerDaemon } from "./daemon";
+Testar `CronDaemon` com `CronService` real (SQLite temporário): execução de jobs `due`, atualização de `next_run_at`, e ciclo `start|stop|status` via CLI.
 
-describe("SchedulerDaemon", () => {
-  it("registers a one-time job", () => {
-    const daemon = new SchedulerDaemon();
-    const id = daemon.addJob({
-      name: "remind",
-      message: "Check emails",
-      atSeconds: 60,
-      channel: "cli",
-      chatId: "direct",
-    });
-    expect(id).toBeDefined();
-    expect(daemon.listJobs()).toHaveLength(1);
-  });
+**Step 2: Implementar CronDaemon**
 
-  it("registers a recurring job", () => {
-    const daemon = new SchedulerDaemon();
-    daemon.addJob({
-      name: "health",
-      message: "Check disk",
-      everySeconds: 3600,
-      channel: "cli",
-      chatId: "direct",
-    });
-    const jobs = daemon.listJobs();
-    expect(jobs[0].schedule.kind).toBe("every");
-  });
-
-  it("removes a job", () => {
-    const daemon = new SchedulerDaemon();
-    const id = daemon.addJob({
-      name: "test",
-      message: "test",
-      atSeconds: 10,
-      channel: "cli",
-      chatId: "direct",
-    });
-    expect(daemon.removeJob(id)).toBe(true);
-    expect(daemon.listJobs()).toHaveLength(0);
-  });
-
-  it("checks for due jobs", () => {
-    const daemon = new SchedulerDaemon();
-    daemon.addJob({
-      name: "immediate",
-      message: "now!",
-      atSeconds: -1, // Already past
-      channel: "cli",
-      chatId: "direct",
-    });
-
-    const due = daemon.getDueJobs();
-    expect(due.length).toBeGreaterThanOrEqual(1);
-  });
-});
-```
-
-**Step 2: Implementar SchedulerDaemon**
-
-Persistência em `.nooa/cron-jobs.json`. Tick interval configurável. `getDueJobs()` retorna jobs prontos para execução.
+Sem scheduler paralelo. O daemon deve:
+- Ler jobs do `CronStore` (SQLite)
+- Calcular `next_run_at`
+- Executar jobs vencidos periodicamente
+- Persistir logs/estado no próprio `CronStore`
+- Expor `--daemon start|stop|status` (e `cron daemon <cmd>`) na CLI
 
 **Step 3: Commit**
 
 ```bash
-git add src/runtime/scheduler/
-git commit -m "feat(runtime): add SchedulerDaemon for cron job persistence and execution"
+git add src/features/cron/
+git commit -m "feat(cron): add real daemon based on CronStore and wire CLI daemon lifecycle"
 ```
 
 ---
 
-### Task 5: Integrar Heartbeat no SchedulerDaemon
+### Task 5: Integrar Heartbeat no cron daemon
 
 **Files:**
-- Modify: `src/runtime/scheduler/daemon.ts`
-- Create: `src/runtime/scheduler/heartbeat-integration.test.ts`
+- Modify: `src/features/cron/daemon.ts`
+- Test: `src/features/cron/daemon.test.ts`
 
-Heartbeat como job nativo do scheduler que roda periodicamente (default 30min).
+Heartbeat como job nativo do cron (`__system_heartbeat__`) que roda periodicamente (default `30m`), sem store paralelo.
 
 **Step 1: Teste, implementar, commit**
 
 ```bash
-git commit -m "feat(runtime): integrate HeartbeatService as native SchedulerDaemon job"
+git commit -m "feat(cron): integrate native heartbeat job into cron daemon loop"
 ```
 
 ---
