@@ -215,6 +215,56 @@ export async function run(
 	}
 }
 
+// Exported for testing
+export async function parseSearchInput({ values, positionals }: any): Promise<SearchRunInput> {
+	return {
+		query: positionals[1],
+		root: positionals[2] ?? ".",
+		regex: Boolean(values.regex),
+		"case-sensitive": Boolean(values["case-sensitive"]),
+		"files-only": Boolean(values["files-only"]),
+		"max-results": values["max-results"] as string | undefined,
+		include: normalizeList(values.include),
+		exclude: normalizeList(values.exclude),
+		plain: Boolean(values.plain),
+		"no-color": Boolean(values["no-color"]),
+		context: values.context as string | undefined,
+		"ignore-case": Boolean(values["ignore-case"]),
+		count: Boolean(values.count),
+		hidden: Boolean(values.hidden),
+		json: Boolean(values.json),
+	};
+}
+
+// Exported for testing
+export function handleSearchSuccess(output: any, values: any) {
+	if (values["files-only"]) {
+		const files = Array.from(new Set(output.results.map((r: any) => r.path)));
+		process.stdout.write(`${files.join("\n")}${files.length ? "\n" : ""}`);
+		console.error(`Found ${files.length} files`);
+		return;
+	}
+
+	if (values.count) {
+		const lines = output.results.map((r: any) => `${r.path}:${r.matchCount ?? 0}`);
+		process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
+		console.error(`Found ${lines.length} files with matches`);
+		return;
+	}
+
+	if (values.json) {
+		renderJson(output.results);
+		console.error(`Found ${output.results.length} matches`);
+		return;
+	}
+
+	const lines = output.results.map(
+		(r: any) => `${r.path}:${r.line}:${r.column}:${r.snippet}`,
+	);
+	process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
+	console.error(`Found ${output.results.length} matches`);
+}
+
 const searchBuilder = new CommandBuilder<SearchRunInput, SearchRunResult>()
 	.meta(searchMeta)
 	.usage(searchUsage)
@@ -242,51 +292,9 @@ const searchBuilder = new CommandBuilder<SearchRunInput, SearchRunResult>()
 			hidden: { type: "boolean" },
 		},
 	})
-	.parseInput(async ({ values, positionals }) => ({
-		query: positionals[1],
-		root: positionals[2] ?? ".",
-		regex: Boolean(values.regex),
-		"case-sensitive": Boolean(values["case-sensitive"]),
-		"files-only": Boolean(values["files-only"]),
-		"max-results": values["max-results"] as string | undefined,
-		include: normalizeList(values.include),
-		exclude: normalizeList(values.exclude),
-		plain: Boolean(values.plain),
-		"no-color": Boolean(values["no-color"]),
-		context: values.context as string | undefined,
-		"ignore-case": Boolean(values["ignore-case"]),
-		count: Boolean(values.count),
-		hidden: Boolean(values.hidden),
-		json: Boolean(values.json),
-	}))
+	.parseInput(parseSearchInput)
 	.run(run)
-	.onSuccess((output, values) => {
-		if (values["files-only"]) {
-			const files = Array.from(new Set(output.results.map((r) => r.path)));
-			process.stdout.write(`${files.join("\n")}${files.length ? "\n" : ""}`);
-			console.error(`Found ${files.length} files`);
-			return;
-		}
-
-		if (values.count) {
-			const lines = output.results.map((r) => `${r.path}:${r.matchCount ?? 0}`);
-			process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
-			console.error(`Found ${lines.length} files with matches`);
-			return;
-		}
-
-		if (values.json) {
-			renderJson(output.results);
-			console.error(`Found ${output.results.length} matches`);
-			return;
-		}
-
-		const lines = output.results.map(
-			(r) => `${r.path}:${r.line}:${r.column}:${r.snippet}`,
-		);
-		process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
-		console.error(`Found ${output.results.length} matches`);
-	})
+	.onSuccess(handleSearchSuccess)
 	.onFailure((error) => {
 		handleCommandError(error, [
 			"search.missing_query",

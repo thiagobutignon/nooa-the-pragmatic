@@ -16,13 +16,14 @@ export interface ScaffoldOptions {
 export async function executeScaffold(
 	options: ScaffoldOptions,
 	bus?: EventBus,
+	engineOverride?: ScaffoldEngine,
 ) {
 	const traceId = createTraceId();
 	const startTime = Date.now();
 	const results: string[] = [];
 	const root = process.cwd();
 
-	const engine = new ScaffoldEngine(
+	const engine = engineOverride ?? new ScaffoldEngine(
 		join(root, "src/features/scaffold/templates"),
 	);
 
@@ -81,6 +82,7 @@ export async function executeScaffold(
 		await engine.write(promptPath, content, {
 			force: options.force,
 			dryRun: options.dryRun,
+			withDocs: Boolean(options.withDocs),
 		});
 		results.push(promptPath);
 	}
