@@ -48,10 +48,6 @@ export class Gateway {
 			content: result.forUser ?? result.forLlm,
 		};
 		this.bus.emit(GATEWAY_OUTBOUND_EVENT, outbound);
-		const channel = this.channels.get(outbound.channel);
-		if (channel) {
-			await channel.send(outbound);
-		}
 	}
 
 	async start(): Promise<void> {

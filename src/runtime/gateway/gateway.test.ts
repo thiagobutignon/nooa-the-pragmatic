@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { EventBus } from "../../core/event-bus";
+import { CliChannel } from "../channels/cli-channel";
 import { Gateway } from "./gateway";
 import {
 	GATEWAY_INBOUND_EVENT,
@@ -95,5 +96,31 @@ describe("Gateway", () => {
 			chatId: "chat-2",
 			content: "boom",
 		});
+	});
+
+	test("does not duplicate cli outbound logs", async () => {
+		const bus = new EventBus();
+		const runner = mock(async () => ({ forLlm: "single-output" }));
+		const gateway = new Gateway(bus, runner);
+		const cli = new CliChannel(bus);
+		gateway.registerChannel(cli);
+		const logSpy = mock(() => {});
+		const originalLog = console.log;
+		console.log = logSpy as typeof console.log;
+		try {
+			await gateway.start();
+			bus.emit(GATEWAY_INBOUND_EVENT, {
+				channel: "cli",
+				chatId: "chat-dup",
+				senderId: "user-dup",
+				content: "hello",
+			});
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		} finally {
+			console.log = originalLog;
+		}
+
+		expect(logSpy).toHaveBeenCalledTimes(1);
+		expect(logSpy.mock.calls[0]?.[0]).toContain("single-output");
 	});
 });

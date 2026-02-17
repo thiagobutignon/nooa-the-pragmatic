@@ -2,7 +2,9 @@ import { EventBus } from "../../core/event-bus";
 import { CliChannel } from "../../runtime/channels/cli-channel";
 import { Gateway, type GatewayRunner } from "../../runtime/gateway/gateway";
 import {
+	GATEWAY_INBOUND_EVENT,
 	GATEWAY_OUTBOUND_EVENT,
+	type GatewayInboundMessage,
 	type GatewayOutboundMessage,
 } from "../../runtime/gateway/messages";
 
@@ -69,8 +71,23 @@ export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
 	await gateway.start();
 
 	if (input.once) {
-		cliChannel.handleInput(input.message ?? "healthcheck");
-		await Bun.sleep(10);
+		const onceMessage = input.message ?? "healthcheck";
+		const outboundPromise = new Promise<GatewayOutboundMessage>((resolve) => {
+			const handler = (message: GatewayOutboundMessage) => {
+				if (message.channel !== "cli") return;
+				bus.off(GATEWAY_OUTBOUND_EVENT, handler);
+				resolve(message);
+			};
+			bus.on(GATEWAY_OUTBOUND_EVENT, handler);
+		});
+		const inbound: GatewayInboundMessage = {
+			channel: "cli",
+			chatId: "cli:direct",
+			senderId: "cli:user",
+			content: onceMessage,
+		};
+		bus.emit(GATEWAY_INBOUND_EVENT, inbound);
+		const outbound = await outboundPromise;
 		await gateway.stop();
 		return {
 			ok: true,
@@ -78,7 +95,7 @@ export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
 				mode: "start",
 				running: false,
 				channels: gateway.listChannels(),
-				lastResponse: lastOutbound?.content,
+				lastResponse: outbound.content ?? lastOutbound?.content,
 			},
 		};
 	}

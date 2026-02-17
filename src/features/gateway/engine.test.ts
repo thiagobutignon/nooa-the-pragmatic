@@ -54,4 +54,25 @@ describe("gateway engine", () => {
 			expect(result.error.code).toBe("gateway.long_running_not_supported");
 		}
 	});
+
+	test("once waits for slow runner and returns lastResponse", async () => {
+		const runner = mock(async () => {
+			await Bun.sleep(30);
+			return { forLlm: "slow-ok" };
+		});
+		const startedAt = Date.now();
+		const result = await run({
+			action: "start",
+			once: true,
+			message: "slow-message",
+			runner,
+		});
+		const elapsedMs = Date.now() - startedAt;
+
+		expect(result.ok).toBe(true);
+		expect(elapsedMs).toBeGreaterThanOrEqual(30);
+		if (result.ok) {
+			expect(result.data.lastResponse).toBe("slow-ok");
+		}
+	});
 });
