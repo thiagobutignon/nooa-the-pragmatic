@@ -1,6 +1,4 @@
 bun.lockb
 bun.lock
-.nooa
-**/.nooa
 src/features/prompt/manifests/injection-patterns.json
-**/tmp-replay/**
+src/features/replay/tmp-replay

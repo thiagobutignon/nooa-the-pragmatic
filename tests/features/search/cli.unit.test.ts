@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, spyOn, beforeEach } from "bun:test";
+import { describe, expect, it, mock, spyOn, beforeEach, afterEach } from "bun:test";
 import {
     run,
     parseSearchInput,
@@ -48,27 +48,35 @@ describe("search CLI unit tests", () => {
             const result = await run({ query: "foo" });
 
             expect(result.ok).toBe(true);
-            expect(result.data?.results).toHaveLength(1);
+            if (result.ok) {
+                expect(result.data.results).toHaveLength(1);
+            }
             expect(mockRunSearch).toHaveBeenCalled();
         });
 
         it("should validate query requirement", async () => {
             const result = await run({});
             expect(result.ok).toBe(false);
-            expect(result.error?.code).toBe("search.missing_query");
+            if (!result.ok) {
+                expect(result.error.code).toBe("search.missing_query");
+            }
         });
 
         it("should validate max-results", async () => {
             const result = await run({ query: "foo", "max-results": "bad" });
             expect(result.ok).toBe(false);
-            expect(result.error?.code).toBe("search.invalid_max_results");
+            if (!result.ok) {
+                expect(result.error.code).toBe("search.invalid_max_results");
+            }
         });
 
         it("should handle runtime error", async () => {
             mockRunSearch.mockRejectedValueOnce(new Error("Ripgrep failed"));
             const result = await run({ query: "foo" });
             expect(result.ok).toBe(false);
-            expect(result.error?.code).toBe("search.runtime_error");
+            if (!result.ok) {
+                expect(result.error.code).toBe("search.runtime_error");
+            }
         });
     });
 
