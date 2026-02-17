@@ -11,20 +11,29 @@ const binPath = fileURLToPath(new URL("../../../index.ts", import.meta.url));
 describe("nooa cron CLI", () => {
 	let dir: string;
 	let dbPath: string;
+	let pidPath: string;
 
 	const runCron = async (extraArgs: string[]) => {
 		return await execa("bun", [binPath, "cron", ...extraArgs], {
 			reject: false,
-			env: { ...baseEnv, NOOA_DB_PATH: dbPath },
+			env: {
+				...baseEnv,
+				NOOA_DB_PATH: dbPath,
+				NOOA_CRON_DAEMON_PID_PATH: pidPath,
+				NOOA_CRON_DAEMON_POLL_MS: "100",
+				NOOA_HEARTBEAT_ENABLED: "0",
+			},
 		});
 	};
 
 	beforeEach(async () => {
 		dir = await mkdtemp(join(tmpdir(), "nooa-cron-"));
 		dbPath = join(dir, "cron.db");
+		pidPath = join(dir, "cron-daemon.pid");
 	});
 
 	afterEach(async () => {
+		await runCron(["--daemon", "stop", "--json"]);
 		await rm(dir, { recursive: true, force: true });
 	});
 
@@ -116,5 +125,27 @@ describe("nooa cron CLI", () => {
 
 		const status = await runCron(["status", jobName]);
 		expect(status.exitCode).toBe(1);
+	});
+
+	test("daemon start/stop/status via --daemon flag", async () => {
+		const statusBefore = await runCron(["--daemon", "status", "--json"]);
+		expect(statusBefore.exitCode).toBe(0);
+		const beforePayload = JSON.parse(statusBefore.stdout);
+		expect(beforePayload.daemon.running).toBe(false);
+
+		const start = await runCron(["--daemon", "start", "--json"]);
+		expect(start.exitCode).toBe(0);
+		const startPayload = JSON.parse(start.stdout);
+		expect(startPayload.daemon.running).toBe(true);
+
+		const statusAfter = await runCron(["--daemon", "status", "--json"]);
+		expect(statusAfter.exitCode).toBe(0);
+		const afterPayload = JSON.parse(statusAfter.stdout);
+		expect(afterPayload.daemon.running).toBe(true);
+
+		const stop = await runCron(["--daemon", "stop", "--json"]);
+		expect(stop.exitCode).toBe(0);
+		const stopPayload = JSON.parse(stop.stdout);
+		expect(stopPayload.daemon.running).toBe(false);
 	});
 });
