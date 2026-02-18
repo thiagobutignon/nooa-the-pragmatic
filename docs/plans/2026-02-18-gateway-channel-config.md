@@ -76,7 +76,7 @@ Expected: PASS.
 
 **Files:**
 - Modify: `.env.example`
-- Modify: `docs/plans/2026-02-16-phase-3-gateway-channels-tui.md`
+- Modify: `docs/plans/done/2026-02-16-phase-3-gateway-channels-tui.md`
 
 **Step 1: Add config variables docs**
 - Document `NOOA_GATEWAY_MODE`, `NOOA_GATEWAY_TRANSPORT`, `NOOA_GATEWAY_ALLOWLIST`, `NOOA_GATEWAY_HOST`, `NOOA_GATEWAY_PORT`.

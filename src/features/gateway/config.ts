@@ -1,4 +1,4 @@
-export type GatewayMode = "cli";
+export type GatewayMode = "cli" | (string & {});
 export type GatewayTransport = "polling" | "webhook";
 
 export interface GatewayChannelConfig {

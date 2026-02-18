@@ -17,15 +17,23 @@ export type GatewayRunner = (
 	content: string,
 ) => Promise<GatewayRunnerResult>;
 
+export interface GatewayOptions {
+	allowlist?: string[];
+}
+
 export class Gateway {
 	private readonly channels = new Map<string, Channel>();
 	private inboundHandler?: EventHandler<GatewayInboundMessage>;
 	private running = false;
+	private readonly allowlist: Set<string>;
 
 	constructor(
 		private readonly bus: EventBus,
 		private readonly runner: GatewayRunner,
-	) {}
+		options: GatewayOptions = {},
+	) {
+		this.allowlist = new Set(options.allowlist ?? []);
+	}
 
 	registerChannel(channel: Channel): void {
 		this.channels.set(channel.name, channel);
@@ -40,6 +48,14 @@ export class Gateway {
 	}
 
 	private async processInbound(message: GatewayInboundMessage): Promise<void> {
+		if (this.allowlist.size > 0 && !this.allowlist.has(message.senderId)) {
+			this.bus.emit(GATEWAY_OUTBOUND_EVENT, {
+				channel: message.channel,
+				chatId: message.chatId,
+				content: "ignored_by_allowlist",
+			});
+			return;
+		}
 		const sessionKey = this.buildSessionKey(message);
 		const result = await this.runner(sessionKey, message.content);
 		const outbound: GatewayOutboundMessage = {

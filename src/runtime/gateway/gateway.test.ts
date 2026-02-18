@@ -123,4 +123,29 @@ describe("Gateway", () => {
 		expect(logSpy).toHaveBeenCalledTimes(1);
 		expect(logSpy.mock.calls[0]?.[0]).toContain("single-output");
 	});
+
+	test("blocks inbound message when sender is not in allowlist", async () => {
+		const bus = new EventBus();
+		const runner = mock(async () => ({ forLlm: "must-not-run" }));
+		const gateway = new Gateway(bus, runner, { allowlist: ["allowed-user"] });
+		const outboundHandler = mock((_msg: GatewayOutboundMessage) => {});
+		bus.on(GATEWAY_OUTBOUND_EVENT, outboundHandler);
+		await gateway.start();
+
+		bus.emit(GATEWAY_INBOUND_EVENT, {
+			channel: "cli",
+			chatId: "chat-blocked",
+			senderId: "blocked-user",
+			content: "hello",
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(runner).toHaveBeenCalledTimes(0);
+		expect(outboundHandler).toHaveBeenCalledTimes(1);
+		expect(outboundHandler.mock.calls[0]?.[0]).toMatchObject({
+			channel: "cli",
+			chatId: "chat-blocked",
+			content: "ignored_by_allowlist",
+		});
+	});
 });

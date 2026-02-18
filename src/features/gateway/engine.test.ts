@@ -1,5 +1,22 @@
 import { describe, expect, mock, test } from "bun:test";
+import type { GatewayConfig } from "./config";
 import { run } from "./engine";
+
+function makeConfig(overrides: Partial<GatewayConfig> = {}): GatewayConfig {
+	return {
+		mode: "cli",
+		transport: "polling",
+		allowlist: [],
+		host: "127.0.0.1",
+		port: 0,
+		channels: {
+			cli: { enabled: true },
+			telegram: { enabled: false },
+			discord: { enabled: false },
+		},
+		...overrides,
+	};
+}
 
 describe("gateway engine", () => {
 	test("returns status payload", async () => {
@@ -80,7 +97,7 @@ describe("gateway engine", () => {
 	test("status includes configured gateway mode", async () => {
 		const result = await run({
 			action: "status",
-			env: { NOOA_GATEWAY_MODE: "cli" },
+			config: makeConfig({ mode: "cli" }),
 		});
 		expect(result.ok).toBe(true);
 		if (result.ok) {
@@ -94,8 +111,7 @@ describe("gateway engine", () => {
 			action: "start",
 			once: true,
 			message: "hello",
-			senderId: "not-allowed",
-			env: { NOOA_GATEWAY_ALLOWLIST: "alice,bob" },
+			config: makeConfig({ allowlist: ["alice", "bob"] }),
 			runner,
 		});
 
