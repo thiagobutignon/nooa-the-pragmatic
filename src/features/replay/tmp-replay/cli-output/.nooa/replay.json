@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "30e7b802-992e-4c80-8dcb-e7dd17c782b2",
+      "label": "A",
+      "type": "step",
+      "createdAt": "2026-02-18T19:30:14.693Z"
+    }
+  ],
+  "edges": []
+}
