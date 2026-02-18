@@ -26,6 +26,7 @@ Subcommands:
   status             Show gateway status.
 
 Flags:
+  --daemon <action>  Manage daemon lifecycle (start|stop|status).
   --once             Process one message and stop (safe mode).
   --message <text>   Message used with --once.
   --json             Output JSON format.
@@ -48,6 +49,7 @@ SDK Usage:
 
 export const gatewaySchema = {
 	action: { type: "string", required: false },
+	daemon: { type: "string", required: false },
 	once: { type: "boolean", required: false, default: false },
 	message: { type: "string", required: false },
 	json: { type: "boolean", required: false, default: false },
@@ -58,6 +60,7 @@ export const gatewayOutputFields = [
 	{ name: "running", type: "boolean" },
 	{ name: "channels", type: "string" },
 	{ name: "lastResponse", type: "string" },
+	{ name: "pid", type: "number|null" },
 ];
 
 export const gatewayErrors = [
@@ -85,19 +88,32 @@ const gatewayBuilder = new CommandBuilder<GatewayRunInput, GatewayRunResult>()
 	.options({
 		options: {
 			...buildStandardOptions(),
+			daemon: { type: "string" },
 			once: { type: "boolean" },
 			message: { type: "string" },
 		},
 	})
-	.parseInput(async ({ values, positionals }) => ({
-		action:
-			positionals[1] === "status" || positionals[1] === "start"
+	.parseInput(async ({ values, positionals }) => {
+		const daemonArg = typeof values.daemon === "string" ? values.daemon : undefined;
+		const daemon =
+			daemonArg === "start" || daemonArg === "stop" || daemonArg === "status"
+				? daemonArg
+				: undefined;
+		const positionalAction =
+			positionals[1] === "status" ||
+			positionals[1] === "start" ||
+			positionals[1] === "daemon-run"
 				? positionals[1]
-				: undefined,
-		once: Boolean(values.once),
-		message: typeof values.message === "string" ? values.message : undefined,
-		json: Boolean(values.json),
-	}))
+				: undefined;
+		const action = daemon ? "daemon" : positionalAction;
+		return {
+			action,
+			daemon,
+			once: Boolean(values.once),
+			message: typeof values.message === "string" ? values.message : undefined,
+			json: Boolean(values.json),
+		};
+	})
 	.run(run)
 	.onSuccess((output, values) => {
 		if (values.json) {
@@ -106,6 +122,13 @@ const gatewayBuilder = new CommandBuilder<GatewayRunInput, GatewayRunResult>()
 		}
 		if (output.mode === "status") {
 			console.log(`Gateway status: ${output.running ? "running" : "stopped"}`);
+			return;
+		}
+		if (output.mode === "daemon") {
+			const pidSuffix = output.pid ? ` (pid: ${output.pid})` : "";
+			console.log(
+				`Gateway daemon: ${output.running ? "running" : "stopped"}${pidSuffix}`,
+			);
 			return;
 		}
 		console.log(
