@@ -1,4 +1,4 @@
-import { execa } from "execa";
+import { type ExecaChildProcess, execa as defaultExeca } from "execa";
 import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
@@ -18,15 +18,26 @@ export interface DoctorResult {
 	duration_ms: number;
 }
 
-async function checkTool(cmd: string, args: string[]): Promise<ToolCheck> {
+// Define specific type for execa to match what we use
+type ExecaType = (
+	file: string,
+	args?: readonly string[],
+	options?: any,
+) => ExecaChildProcess<string> | Promise<any>;
+
+async function checkTool(
+	cmd: string,
+	args: string[],
+	executor: ExecaType,
+): Promise<ToolCheck> {
 	try {
 		// Use which to check existence first to avoid hangs on some environments
-		const which = await execa("which", [cmd], { reject: false });
+		const which = await executor("which", [cmd], { reject: false });
 		if (which.exitCode !== 0) {
 			return { available: false };
 		}
 
-		const { stdout } = await execa(cmd, args, { timeout: 3000 });
+		const { stdout } = await executor(cmd, args, { timeout: 3000 });
 		return {
 			available: true,
 			version: stdout.trim().split("\n")[0] || "Found",
@@ -38,14 +49,15 @@ async function checkTool(cmd: string, args: string[]): Promise<ToolCheck> {
 
 export async function executeDoctorCheck(
 	bus?: EventBus,
+	executor: ExecaType = defaultExeca as any,
 ): Promise<DoctorResult> {
 	const traceId = createTraceId();
 	const startTime = Date.now();
 
-	const bun = await checkTool("bun", ["--version"]);
-	const git = await checkTool("git", ["--version"]);
-	const rg = await checkTool("rg", ["--version"]);
-	const sqlite = await checkTool("sqlite3", ["--version"]);
+	const bun = await checkTool("bun", ["--version"], executor);
+	const git = await checkTool("git", ["--version"], executor);
+	const rg = await checkTool("rg", ["--version"], executor);
+	const sqlite = await checkTool("sqlite3", ["--version"], executor);
 
 	const ok = bun.available && git.available && rg.available && sqlite.available;
 	const duration_ms = Date.now() - startTime;

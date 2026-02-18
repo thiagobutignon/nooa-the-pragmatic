@@ -222,6 +222,105 @@ export async function run(
 	}
 }
 
+// Exported for testing
+export async function parseScaffoldInput({ positionals, values }: any) {
+	return {
+		type: positionals[1] as ScaffoldKind | undefined,
+		name: positionals[2],
+		force: Boolean(values.force),
+		dryRun: Boolean(values["dry-run"]),
+		withDocs: Boolean(values["with-docs"]),
+		json: Boolean(values.json),
+		out: typeof values.out === "string" ? values.out : undefined,
+	};
+}
+
+// Exported for testing
+export async function handleScaffoldSuccess(output: any, values: any) {
+	const jsonMode = Boolean(values.json);
+	if (jsonMode) {
+		const payload = {
+			schemaVersion: "1.0",
+			ok: true,
+			traceId: output.traceId,
+			command: "scaffold",
+			timestamp: new Date().toISOString(),
+			kind: output.kind,
+			name: output.name,
+			files: output.files,
+			dryRun: output.dryRun,
+		};
+
+		await renderJsonOrWrite(
+			payload,
+			typeof values.out === "string" ? values.out : undefined,
+		);
+		return;
+	}
+
+	console.log(`\n✅ Scaffold success (${output.traceId})`);
+	if (output.dryRun) {
+		console.log("[DRY RUN CALLBACK] No files were actually written.");
+	}
+	console.log(`Created ${output.kind}: ${output.name}`);
+	output.files.forEach((file: any) => {
+		console.log(`  - ${file}`);
+	});
+
+	if (!output.dryRun) {
+		console.log("\nNext Steps:");
+		if (output.kind === "command") {
+			console.log(`  1. Run tests: bun test src/features/${output.name}`);
+			console.log(`  2. Check help: bun index.ts ${output.name} --help`);
+		} else {
+			console.log(
+				`  1. Validate prompt: bun index.ts prompt validate ${output.name}`,
+			);
+		}
+	}
+}
+
+// Exported for testing
+export async function handleScaffoldFailure(error: any, input: any) {
+	if (input.json) {
+		const payload = {
+			schemaVersion: "1.0",
+			ok: false,
+			traceId:
+				typeof error.details?.traceId === "string"
+					? error.details.traceId
+					: undefined,
+			command: "scaffold",
+			timestamp: new Date().toISOString(),
+			error: error.message,
+		};
+		await renderJsonOrWrite(payload, input.out ?? undefined);
+		setExitCode(error, [
+			"scaffold.invalid_args",
+			"scaffold.invalid_type",
+			"scaffold.invalid_name",
+			"scaffold.already_exists",
+		]);
+		return;
+	}
+	if (error.code.startsWith("scaffold.")) {
+		const label = error.code.includes("invalid")
+			? "Validation Error"
+			: error.code.includes("already_exists")
+				? "Validation Error"
+				: "Runtime Error";
+		console.error(`❌ ${label}: ${error.message}`);
+	} else {
+		printError(error);
+	}
+	setExitCode(error, [
+		"scaffold.invalid_args",
+		"scaffold.invalid_type",
+		"scaffold.invalid_name",
+		"scaffold.already_exists",
+	]);
+}
+
 const scaffoldBuilder = new CommandBuilder<
 	ScaffoldRunInput,
 	ScaffoldRunResult
@@ -244,98 +343,10 @@ const scaffoldBuilder = new CommandBuilder<
 			"with-docs": { type: "boolean" },
 		},
 	})
-	.parseInput(async ({ positionals, values }) => ({
-		type: positionals[1] as ScaffoldKind | undefined,
-		name: positionals[2],
-		force: Boolean(values.force),
-		dryRun: Boolean(values["dry-run"]),
-		withDocs: Boolean(values["with-docs"]),
-		json: Boolean(values.json),
-		out: typeof values.out === "string" ? values.out : undefined,
-	}))
+	.parseInput(parseScaffoldInput)
 	.run(run)
-	.onSuccess(async (output, values) => {
-		const jsonMode = Boolean(values.json);
-		if (jsonMode) {
-			const payload = {
-				schemaVersion: "1.0",
-				ok: true,
-				traceId: output.traceId,
-				command: "scaffold",
-				timestamp: new Date().toISOString(),
-				kind: output.kind,
-				name: output.name,
-				files: output.files,
-				dryRun: output.dryRun,
-			};
-
-			await renderJsonOrWrite(
-				payload,
-				typeof values.out === "string" ? values.out : undefined,
-			);
-			return;
-		}
-
-		console.log(`\n✅ Scaffold success (${output.traceId})`);
-		if (output.dryRun) {
-			console.log("[DRY RUN CALLBACK] No files were actually written.");
-		}
-		console.log(`Created ${output.kind}: ${output.name}`);
-		output.files.forEach((file) => {
-			console.log(`  - ${file}`);
-		});
-
-		if (!output.dryRun) {
-			console.log("\nNext Steps:");
-			if (output.kind === "command") {
-				console.log(`  1. Run tests: bun test src/features/${output.name}`);
-				console.log(`  2. Check help: bun index.ts ${output.name} --help`);
-			} else {
-				console.log(
-					`  1. Validate prompt: bun index.ts prompt validate ${output.name}`,
-				);
-			}
-		}
-	})
-	.onFailure(async (error, input) => {
-		if (input.json) {
-			const payload = {
-				schemaVersion: "1.0",
-				ok: false,
-				traceId:
-					typeof error.details?.traceId === "string"
-						? error.details.traceId
-						: undefined,
-				command: "scaffold",
-				timestamp: new Date().toISOString(),
-				error: error.message,
-			};
-			await renderJsonOrWrite(payload, input.out ?? undefined);
-			setExitCode(error, [
-				"scaffold.invalid_args",
-				"scaffold.invalid_type",
-				"scaffold.invalid_name",
-				"scaffold.already_exists",
-			]);
-			return;
-		}
-		if (error.code.startsWith("scaffold.")) {
-			const label = error.code.includes("invalid")
-				? "Validation Error"
-				: error.code.includes("already_exists")
-					? "Validation Error"
-					: "Runtime Error";
-			console.error(`❌ ${label}: ${error.message}`);
-		} else {
-			printError(error);
-		}
-		setExitCode(error, [
-			"scaffold.invalid_args",
-			"scaffold.invalid_type",
-			"scaffold.invalid_name",
-			"scaffold.already_exists",
-		]);
-	})
+	.onSuccess(handleScaffoldSuccess)
+	.onFailure(handleScaffoldFailure)
 	.telemetry({
 		eventPrefix: "scaffold",
 		successMetadata: (input, output) => ({

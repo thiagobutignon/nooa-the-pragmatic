@@ -1,4 +1,4 @@
-import type { EventBus } from "../../core/event-bus";
+import { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { type SdkResult, sdkError } from "../../core/types";
 import { WorkflowEngine } from "../../core/workflow/engine";
@@ -23,7 +23,10 @@ export interface WorkflowRunResult {
 	reason?: string;
 }
 
-const AVAILABLE_GATES: Record<string, new () => Gate> = {
+// Define interface for gate constructors
+type GateConstructor = new () => Gate;
+
+const AVAILABLE_GATES: Record<string, GateConstructor> = {
 	spec: SpecGate,
 	test: TestGate,
 	dogfood: DogfoodGate,
@@ -31,6 +34,8 @@ const AVAILABLE_GATES: Record<string, new () => Gate> = {
 
 export async function runWorkflow(
 	input: WorkflowRunInput,
+	// Injection for testing
+	gateMap: Record<string, GateConstructor> = AVAILABLE_GATES,
 ): Promise<SdkResult<WorkflowRunResult>> {
 	const traceId = input.traceId || createTraceId();
 	const engine = new WorkflowEngine();
@@ -49,7 +54,7 @@ export async function runWorkflow(
 	const steps: WorkflowStep[] = [];
 
 	for (const gateId of requestedGates) {
-		const GateClass = AVAILABLE_GATES[gateId];
+		const GateClass = gateMap[gateId];
 		if (!GateClass) {
 			return {
 				ok: false,
@@ -67,15 +72,9 @@ export async function runWorkflow(
 					return g.check(c);
 				},
 			},
-			action: async () => {}, // No-op action for verification-only workflow
+			action: async () => { }, // No-op action for verification-only workflow
 		});
 	}
-
-	// Emit workflow.started? Maybe let engine do it?
-	// The engine itself doesn't emit events in the version I saw.
-	// But ActEngine emits events.
-	// Ideally WorkflowEngine should emit events, but I won't change core right now.
-	// I can emit here if input.bus is provided.
 
 	if (input.bus) {
 		input.bus.emit("workflow.started", {

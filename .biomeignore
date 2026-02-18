@@ -1,0 +1,4 @@
+bun.lockb
+bun.lock
+src/features/prompt/manifests/injection-patterns.json
+src/features/replay/tmp-replay
