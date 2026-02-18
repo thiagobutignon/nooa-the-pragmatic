@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+import { join } from "node:path";
 import type { GatewayConfig } from "./config";
 import { run } from "./engine";
 
@@ -119,6 +120,82 @@ describe("gateway engine", () => {
 		expect(runner).toHaveBeenCalledTimes(0);
 		if (result.ok) {
 			expect(result.data.lastResponse).toBe("ignored_by_allowlist");
+		}
+	});
+});
+
+describe("gateway daemon lifecycle", () => {
+	test("daemon status returns stopped when no pid file exists", async () => {
+		const pidPath = join(
+			process.cwd(),
+			".nooa",
+			`gw-missing-${Date.now()}-${Math.random().toString(16).slice(2)}.pid`,
+		);
+		const result = await run({ action: "daemon", daemon: "status", pidPath });
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("daemon");
+			expect(result.data.running).toBe(false);
+			expect(result.data.pid).toBeNull();
+		}
+	});
+
+	test("daemon start spawns detached process and writes pid", async () => {
+		const pidPath = join(
+			process.cwd(),
+			".nooa",
+			`gw-start-${Date.now()}-${Math.random().toString(16).slice(2)}.pid`,
+		);
+		const result = await run({
+			action: "daemon",
+			daemon: "start",
+			pidPath,
+			entrypoint: "index.ts",
+		});
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("daemon");
+			expect(result.data.running).toBe(true);
+			expect(result.data.pid).toBeGreaterThan(0);
+		}
+		await run({ action: "daemon", daemon: "stop", pidPath });
+	});
+
+	test("daemon stop clears pid file", async () => {
+		const pidPath = join(
+			process.cwd(),
+			".nooa",
+			`gw-stop-${Date.now()}-${Math.random().toString(16).slice(2)}.pid`,
+		);
+		const startResult = await run({
+			action: "daemon",
+			daemon: "start",
+			pidPath,
+			entrypoint: "index.ts",
+		});
+		expect(startResult.ok).toBe(true);
+
+		const result = await run({ action: "daemon", daemon: "stop", pidPath });
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("daemon");
+			expect(result.data.running).toBe(false);
+			expect(result.data.pid).toBeNull();
+		}
+	});
+
+	test("daemon-run starts gateway and holds until abort signal", async () => {
+		const controller = new AbortController();
+		setTimeout(() => controller.abort(), 50);
+		const result = await run({
+			action: "daemon-run",
+			signal: controller.signal,
+			runner: async () => ({ forLlm: "ok" }),
+		});
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("start");
+			expect(result.data.running).toBe(false);
 		}
 	});
 });
