@@ -12,6 +12,14 @@
 
 **Dependência:** Phase 2 concluída e mergeada em main, com `cron` como scheduler único (`nooa cron --daemon start|stop|status`).
 
+## Gateway env vars (operacional)
+
+- `NOOA_GATEWAY_MODE` (`cli` por padrão)
+- `NOOA_GATEWAY_TRANSPORT` (`polling` por padrão; `webhook` para evolução futura)
+- `NOOA_GATEWAY_ALLOWLIST` (lista `senderId` separada por vírgula)
+- `NOOA_GATEWAY_HOST` (`127.0.0.1` por padrão)
+- `NOOA_GATEWAY_PORT` (`0` por padrão, bind desativado)
+
 ---
 
 ### Task 0: Preparar dependências de canais
