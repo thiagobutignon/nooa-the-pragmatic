@@ -191,26 +191,29 @@ export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
 	}
 	await gateway.start();
 	if (action === "daemon-run") {
-		await new Promise<void>((resolve) => {
-			let resolved = false;
-			const onSigTerm = () => stop();
-			const onSigInt = () => stop();
-			const onAbort = () => stop();
-			const stop = () => {
-				if (resolved) return;
-				resolved = true;
-				process.off("SIGTERM", onSigTerm);
-				process.off("SIGINT", onSigInt);
-				input.signal?.removeEventListener("abort", onAbort);
-				void gateway.stop().then(resolve);
-			};
-			process.on("SIGTERM", onSigTerm);
-			process.on("SIGINT", onSigInt);
-			input.signal?.addEventListener("abort", onAbort, { once: true });
-			if (input.signal?.aborted) {
-				stop();
-			}
-		});
+		let shouldRun = true;
+		const onSigTerm = () => {
+			shouldRun = false;
+		};
+		const onSigInt = () => {
+			shouldRun = false;
+		};
+		const onAbort = () => {
+			shouldRun = false;
+		};
+		process.on("SIGTERM", onSigTerm);
+		process.on("SIGINT", onSigInt);
+		input.signal?.addEventListener("abort", onAbort, { once: true });
+		if (input.signal?.aborted) {
+			shouldRun = false;
+		}
+		while (shouldRun) {
+			await Bun.sleep(500);
+		}
+		process.off("SIGTERM", onSigTerm);
+		process.off("SIGINT", onSigInt);
+		input.signal?.removeEventListener("abort", onAbort);
+		await gateway.stop();
 		return {
 			ok: true,
 			data: {

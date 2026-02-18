@@ -94,7 +94,8 @@ const gatewayBuilder = new CommandBuilder<GatewayRunInput, GatewayRunResult>()
 		},
 	})
 	.parseInput(async ({ values, positionals }) => {
-		const daemonArg = typeof values.daemon === "string" ? values.daemon : undefined;
+		const daemonArg =
+			typeof values.daemon === "string" ? values.daemon : undefined;
 		const daemon =
 			daemonArg === "start" || daemonArg === "stop" || daemonArg === "status"
 				? daemonArg
