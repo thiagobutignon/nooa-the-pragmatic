@@ -81,10 +81,7 @@ export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
 	if (input.once) {
 		const onceMessage = input.message ?? "healthcheck";
 		const senderId = input.senderId ?? "cli:user";
-		if (
-			config.allowlist.length > 0 &&
-			!config.allowlist.includes(senderId)
-		) {
+		if (config.allowlist.length > 0 && !config.allowlist.includes(senderId)) {
 			await gateway.stop();
 			return {
 				ok: true,

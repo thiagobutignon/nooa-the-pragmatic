@@ -47,7 +47,10 @@ function parseAllowlist(value: string | undefined): string[] {
 		.filter((entry) => entry.length > 0);
 }
 
-function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
+function parseBoolean(
+	value: string | undefined,
+	defaultValue: boolean,
+): boolean {
 	if (value === undefined || value === "") return defaultValue;
 	const normalized = value.toLowerCase();
 	if (["1", "true", "yes", "on"].includes(normalized)) return true;
