@@ -7,17 +7,21 @@ import {
 	type GatewayInboundMessage,
 	type GatewayOutboundMessage,
 } from "../../runtime/gateway/messages";
+import { loadGatewayConfig } from "./config";
 
 export interface GatewayRunInput {
 	action?: "start" | "status";
 	once?: boolean;
 	message?: string;
+	senderId?: string;
+	env?: Record<string, string | undefined>;
 	runner?: GatewayRunner;
 	defaultRunnerFactory?: () => Promise<GatewayRunner>;
 }
 
 export interface GatewayRunResult {
 	mode: "start" | "status";
+	gatewayMode: "cli";
 	running: boolean;
 	channels: string[];
 	lastResponse?: string;
@@ -28,12 +32,14 @@ type GatewaySdkResult =
 	| { ok: false; error: { code: string; message: string } };
 
 export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
+	const config = loadGatewayConfig(input.env ?? process.env);
 	const action = input.action ?? "start";
 	if (action === "status") {
 		return {
 			ok: true,
 			data: {
 				mode: "status",
+				gatewayMode: config.mode,
 				running: false,
 				channels: ["cli"],
 			},
@@ -66,12 +72,31 @@ export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
 	});
 
 	const gateway = new Gateway(bus, runner);
-	const cliChannel = new CliChannel(bus);
-	gateway.registerChannel(cliChannel);
+	if (config.channels.cli.enabled) {
+		const cliChannel = new CliChannel(bus);
+		gateway.registerChannel(cliChannel);
+	}
 	await gateway.start();
 
 	if (input.once) {
 		const onceMessage = input.message ?? "healthcheck";
+		const senderId = input.senderId ?? "cli:user";
+		if (
+			config.allowlist.length > 0 &&
+			!config.allowlist.includes(senderId)
+		) {
+			await gateway.stop();
+			return {
+				ok: true,
+				data: {
+					mode: "start",
+					gatewayMode: config.mode,
+					running: false,
+					channels: gateway.listChannels(),
+					lastResponse: "ignored_by_allowlist",
+				},
+			};
+		}
 		const outboundPromise = new Promise<GatewayOutboundMessage>((resolve) => {
 			const handler = (message: GatewayOutboundMessage) => {
 				if (message.channel !== "cli") return;
@@ -83,7 +108,7 @@ export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
 		const inbound: GatewayInboundMessage = {
 			channel: "cli",
 			chatId: "cli:direct",
-			senderId: "cli:user",
+			senderId,
 			content: onceMessage,
 		};
 		bus.emit(GATEWAY_INBOUND_EVENT, inbound);
@@ -93,6 +118,7 @@ export async function run(input: GatewayRunInput): Promise<GatewaySdkResult> {
 			ok: true,
 			data: {
 				mode: "start",
+				gatewayMode: config.mode,
 				running: false,
 				channels: gateway.listChannels(),
 				lastResponse: outbound.content ?? lastOutbound?.content,

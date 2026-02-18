@@ -7,6 +7,7 @@ describe("gateway engine", () => {
 		expect(result.ok).toBe(true);
 		if (result.ok) {
 			expect(result.data.mode).toBe("status");
+			expect(result.data.gatewayMode).toBe("cli");
 			expect(result.data.running).toBe(false);
 		}
 	});
@@ -73,6 +74,35 @@ describe("gateway engine", () => {
 		expect(elapsedMs).toBeGreaterThanOrEqual(30);
 		if (result.ok) {
 			expect(result.data.lastResponse).toBe("slow-ok");
+		}
+	});
+
+	test("status includes configured gateway mode", async () => {
+		const result = await run({
+			action: "status",
+			env: { NOOA_GATEWAY_MODE: "cli" },
+		});
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.gatewayMode).toBe("cli");
+		}
+	});
+
+	test("allowlist blocks inbound sender deterministically", async () => {
+		const runner = mock(async () => ({ forLlm: "ok-response" }));
+		const result = await run({
+			action: "start",
+			once: true,
+			message: "hello",
+			senderId: "not-allowed",
+			env: { NOOA_GATEWAY_ALLOWLIST: "alice,bob" },
+			runner,
+		});
+
+		expect(result.ok).toBe(true);
+		expect(runner).toHaveBeenCalledTimes(0);
+		if (result.ok) {
+			expect(result.data.lastResponse).toBe("ignored_by_allowlist");
 		}
 	});
 });
