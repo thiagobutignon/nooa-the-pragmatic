@@ -1,7 +1,7 @@
 # Plan: `nooa papers` Command
 
 **Date:** 2026-02-25
-**Status:** In Progress
+**Status:** Done (v1.1.0)
 
 ## Goal
 
@@ -69,11 +69,19 @@ docs/plans/
 ## Steps
 
 1. **Write plan** (this file) ✅
-2. **Implement `src/features/papers/cli.ts`** using CommandBuilder pattern
-3. **Write tests** in `src/features/papers/cli.test.ts`
-4. **Create agent skill** in `.agent/skills/fetch-ai-papers/SKILL.md`
-5. **Dogfood** – run real commands, check help, test JSON output
-6. **Linter check** – `bun run check:changed`
+2. **Implement `src/features/papers/cli.ts`** using CommandBuilder pattern ✅
+3. **Write tests** in `src/features/papers/cli.test.ts` ✅ (20 tests)
+4. **Create agent skill** in `.agent/skills/fetch-ai-papers/SKILL.md` ✅
+5. **Dogfood** – run real commands, check help, test JSON output ✅
+6. **Linter check** – `bun run check:changed` ✅
+7. **Apply review (v1.1.0)** via TDD red→green cycle ✅
+   - Renamed `--topic` → `--category`
+   - Retry (2 attempts, 300ms/800ms backoff) + 10s timeout
+   - User-Agent header (arXiv etiquette)
+   - XML entity decoding
+   - URL normalization (https + strip version)
+   - `--no-abstract` and `--start` flags
+   - JSON error contract in `--json` mode
 
 ## arXiv API Reference
 
