@@ -14,7 +14,9 @@ import {
 	assertDistinctRalphReviewerIdentity,
 	createDefaultRalphState,
 	loadRalphState,
+	markRalphStoryApproved,
 	type RalphState,
+	recordRalphPeerReview,
 	releaseRalphStateLock,
 	saveRalphState,
 	transitionRalphStoryState,
@@ -105,6 +107,39 @@ export interface RalphStepAdapters {
 		root: string,
 		entry: RalphProgressEntry,
 	) => Promise<RalphProgressEntry>;
+}
+
+export interface RalphReviewInvocation {
+	root: string;
+	story: RalphStory;
+	provider: string | null;
+	model: string | null;
+	temperature: number;
+	timeoutMs: number | null;
+}
+
+export interface RalphReviewLoopAdapters {
+	setGoal: (goal: string, cwd: string) => Promise<void>;
+	runWorker: (
+		input: RalphWorkerInvocation,
+	) => Promise<{ ok: boolean; finalAnswer?: string }>;
+	runReview: (input: RalphReviewInvocation) => Promise<{
+		ok: boolean;
+		findings: Array<{ severity: string; message: string }>;
+		summary?: string;
+	}>;
+	appendProgress: (
+		root: string,
+		entry: RalphProgressEntry,
+	) => Promise<RalphProgressEntry>;
+}
+
+export interface RalphReviewLoopResult {
+	ok: boolean;
+	storyId: string;
+	state: RalphStory["state"];
+	rounds: number;
+	reason?: string;
 }
 
 const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
@@ -204,6 +239,43 @@ const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
 			ok: boolean;
 		};
 		return { ok: parsed.ok, reason: parsed.ok ? undefined : "CI failed" };
+	},
+	appendProgress: appendRalphProgressEntry,
+};
+
+const DEFAULT_RALPH_REVIEW_LOOP_ADAPTERS: RalphReviewLoopAdapters = {
+	setGoal,
+	runWorker: DEFAULT_RALPH_STEP_ADAPTERS.runWorker,
+	runReview: async (input) => {
+		const args = ["run", "index.ts", "review", "--json"];
+		const result = await execa(process.execPath, args, {
+			cwd: input.root,
+			reject: false,
+			timeout: input.timeoutMs ?? undefined,
+			env: {
+				...process.env,
+				NOOA_DISABLE_REFLECTION: "1",
+				NOOA_AI_PROVIDER: input.provider ?? process.env.NOOA_AI_PROVIDER,
+				NOOA_AI_MODEL: input.model ?? process.env.NOOA_AI_MODEL,
+			},
+		});
+
+		if (result.exitCode !== 0) {
+			throw new Error(
+				result.stderr || result.stdout || "Review execution failed",
+			);
+		}
+
+		const parsed = JSON.parse(result.stdout) as {
+			ok?: boolean;
+			findings?: Array<{ severity: string; message: string }>;
+			summary?: string;
+		};
+		return {
+			ok: Boolean(parsed.ok),
+			findings: parsed.findings ?? [],
+			summary: parsed.summary,
+		};
 	},
 	appendProgress: appendRalphProgressEntry,
 };
@@ -377,6 +449,218 @@ ${story.description}
 
 Acceptance criteria:
 ${story.acceptanceCriteria.map((item) => `- ${item}`).join("\n")}`;
+}
+
+function buildRalphCorrectionGoal(
+	story: RalphStory,
+	findings: Array<{ severity: string; message: string }>,
+): string {
+	return `Revise story ${story.id}: ${story.title}
+
+Address the reviewer findings:
+${findings.map((finding) => `- [${finding.severity}] ${finding.message}`).join("\n")}`;
+}
+
+function getNextReviewState(state: RalphStory["state"]): RalphStory["state"] {
+	if (state === "peer_fix_1") {
+		return "peer_review_2";
+	}
+	if (state === "peer_fix_2") {
+		return "peer_review_3";
+	}
+	throw new Error(`Story is not ready for another review round from ${state}`);
+}
+
+export async function executeRalphReviewLoop(
+	input?: {
+		root?: string;
+		storyId?: string;
+	},
+	adapters: RalphReviewLoopAdapters = DEFAULT_RALPH_REVIEW_LOOP_ADAPTERS,
+): Promise<RalphReviewLoopResult> {
+	const root = input?.root ?? process.cwd();
+	const state = await loadRalphState(root);
+	if (!state) {
+		throw new Error("No active Ralph run in this workspace");
+	}
+
+	assertDistinctRalphReviewerIdentity(state, { strict: true });
+
+	const prd = await loadRalphPrd(root);
+	const storyId = input?.storyId ?? state.currentStoryId;
+	if (!storyId) {
+		throw new Error("No active Ralph story available for review");
+	}
+
+	const storyIndex = prd.userStories.findIndex((story) => story.id === storyId);
+	if (storyIndex === -1) {
+		throw new Error(`Unable to locate story ${storyId} in PRD`);
+	}
+
+	let activeStory = prd.userStories[storyIndex];
+	if (
+		activeStory.state !== "peer_review_1" &&
+		activeStory.state !== "peer_review_2" &&
+		activeStory.state !== "peer_review_3"
+	) {
+		throw new Error(`Story ${storyId} is not awaiting peer review`);
+	}
+
+	await acquireRalphStateLock(root, `ralph-review:${process.pid}`);
+
+	try {
+		while (
+			activeStory.state === "peer_review_1" ||
+			activeStory.state === "peer_review_2" ||
+			activeStory.state === "peer_review_3"
+		) {
+			let reviewResult: Awaited<
+				ReturnType<RalphReviewLoopAdapters["runReview"]>
+			>;
+			try {
+				reviewResult = await adapters.runReview({
+					root,
+					story: activeStory,
+					provider: state.reviewer.provider,
+					model: state.reviewer.model,
+					temperature: state.reviewer.temperature,
+					timeoutMs: state.timeouts.reviewerMs,
+				});
+			} catch (error) {
+				state.status = "blocked";
+				await saveRalphState(root, state);
+				const message = error instanceof Error ? error.message : String(error);
+				await adapters.appendProgress(root, {
+					runId: state.runId,
+					storyId: activeStory.id,
+					iteration: activeStory.review?.rounds ?? 0,
+					status: "failed",
+					notes: [message],
+				});
+				return {
+					ok: false,
+					storyId: activeStory.id,
+					state: activeStory.state ?? "peer_review_1",
+					rounds: activeStory.review?.rounds ?? 0,
+					reason: message,
+				};
+			}
+
+			if (reviewResult.ok && reviewResult.findings.length === 0) {
+				activeStory = markRalphStoryApproved(activeStory, {
+					reviewer: {
+						provider: state.reviewer.provider,
+						model: state.reviewer.model,
+						temperature: state.reviewer.temperature,
+					},
+					notes: reviewResult.summary ? [reviewResult.summary] : [],
+				});
+				prd.userStories[storyIndex] = activeStory;
+				await saveRalphPrd(root, prd);
+				await adapters.appendProgress(root, {
+					runId: state.runId,
+					storyId: activeStory.id,
+					iteration: activeStory.review?.rounds ?? 1,
+					status: "approved",
+					reviewRounds: activeStory.review?.rounds,
+					reviewers: [state.reviewer.model ?? "reviewer"],
+					notes: reviewResult.summary ? [reviewResult.summary] : undefined,
+				});
+				return {
+					ok: true,
+					storyId: activeStory.id,
+					state: activeStory.state ?? "approved",
+					rounds: activeStory.review?.rounds ?? 1,
+				};
+			}
+
+			activeStory = recordRalphPeerReview(activeStory, {
+				reviewer: {
+					provider: state.reviewer.provider,
+					model: state.reviewer.model,
+					temperature: state.reviewer.temperature,
+				},
+				approved: false,
+				notes: reviewResult.findings.map((finding) => finding.message),
+			});
+			prd.userStories[storyIndex] = activeStory;
+			await saveRalphPrd(root, prd);
+
+			await adapters.appendProgress(root, {
+				runId: state.runId,
+				storyId: activeStory.id,
+				iteration: activeStory.review?.rounds ?? 1,
+				status: activeStory.state === "blocked" ? "blocked" : "reviewing",
+				reviewRounds: activeStory.review?.rounds,
+				reviewers: [state.reviewer.model ?? "reviewer"],
+				notes: reviewResult.findings.map((finding) => finding.message),
+			});
+
+			if (activeStory.state === "blocked") {
+				state.status = "blocked";
+				await saveRalphState(root, state);
+				return {
+					ok: false,
+					storyId: activeStory.id,
+					state: "blocked",
+					rounds: activeStory.review?.rounds ?? 3,
+					reason:
+						reviewResult.summary ??
+						"Reviewer rejected the story after 3 rounds",
+				};
+			}
+
+			const correctionGoal = buildRalphCorrectionGoal(
+				activeStory,
+				reviewResult.findings,
+			);
+			await adapters.setGoal(correctionGoal, root);
+			try {
+				await adapters.runWorker({
+					root,
+					goal: correctionGoal,
+					story: activeStory,
+					provider: state.worker.provider,
+					model: state.worker.model,
+					turns: 8,
+					headless: true,
+					timeoutMs: state.timeouts.workerMs,
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				activeStory = { ...activeStory, state: "failed" };
+				prd.userStories[storyIndex] = activeStory;
+				state.status = "blocked";
+				await saveRalphPrd(root, prd);
+				await saveRalphState(root, state);
+				await adapters.appendProgress(root, {
+					runId: state.runId,
+					storyId: activeStory.id,
+					iteration: activeStory.review?.rounds ?? 1,
+					status: "failed",
+					notes: [message],
+				});
+				return {
+					ok: false,
+					storyId: activeStory.id,
+					state: "failed",
+					rounds: activeStory.review?.rounds ?? 1,
+					reason: message,
+				};
+			}
+
+			activeStory = transitionRalphStoryState(
+				activeStory,
+				getNextReviewState(activeStory.state),
+			);
+			prd.userStories[storyIndex] = activeStory;
+			await saveRalphPrd(root, prd);
+		}
+
+		throw new Error(`Unexpected review loop termination for story ${storyId}`);
+	} finally {
+		await releaseRalphStateLock(root);
+	}
 }
 
 export async function executeRalphStep(
