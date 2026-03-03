@@ -1,17 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { RalphStoryState } from "./state";
+import type { RalphStoryRecord } from "./state";
 
-export interface RalphStory {
-	id: string;
-	title: string;
-	description: string;
-	acceptanceCriteria: string[];
-	priority: number;
-	passes: boolean;
-	notes: string;
-	state?: RalphStoryState;
-}
+export type RalphStory = RalphStoryRecord;
 
 export interface RalphPrd {
 	project: string;

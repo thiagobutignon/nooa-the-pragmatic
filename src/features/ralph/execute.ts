@@ -8,6 +8,7 @@ import {
 	saveRalphPrd,
 } from "./prd";
 import {
+	assertDistinctRalphReviewerIdentity,
 	createDefaultRalphState,
 	loadRalphState,
 	type RalphState,
@@ -27,6 +28,7 @@ export interface RalphInitInput {
 	reviewerModel?: string;
 	workerTimeoutMs?: number;
 	reviewerTimeoutMs?: number;
+	strictReviewerIdentity?: boolean;
 }
 
 export interface RalphInitResult {
@@ -132,6 +134,9 @@ export async function initializeRalphRun(
 		reviewerModel: input.reviewerModel,
 		workerTimeoutMs: input.workerTimeoutMs,
 		reviewerTimeoutMs: input.reviewerTimeoutMs,
+	});
+	assertDistinctRalphReviewerIdentity(state, {
+		strict: input.strictReviewerIdentity ?? false,
 	});
 
 	await releaseRalphStateLock(root);

@@ -97,4 +97,24 @@ describe("ralph execute", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it("rejects init when strict reviewer identity resolves to the same model", async () => {
+		const root = await createTempRepo(".nooa/ralph/\n");
+		try {
+			await expect(
+				initializeRalphRun({
+					root,
+					runId: "ralph-strict",
+					branchName: "feature/strict",
+					workerProvider: "openai",
+					workerModel: "gpt-5-codex",
+					reviewerProvider: "openai",
+					reviewerModel: "gpt-5-codex",
+					strictReviewerIdentity: true,
+				}),
+			).rejects.toThrow("different provider/model identities in strict mode");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });
