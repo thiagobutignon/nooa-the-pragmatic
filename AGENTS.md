@@ -106,6 +106,12 @@ Reactions are lightweight social signals. Humans use them constantly — they sa
 
 Skills provide your tools. When you need one, check its `SKILL.md`. Keep local notes (camera names, SSH details, voice preferences) in `TOOLS.md`.
 
+**🏠 Local Skills Win In This Repo:**
+- In this repository, `.agent/skills/` is the source of truth.
+- Prefer project-local skills over global or personal skill directories whenever both cover the same intent.
+- Treat global skills as fallback only when no local equivalent exists.
+- Why: local skills encode the actual commands, guardrails, architecture, and lessons learned of this codebase.
+
 **🧬 Self-Evolving Modules (REQUIRED):**
 When creating logic, refactoring commands, or adding features, you **MUST** use the `self-evolving-modules` skill.
 - **Why?** It ensures your work is visible to future agents (via generated tool definitions) and humans (via generated help).
