@@ -23,6 +23,14 @@ This is not negotiable. This is not optional. You cannot rationalize your way ou
 
 **Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
 
+## Repository Bootstrap Rule
+
+When operating inside this repository on development work, read:
+
+- `docs/reference/ai-assisted-development-workflow.md`
+
+Do this during bootstrap, before implementation. Treat it as the canonical local workflow reference that explains how the repo expects planning, worktrees, TDD, direct execution, verification, and review to fit together.
+
 ```dot
 digraph skill_flow {
     "User message received" [shape=doublecircle];
