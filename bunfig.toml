@@ -1,4 +1,3 @@
 [test]
 coverage = true
-[test]
 coverageThreshold = 0.7
