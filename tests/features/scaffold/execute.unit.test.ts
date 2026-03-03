@@ -1,70 +1,94 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test";
-import { executeScaffold } from "../../../src/features/scaffold/execute";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { ScaffoldEngine } from "../../../src/features/scaffold/engine";
+import { executeScaffold } from "../../../src/features/scaffold/execute";
 
 describe("executeScaffold", () => {
-    let mockEngine: any;
+	let mockEngine: Pick<
+		ScaffoldEngine,
+		"validateName" | "renderTemplate" | "write"
+	>;
 
-    beforeEach(() => {
-        mockEngine = {
-            validateName: mock(() => { }),
-            renderTemplate: mock(async () => "mock content"),
-            write: mock(async () => { }),
-        };
-    });
+	beforeEach(() => {
+		mockEngine = {
+			validateName: mock(() => {}),
+			renderTemplate: mock(async () => "mock content"),
+			write: mock(async () => {}),
+		};
+	});
 
-    it("should execute command scaffold", async () => {
-        const result = await executeScaffold({
-            type: "command",
-            name: "my-feature",
-        }, undefined, mockEngine);
+	it("should execute command scaffold", async () => {
+		const result = await executeScaffold(
+			{
+				type: "command",
+				name: "my-feature",
+			},
+			undefined,
+			mockEngine,
+		);
 
-        expect(mockEngine.validateName).toHaveBeenCalledWith("my-feature");
-        expect(mockEngine.renderTemplate).toHaveBeenCalled();
-        expect(mockEngine.write).toHaveBeenCalled();
-        expect(result.results.length).toBeGreaterThan(0);
-        expect(result.traceId).toBeDefined();
-    });
+		expect(mockEngine.validateName).toHaveBeenCalledWith("my-feature");
+		expect(mockEngine.renderTemplate).toHaveBeenCalled();
+		expect(mockEngine.write).toHaveBeenCalled();
+		expect(result.results.length).toBeGreaterThan(0);
+		expect(result.traceId).toBeDefined();
+	});
 
-    it("should execute prompt scaffold", async () => {
-        const result = await executeScaffold({
-            type: "prompt",
-            name: "my-prompt",
-        }, undefined, mockEngine);
+	it("should execute prompt scaffold", async () => {
+		const result = await executeScaffold(
+			{
+				type: "prompt",
+				name: "my-prompt",
+			},
+			undefined,
+			mockEngine,
+		);
 
-        expect(mockEngine.validateName).toHaveBeenCalledWith("my-prompt");
-        expect(mockEngine.write).toHaveBeenCalledTimes(1);
-        expect(result.results[0]).toContain("my-prompt.md");
-    });
+		expect(mockEngine.validateName).toHaveBeenCalledWith("my-prompt");
+		expect(mockEngine.write).toHaveBeenCalledTimes(1);
+		expect(result.results[0]).toContain("my-prompt.md");
+	});
 
-    it("should handle dry run", async () => {
-        const result = await executeScaffold({
-            type: "command",
-            name: "dry-run-test",
-            dryRun: true
-        }, undefined, mockEngine);
+	it("should handle dry run", async () => {
+		await executeScaffold(
+			{
+				type: "command",
+				name: "dry-run-test",
+				dryRun: true,
+			},
+			undefined,
+			mockEngine,
+		);
 
-        expect(mockEngine.write).toHaveBeenCalled();
-        const writeCall = mockEngine.write.mock.calls[0];
-        expect(writeCall[2]).toEqual({ force: undefined, dryRun: true });
-    });
+		expect(mockEngine.write).toHaveBeenCalled();
+		const writeCall = mockEngine.write.mock.calls[0];
+		expect(writeCall[2]).toEqual({ force: undefined, dryRun: true });
+	});
 
-    it("should handle withDocs option", async () => {
-        await executeScaffold({
-            type: "command",
-            name: "doc-test",
-            withDocs: true
-        }, undefined, mockEngine);
+	it("should handle withDocs option", async () => {
+		await executeScaffold(
+			{
+				type: "command",
+				name: "doc-test",
+				withDocs: true,
+			},
+			undefined,
+			mockEngine,
+		);
 
-        expect(mockEngine.write).toHaveBeenCalledTimes(3);
-    });
+		expect(mockEngine.write).toHaveBeenCalledTimes(3);
+	});
 
-    it("should propagate errors from engine", async () => {
-        mockEngine.validateName.mockImplementationOnce(() => {
-            throw new Error("Invalid name");
-        });
+	it("should propagate errors from engine", async () => {
+		mockEngine.validateName.mockImplementationOnce(() => {
+			throw new Error("Invalid name");
+		});
 
-        expect(executeScaffold({ type: "command", name: "bad name" }, undefined, mockEngine))
-            .rejects.toThrow("Invalid name");
-    });
+		expect(
+			executeScaffold(
+				{ type: "command", name: "bad name" },
+				undefined,
+				mockEngine,
+			),
+		).rejects.toThrow("Invalid name");
+	});
 });

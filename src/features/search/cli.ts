@@ -149,6 +149,17 @@ export interface SearchRunResult {
 	max_results: number;
 }
 
+type SearchParseContext = {
+	values: Record<string, unknown>;
+	positionals: string[];
+};
+
+type SearchCliValues = {
+	"files-only"?: boolean;
+	count?: boolean;
+	json?: boolean;
+};
+
 export async function run(
 	input: SearchRunInput,
 ): Promise<SdkResult<SearchRunResult>> {
@@ -216,7 +227,10 @@ export async function run(
 }
 
 // Exported for testing
-export async function parseSearchInput({ values, positionals }: any): Promise<SearchRunInput> {
+export async function parseSearchInput({
+	values,
+	positionals,
+}: SearchParseContext): Promise<SearchRunInput> {
 	return {
 		query: positionals[1],
 		root: positionals[2] ?? ".",
@@ -237,16 +251,19 @@ export async function parseSearchInput({ values, positionals }: any): Promise<Se
 }
 
 // Exported for testing
-export function handleSearchSuccess(output: any, values: any) {
+export function handleSearchSuccess(
+	output: SearchRunResult,
+	values: SearchCliValues,
+) {
 	if (values["files-only"]) {
-		const files = Array.from(new Set(output.results.map((r: any) => r.path)));
+		const files = Array.from(new Set(output.results.map((r) => r.path)));
 		process.stdout.write(`${files.join("\n")}${files.length ? "\n" : ""}`);
 		console.error(`Found ${files.length} files`);
 		return;
 	}
 
 	if (values.count) {
-		const lines = output.results.map((r: any) => `${r.path}:${r.matchCount ?? 0}`);
+		const lines = output.results.map((r) => `${r.path}:${r.matchCount ?? 0}`);
 		process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
 		console.error(`Found ${lines.length} files with matches`);
 		return;
@@ -259,7 +276,7 @@ export function handleSearchSuccess(output: any, values: any) {
 	}
 
 	const lines = output.results.map(
-		(r: any) => `${r.path}:${r.line}:${r.column}:${r.snippet}`,
+		(r) => `${r.path}:${r.line}:${r.column}:${r.snippet}`,
 	);
 	process.stdout.write(`${lines.join("\n")}${lines.length ? "\n" : ""}`);
 	console.error(`Found ${output.results.length} matches`);

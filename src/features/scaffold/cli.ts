@@ -137,6 +137,16 @@ export interface ScaffoldRunResult {
 	dryRun: boolean;
 }
 
+type ScaffoldParseContext = {
+	positionals: string[];
+	values: Record<string, unknown>;
+};
+
+type ScaffoldCliValues = {
+	json?: boolean;
+	out?: string;
+};
+
 function isValidationMessage(message: string) {
 	return (
 		message.includes("Invalid name") ||
@@ -223,7 +233,10 @@ export async function run(
 }
 
 // Exported for testing
-export async function parseScaffoldInput({ positionals, values }: any) {
+export async function parseScaffoldInput({
+	positionals,
+	values,
+}: ScaffoldParseContext): Promise<ScaffoldRunInput> {
 	return {
 		type: positionals[1] as ScaffoldKind | undefined,
 		name: positionals[2],
@@ -236,7 +249,10 @@ export async function parseScaffoldInput({ positionals, values }: any) {
 }
 
 // Exported for testing
-export async function handleScaffoldSuccess(output: any, values: any) {
+export async function handleScaffoldSuccess(
+	output: ScaffoldRunResult,
+	values: ScaffoldCliValues,
+) {
 	const jsonMode = Boolean(values.json);
 	if (jsonMode) {
 		const payload = {
@@ -263,7 +279,7 @@ export async function handleScaffoldSuccess(output: any, values: any) {
 		console.log("[DRY RUN CALLBACK] No files were actually written.");
 	}
 	console.log(`Created ${output.kind}: ${output.name}`);
-	output.files.forEach((file: any) => {
+	output.files.forEach((file) => {
 		console.log(`  - ${file}`);
 	});
 
@@ -281,7 +297,10 @@ export async function handleScaffoldSuccess(output: any, values: any) {
 }
 
 // Exported for testing
-export async function handleScaffoldFailure(error: any, input: any) {
+export async function handleScaffoldFailure(
+	error: ReturnType<typeof sdkError>,
+	input: ScaffoldCliValues,
+) {
 	if (input.json) {
 		const payload = {
 			schemaVersion: "1.0",

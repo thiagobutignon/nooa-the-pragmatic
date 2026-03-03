@@ -3,7 +3,11 @@ import { handleCommandError } from "../../core/cli-output";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { EventBus } from "../../core/event-bus";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
-import { runWorkflow, type WorkflowRunInput, type WorkflowRunResult } from "./execute";
+import {
+	runWorkflow,
+	type WorkflowRunInput,
+	type WorkflowRunResult,
+} from "./execute";
 
 export const workflowMeta: AgentDocMeta = {
 	name: "workflow",
@@ -82,13 +86,26 @@ export interface WorkflowRunCliInput {
 	traceId?: string;
 }
 
+type WorkflowParseContext = {
+	positionals: string[];
+	values: Record<string, unknown>;
+	bus?: EventBus;
+	traceId?: string;
+};
+
+type WorkflowCliValues = {
+	json?: boolean;
+};
+
 // Type for the runner function
-type WorkflowRunner = (input: WorkflowRunInput) => Promise<SdkResult<WorkflowRunResult>>;
+type WorkflowRunner = (
+	input: WorkflowRunInput,
+) => Promise<SdkResult<WorkflowRunResult>>;
 
 export async function run(
 	input: WorkflowRunCliInput,
 	// Injection for testing
-	runner: WorkflowRunner = runWorkflow
+	runner: WorkflowRunner = runWorkflow,
 ): Promise<SdkResult<WorkflowRunResult>> {
 	if (input.action !== "run") {
 		return {
@@ -110,7 +127,12 @@ export async function run(
 }
 
 // Exported for testing
-export async function parseWorkflowInput({ positionals, values, bus, traceId }: any): Promise<WorkflowRunCliInput> {
+export async function parseWorkflowInput({
+	positionals,
+	values,
+	bus,
+	traceId,
+}: WorkflowParseContext): Promise<WorkflowRunCliInput> {
 	const action = positionals[1] === "run" ? "run" : undefined;
 	return {
 		action,
@@ -123,7 +145,10 @@ export async function parseWorkflowInput({ positionals, values, bus, traceId }: 
 }
 
 // Exported for testing
-export function handleWorkflowSuccess(output: any, values: any) {
+export function handleWorkflowSuccess(
+	output: WorkflowRunResult,
+	values: WorkflowCliValues,
+) {
 	if (values.json) {
 		console.log(JSON.stringify(output));
 		return;

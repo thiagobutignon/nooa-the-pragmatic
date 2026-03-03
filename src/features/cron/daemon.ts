@@ -43,9 +43,7 @@ export class CronDaemon {
 		this.heartbeatEnabled =
 			options.heartbeatEnabled ?? process.env.NOOA_HEARTBEAT_ENABLED !== "0";
 		this.heartbeatSchedule =
-			options.heartbeatSchedule ??
-			process.env.NOOA_HEARTBEAT_SCHEDULE ??
-			"30m";
+			options.heartbeatSchedule ?? process.env.NOOA_HEARTBEAT_SCHEDULE ?? "30m";
 		this.pollIntervalMs = options.pollIntervalMs ?? this.readPollInterval();
 		this.executeCommand = options.executeCommand ?? this.executeViaShell;
 	}

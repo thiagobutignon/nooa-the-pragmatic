@@ -23,9 +23,9 @@ export async function executeScaffold(
 	const results: string[] = [];
 	const root = process.cwd();
 
-	const engine = engineOverride ?? new ScaffoldEngine(
-		join(root, "src/features/scaffold/templates"),
-	);
+	const engine =
+		engineOverride ??
+		new ScaffoldEngine(join(root, "src/features/scaffold/templates"));
 
 	// 1. Validation
 	engine.validateName(options.name);

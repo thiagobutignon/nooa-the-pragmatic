@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CronService } from "./service";
 import { CronDaemon } from "./daemon";
+import { CronService } from "./service";
 
 describe("CronDaemon", () => {
 	let dir: string;
@@ -130,7 +130,9 @@ describe("CronDaemon", () => {
 		const before = await daemon.status();
 		expect(before.running).toBe(false);
 
-		const entrypoint = fileURLToPath(new URL("../../../index.ts", import.meta.url));
+		const entrypoint = fileURLToPath(
+			new URL("../../../index.ts", import.meta.url),
+		);
 		const started = await daemon.startDetached(entrypoint);
 		expect(started.running).toBe(true);
 		expect(started.pid).toBeGreaterThan(0);
@@ -158,5 +160,4 @@ describe("CronDaemon", () => {
 		expect(service.removeJob("toggle-me")).toBe(true);
 		expect(service.getJob("toggle-me")).toBeNull();
 	});
-
 });

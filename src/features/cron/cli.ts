@@ -225,7 +225,10 @@ export async function run(
 			if (!entrypoint) {
 				return {
 					ok: false,
-					error: sdkError("cron.runtime_error", "Could not resolve entrypoint."),
+					error: sdkError(
+						"cron.runtime_error",
+						"Could not resolve entrypoint.",
+					),
 				};
 			}
 			switch (daemonAction) {
@@ -280,7 +283,9 @@ export async function run(
 
 		switch (action) {
 			case "daemon-run": {
-				const daemon = new CronDaemon(cronService, { workspace: process.cwd() });
+				const daemon = new CronDaemon(cronService, {
+					workspace: process.cwd(),
+				});
 				await daemon.runLoop();
 				return {
 					ok: true,

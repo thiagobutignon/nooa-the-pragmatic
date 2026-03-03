@@ -1,4 +1,4 @@
-import { type ExecaChildProcess, execa as defaultExeca } from "execa";
+import { execa as defaultExeca, type ExecaChildProcess } from "execa";
 import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { telemetry } from "../../core/telemetry";
@@ -18,12 +18,21 @@ export interface DoctorResult {
 	duration_ms: number;
 }
 
-// Define specific type for execa to match what we use
+type ExecaResult = {
+	exitCode: number;
+	stdout: string;
+};
+
+type ExecaOptions = {
+	reject?: boolean;
+	timeout?: number;
+};
+
 type ExecaType = (
 	file: string,
 	args?: readonly string[],
-	options?: any,
-) => ExecaChildProcess<string> | Promise<any>;
+	options?: ExecaOptions,
+) => ExecaChildProcess<string> | Promise<ExecaResult>;
 
 async function checkTool(
 	cmd: string,
@@ -49,7 +58,7 @@ async function checkTool(
 
 export async function executeDoctorCheck(
 	bus?: EventBus,
-	executor: ExecaType = defaultExeca as any,
+	executor: ExecaType = defaultExeca as ExecaType,
 ): Promise<DoctorResult> {
 	const traceId = createTraceId();
 	const startTime = Date.now();

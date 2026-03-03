@@ -1,4 +1,4 @@
-import { EventBus } from "../../core/event-bus";
+import type { EventBus } from "../../core/event-bus";
 import { createTraceId } from "../../core/logger";
 import { type SdkResult, sdkError } from "../../core/types";
 import { WorkflowEngine } from "../../core/workflow/engine";
@@ -72,7 +72,7 @@ export async function runWorkflow(
 					return g.check(c);
 				},
 			},
-			action: async () => { }, // No-op action for verification-only workflow
+			action: async () => {}, // No-op action for verification-only workflow
 		});
 	}
 
