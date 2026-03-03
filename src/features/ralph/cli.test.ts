@@ -45,6 +45,7 @@ describe("nooa ralph", () => {
 		expect(res.stdout).toContain("init");
 		expect(res.stdout).toContain("status");
 		expect(res.stdout).toContain("select-story");
+		expect(res.stdout).toContain("step");
 	});
 
 	it("initializes ralph state from the CLI", async () => {

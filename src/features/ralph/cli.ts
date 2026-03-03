@@ -4,6 +4,7 @@ import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
+	executeRalphStep,
 	getRalphStatus,
 	importRalphPrdFile,
 	initializeRalphRun,
@@ -11,6 +12,7 @@ import {
 	type RalphInitResult,
 	type RalphSelectStoryResult,
 	type RalphStatusResult,
+	type RalphStepResult,
 	selectNextRalphStory,
 } from "./execute";
 
@@ -19,6 +21,7 @@ export type RalphAction =
 	| "status"
 	| "import-prd"
 	| "select-story"
+	| "step"
 	| "help";
 
 export interface RalphRunInput {
@@ -32,6 +35,7 @@ export type RalphRunResult =
 	| RalphStatusResult
 	| RalphImportPrdResult
 	| RalphSelectStoryResult
+	| RalphStepResult
 	| { mode: "help"; raw: string };
 
 export const ralphMeta: AgentDocMeta = {
@@ -50,6 +54,7 @@ Subcommands:
   status               Show current Ralph run status.
   import-prd <path>    Import a Ralph-compatible prd.json into .nooa/ralph/.
   select-story         Select the next pending story from the active PRD.
+  step                 Execute one story and stop at peer review.
 
 Flags:
   --json               Output results as JSON.
@@ -60,6 +65,7 @@ Examples:
   nooa ralph status --json
   nooa ralph import-prd ./prd.json
   nooa ralph select-story --json
+  nooa ralph step --json
 
 Exit Codes:
   0: Success
@@ -99,6 +105,8 @@ export const ralphOutputFields = [
 	{ name: "storyCounts", type: "string" },
 	{ name: "path", type: "string" },
 	{ name: "story", type: "string" },
+	{ name: "ok", type: "boolean" },
+	{ name: "reason", type: "string" },
 ];
 
 export const ralphErrors = [
@@ -179,6 +187,8 @@ export async function run(
 				};
 			case "select-story":
 				return { ok: true, data: await selectNextRalphStory() };
+			case "step":
+				return { ok: true, data: await executeRalphStep() };
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -256,6 +266,18 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 
 		if (output.mode === "import-prd") {
 			console.log(`Imported PRD from ${output.path}`);
+			return;
+		}
+
+		if (output.mode === "step") {
+			if (!output.ok) {
+				console.log(output.reason ?? "Ralph step failed.");
+				process.exitCode = 1;
+				return;
+			}
+			console.log(
+				`Executed story ${output.storyId}; state is now ${output.state}.`,
+			);
 			return;
 		}
 
