@@ -9,7 +9,11 @@ import {
 	type RalphStory,
 	saveRalphPrd,
 } from "./prd";
-import { appendRalphProgressEntry, type RalphProgressEntry } from "./progress";
+import {
+	appendRalphProgressEntry,
+	loadRalphProgressEntries,
+	type RalphProgressEntry,
+} from "./progress";
 import {
 	acquireRalphStateLock,
 	assertDistinctRalphReviewerIdentity,
@@ -150,6 +154,28 @@ export interface RalphRunLoopResult {
 	completedStories: number;
 	blockedStories: number;
 	reason?: string;
+}
+
+export interface RalphReviewStoryResult {
+	mode: "review";
+	ok: boolean;
+	storyId: string;
+	state: RalphStory["state"];
+	rounds: number;
+	reason?: string;
+}
+
+export interface RalphApproveStoryResult {
+	mode: "approve";
+	ok: boolean;
+	storyId: string;
+	state: RalphStory["state"];
+}
+
+export interface RalphPromoteLearningResult {
+	mode: "promote-learning";
+	storyId: string;
+	candidates: ReturnType<typeof buildRalphLearningCandidate>[];
 }
 
 export interface RalphRunLoopAdapters {
@@ -730,6 +756,113 @@ export async function executeRalphReviewLoop(
 	} finally {
 		await releaseRalphStateLock(root);
 	}
+}
+
+export async function executeRalphReviewStory(
+	input?: {
+		root?: string;
+		storyId?: string;
+	},
+	adapters: RalphReviewLoopAdapters = DEFAULT_RALPH_REVIEW_LOOP_ADAPTERS,
+): Promise<RalphReviewStoryResult> {
+	const result = await executeRalphReviewLoop(input, adapters);
+	return {
+		mode: "review",
+		...result,
+	};
+}
+
+export async function executeRalphApproveStory(input?: {
+	root?: string;
+	storyId?: string;
+	notes?: string[];
+}): Promise<RalphApproveStoryResult> {
+	const root = input?.root ?? process.cwd();
+	const state = await loadRalphState(root);
+	if (!state) {
+		throw new Error("No active Ralph run in this workspace");
+	}
+
+	const prd = await loadRalphPrd(root);
+	const storyId = input?.storyId ?? state.currentStoryId;
+	if (!storyId) {
+		throw new Error("No active Ralph story available for approval");
+	}
+
+	const storyIndex = prd.userStories.findIndex((story) => story.id === storyId);
+	if (storyIndex === -1) {
+		throw new Error(`Unable to locate story ${storyId} in PRD`);
+	}
+
+	await acquireRalphStateLock(root, `ralph-approve:${process.pid}`);
+	try {
+		const story = prd.userStories[storyIndex];
+		if (!story) {
+			throw new Error(`Unable to locate story ${storyId} in PRD`);
+		}
+		if (
+			story.state !== "peer_review_1" &&
+			story.state !== "peer_review_2" &&
+			story.state !== "peer_review_3"
+		) {
+			throw new Error(`Story ${storyId} is not awaiting peer review`);
+		}
+
+		const approvedStory = markRalphStoryApproved(story, {
+			reviewer: {
+				provider: state.reviewer.provider,
+				model: state.reviewer.model,
+				temperature: state.reviewer.temperature,
+			},
+			notes: input?.notes,
+		});
+		prd.userStories[storyIndex] = approvedStory;
+		await saveRalphPrd(root, prd);
+		await appendRalphProgressEntry(root, {
+			runId: state.runId,
+			storyId: approvedStory.id,
+			iteration: approvedStory.review?.rounds ?? 1,
+			status: "approved",
+			reviewRounds: approvedStory.review?.rounds,
+			reviewers: [state.reviewer.model ?? "reviewer"],
+			notes: input?.notes,
+		});
+
+		return {
+			mode: "approve",
+			ok: true,
+			storyId: approvedStory.id,
+			state: approvedStory.state ?? "approved",
+		};
+	} finally {
+		await releaseRalphStateLock(root);
+	}
+}
+
+export async function executeRalphPromoteLearning(input?: {
+	root?: string;
+	storyId?: string;
+}): Promise<RalphPromoteLearningResult> {
+	const root = input?.root ?? process.cwd();
+	const state = await loadRalphState(root);
+	if (!state) {
+		throw new Error("No active Ralph run in this workspace");
+	}
+
+	const storyId = input?.storyId ?? state.currentStoryId;
+	if (!storyId) {
+		throw new Error("No active Ralph story available for learning promotion");
+	}
+
+	const candidates = (await loadRalphProgressEntries(root))
+		.filter((entry) => entry.storyId === storyId)
+		.flatMap((entry) => entry.learnings ?? []);
+
+	return {
+		mode: "promote-learning",
+		storyId,
+		candidates,
+	};
 }
 
 export async function executeRalphRun(

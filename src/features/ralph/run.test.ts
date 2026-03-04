@@ -7,7 +7,7 @@ import {
 	initializeRalphRun,
 	type RalphRunLoopAdapters,
 } from "./execute";
-import { type RalphPrd, saveRalphPrd } from "./prd";
+import { getRalphPrdPath, type RalphPrd, saveRalphPrd } from "./prd";
 
 async function createTempRepo() {
 	const root = await mkdtemp(join(tmpdir(), "nooa-ralph-run-"));
@@ -54,6 +54,67 @@ describe("ralph run", () => {
 			expect(result.ok).toBe(false);
 			expect(result.iterations).toBe(0);
 			expect(result.reason).toContain("No active Ralph run");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("fails clearly when the run state exists but no PRD is loaded", async () => {
+		const root = await createTempRepo();
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-no-prd",
+				branchName: "feature/ralph-no-prd",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await rm(getRalphPrdPath(root), { force: true });
+
+			const result = await executeRalphRun({ root });
+			expect(result.ok).toBe(false);
+			expect(result.reason).toContain("No Ralph PRD loaded");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("returns success immediately when the backlog is already complete", async () => {
+		const root = await createTempRepo();
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-complete",
+				branchName: "feature/ralph-complete",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(
+				root,
+				createPrd([
+					{
+						id: "US-001",
+						title: "Done story",
+						description: "Done",
+						acceptanceCriteria: ["done"],
+						priority: 1,
+						passes: true,
+						notes: "",
+						state: "passed",
+					},
+				]),
+			);
+
+			const result = await executeRalphRun({ root, maxIterations: 3 });
+			expect(result.ok).toBe(true);
+			expect(result.iterations).toBe(0);
+			expect(result.completedStories).toBe(1);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

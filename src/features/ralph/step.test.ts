@@ -48,6 +48,46 @@ function createPrd(): RalphPrd {
 }
 
 describe("ralph step", () => {
+	test("returns a clear no-run result when Ralph is not initialized", async () => {
+		const root = await createTempRepo();
+
+		try {
+			const result = await executeRalphStep({ root });
+			expect(result.ok).toBe(false);
+			expect(result.storyId).toBeNull();
+			expect(result.reason).toContain("No active Ralph run");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("returns a clear result when no pending stories are available", async () => {
+		const root = await createTempRepo();
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-no-pending",
+				branchName: "feature/ralph-no-pending",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [],
+			});
+
+			const result = await executeRalphStep({ root });
+			expect(result.ok).toBe(false);
+			expect(result.storyId).toBeNull();
+			expect(result.reason).toContain("No pending Ralph stories");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("selects the highest-priority pending story, sets goal, runs worker, verifies, and moves to peer_review_1", async () => {
 		const root = await createTempRepo();
 		const calls: string[] = [];
@@ -158,6 +198,74 @@ describe("ralph step", () => {
 			expect(state?.status).toBe("blocked");
 			expect(activeStory?.state).toBe("failed");
 			expect(progress[0]?.status).toBe("failed");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("fails when workflow verification rejects the story", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-workflow-fail",
+				branchName: "feature/ralph-workflow-fail",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+
+			await expect(
+				executeRalphStep(
+					{ root },
+					{
+						setGoal: async () => {},
+						runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+						runWorkflow: async () => ({
+							ok: false,
+							reason: "workflow gates failed",
+						}),
+						runCi: async () => ({ ok: true }),
+						appendProgress: appendRalphProgressEntry,
+					},
+				),
+			).rejects.toThrow("workflow gates failed");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("fails when CI verification rejects the story", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-ci-fail",
+				branchName: "feature/ralph-ci-fail",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+
+			await expect(
+				executeRalphStep(
+					{ root },
+					{
+						setGoal: async () => {},
+						runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+						runWorkflow: async () => ({ ok: true }),
+						runCi: async () => ({
+							ok: false,
+							reason: "ci checks failed",
+						}),
+						appendProgress: appendRalphProgressEntry,
+					},
+				),
+			).rejects.toThrow("ci checks failed");
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

@@ -4,13 +4,19 @@ import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
+	executeRalphApproveStory,
+	executeRalphPromoteLearning,
+	executeRalphReviewStory,
 	executeRalphRun,
 	executeRalphStep,
 	getRalphStatus,
 	importRalphPrdFile,
 	initializeRalphRun,
+	type RalphApproveStoryResult,
 	type RalphImportPrdResult,
 	type RalphInitResult,
+	type RalphPromoteLearningResult,
+	type RalphReviewStoryResult,
 	type RalphRunLoopResult,
 	type RalphSelectStoryResult,
 	type RalphStatusResult,
@@ -24,12 +30,16 @@ export type RalphAction =
 	| "import-prd"
 	| "select-story"
 	| "step"
+	| "review"
+	| "approve"
+	| "promote-learning"
 	| "run"
 	| "help";
 
 export interface RalphRunInput {
 	action?: RalphAction;
 	path?: string;
+	storyId?: string;
 	json?: boolean;
 	maxIterations?: number;
 }
@@ -40,6 +50,9 @@ export type RalphRunResult =
 	| RalphImportPrdResult
 	| RalphSelectStoryResult
 	| RalphStepResult
+	| RalphReviewStoryResult
+	| RalphApproveStoryResult
+	| RalphPromoteLearningResult
 	| RalphRunLoopResult
 	| { mode: "help"; raw: string };
 
@@ -60,10 +73,14 @@ Subcommands:
   import-prd <path>    Import a Ralph-compatible prd.json into .nooa/ralph/.
   select-story         Select the next pending story from the active PRD.
   step                 Execute one story and stop at peer review.
+  review               Run peer review for a specific story.
+  approve              Mark a story as approved without another review round.
+  promote-learning     Show promotion candidates extracted for one story.
   run                  Execute repeated fresh Ralph steps.
 
 Flags:
   --json               Output results as JSON.
+  --story <id>         Target a specific story ID.
   --max-iterations <n> Maximum number of step iterations (default: 10).
   -h, --help           Show help message.
 
@@ -73,6 +90,9 @@ Examples:
   nooa ralph import-prd ./prd.json
   nooa ralph select-story --json
   nooa ralph step --json
+  nooa ralph review --story US-001 --json
+  nooa ralph approve --story US-001 --json
+  nooa ralph promote-learning --story US-001 --json
   nooa ralph run --max-iterations 1 --json
 
 Exit Codes:
@@ -103,6 +123,7 @@ export const ralphSchema = {
 	path: { type: "string", required: false },
 	json: { type: "boolean", required: false },
 	"max-iterations": { type: "number", required: false },
+	story: { type: "string", required: false },
 } satisfies SchemaSpec;
 
 export const ralphOutputFields = [
@@ -115,6 +136,10 @@ export const ralphOutputFields = [
 	{ name: "path", type: "string" },
 	{ name: "story", type: "string" },
 	{ name: "ok", type: "boolean" },
+	{ name: "storyId", type: "string" },
+	{ name: "state", type: "string" },
+	{ name: "rounds", type: "number" },
+	{ name: "candidates", type: "string" },
 	{ name: "reason", type: "string" },
 	{ name: "iterations", type: "number" },
 	{ name: "completedStories", type: "number" },
@@ -201,6 +226,21 @@ export async function run(
 				return { ok: true, data: await selectNextRalphStory() };
 			case "step":
 				return { ok: true, data: await executeRalphStep() };
+			case "review":
+				return {
+					ok: true,
+					data: await executeRalphReviewStory({ storyId: input.storyId }),
+				};
+			case "approve":
+				return {
+					ok: true,
+					data: await executeRalphApproveStory({ storyId: input.storyId }),
+				};
+			case "promote-learning":
+				return {
+					ok: true,
+					data: await executeRalphPromoteLearning({ storyId: input.storyId }),
+				};
 			case "run":
 				return {
 					ok: true,
@@ -238,6 +278,7 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 		options: {
 			...buildStandardOptions(),
 			"max-iterations": { type: "string" },
+			story: { type: "string" },
 		},
 	})
 	.parseInput(async ({ positionals, values }) => {
@@ -251,6 +292,7 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 		return {
 			action,
 			path: args[0],
+			storyId: typeof values.story === "string" ? values.story : undefined,
 			json: Boolean(values.json),
 			maxIterations: maxIterationsRaw
 				? Number.parseInt(maxIterationsRaw, 10)
@@ -309,6 +351,32 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 			console.log(
 				`Executed story ${output.storyId}; state is now ${output.state}.`,
 			);
+			return;
+		}
+
+		if (output.mode === "review" || output.mode === "approve") {
+			if (!output.ok) {
+				console.log(output.reason ?? `Ralph ${output.mode} failed.`);
+				process.exitCode = 1;
+				return;
+			}
+			console.log(
+				`Story ${output.storyId} is now ${output.state} after ${output.mode}.`,
+			);
+			return;
+		}
+
+		if (output.mode === "promote-learning") {
+			if (output.candidates.length === 0) {
+				console.log(`No learning candidates found for ${output.storyId}.`);
+				return;
+			}
+			console.log(`Learning candidates for ${output.storyId}:`);
+			for (const candidate of output.candidates) {
+				console.log(
+					`- ${candidate.text} [${candidate.scope} -> ${candidate.promotion} @ ${candidate.score}]`,
+				);
+			}
 			return;
 		}
 

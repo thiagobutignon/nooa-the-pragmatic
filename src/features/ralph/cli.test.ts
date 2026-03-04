@@ -46,6 +46,9 @@ describe("nooa ralph", () => {
 		expect(res.stdout).toContain("status");
 		expect(res.stdout).toContain("select-story");
 		expect(res.stdout).toContain("step");
+		expect(res.stdout).toContain("review");
+		expect(res.stdout).toContain("approve");
+		expect(res.stdout).toContain("promote-learning");
 		expect(res.stdout).toContain("run");
 	});
 
