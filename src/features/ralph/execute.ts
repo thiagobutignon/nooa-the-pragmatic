@@ -170,6 +170,7 @@ export interface RalphApproveStoryResult {
 	ok: boolean;
 	storyId: string;
 	state: RalphStory["state"];
+	reason?: string;
 }
 
 export interface RalphPromoteLearningResult {
@@ -570,7 +571,12 @@ export async function executeRalphReviewLoop(
 		throw new Error(`Unable to locate story ${storyId} in PRD`);
 	}
 
-	let activeStory = prd.userStories[storyIndex];
+	const initialStory = prd.userStories[storyIndex];
+	if (!initialStory) {
+		throw new Error(`Unable to locate story ${storyId} in PRD`);
+	}
+
+	let activeStory: RalphStory = initialStory;
 	if (
 		activeStory.state !== "peer_review_1" &&
 		activeStory.state !== "peer_review_2" &&
@@ -746,7 +752,7 @@ export async function executeRalphReviewLoop(
 
 			activeStory = transitionRalphStoryState(
 				activeStory,
-				getNextReviewState(activeStory.state),
+				getNextReviewState(activeStory.state ?? "peer_review_1"),
 			);
 			prd.userStories[storyIndex] = activeStory;
 			await saveRalphPrd(root, prd);
@@ -1056,10 +1062,15 @@ export async function executeRalphStep(
 			throw new Error(`Unable to locate story ${story.id} in PRD`);
 		}
 
+		const currentStory = prd.userStories[storyIndex];
+		if (!currentStory) {
+			throw new Error(`Unable to locate story ${story.id} in PRD`);
+		}
+
 		let activeStory = transitionRalphStoryState(
 			{
-				...prd.userStories[storyIndex],
-				state: prd.userStories[storyIndex]?.state ?? "pending",
+				...currentStory,
+				state: currentStory.state ?? "pending",
 			},
 			"implementing",
 		);
