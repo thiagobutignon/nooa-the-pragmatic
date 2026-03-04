@@ -4,12 +4,14 @@ import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import {
+	executeRalphRun,
 	executeRalphStep,
 	getRalphStatus,
 	importRalphPrdFile,
 	initializeRalphRun,
 	type RalphImportPrdResult,
 	type RalphInitResult,
+	type RalphRunLoopResult,
 	type RalphSelectStoryResult,
 	type RalphStatusResult,
 	type RalphStepResult,
@@ -22,12 +24,14 @@ export type RalphAction =
 	| "import-prd"
 	| "select-story"
 	| "step"
+	| "run"
 	| "help";
 
 export interface RalphRunInput {
 	action?: RalphAction;
 	path?: string;
 	json?: boolean;
+	maxIterations?: number;
 }
 
 export type RalphRunResult =
@@ -36,6 +40,7 @@ export type RalphRunResult =
 	| RalphImportPrdResult
 	| RalphSelectStoryResult
 	| RalphStepResult
+	| RalphRunLoopResult
 	| { mode: "help"; raw: string };
 
 export const ralphMeta: AgentDocMeta = {
@@ -55,9 +60,11 @@ Subcommands:
   import-prd <path>    Import a Ralph-compatible prd.json into .nooa/ralph/.
   select-story         Select the next pending story from the active PRD.
   step                 Execute one story and stop at peer review.
+  run                  Execute repeated fresh Ralph steps.
 
 Flags:
   --json               Output results as JSON.
+  --max-iterations <n> Maximum number of step iterations (default: 10).
   -h, --help           Show help message.
 
 Examples:
@@ -66,6 +73,7 @@ Examples:
   nooa ralph import-prd ./prd.json
   nooa ralph select-story --json
   nooa ralph step --json
+  nooa ralph run --max-iterations 1 --json
 
 Exit Codes:
   0: Success
@@ -94,6 +102,7 @@ export const ralphSchema = {
 	action: { type: "string", required: true },
 	path: { type: "string", required: false },
 	json: { type: "boolean", required: false },
+	"max-iterations": { type: "number", required: false },
 } satisfies SchemaSpec;
 
 export const ralphOutputFields = [
@@ -107,6 +116,9 @@ export const ralphOutputFields = [
 	{ name: "story", type: "string" },
 	{ name: "ok", type: "boolean" },
 	{ name: "reason", type: "string" },
+	{ name: "iterations", type: "number" },
+	{ name: "completedStories", type: "number" },
+	{ name: "blockedStories", type: "number" },
 ];
 
 export const ralphErrors = [
@@ -189,6 +201,13 @@ export async function run(
 				return { ok: true, data: await selectNextRalphStory() };
 			case "step":
 				return { ok: true, data: await executeRalphStep() };
+			case "run":
+				return {
+					ok: true,
+					data: await executeRalphRun({
+						maxIterations: input.maxIterations,
+					}),
+				};
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -215,15 +234,27 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 	.examples(ralphExamples)
 	.errors(ralphErrors)
 	.exitCodes(ralphExitCodes)
-	.options({ options: buildStandardOptions() })
+	.options({
+		options: {
+			...buildStandardOptions(),
+			"max-iterations": { type: "string" },
+		},
+	})
 	.parseInput(async ({ positionals, values }) => {
 		const commandIndex = positionals.indexOf("ralph");
 		const action = positionals[commandIndex + 1] as RalphAction | undefined;
 		const args = positionals.slice(commandIndex + 2);
+		const maxIterationsRaw =
+			typeof values["max-iterations"] === "string"
+				? values["max-iterations"]
+				: undefined;
 		return {
 			action,
 			path: args[0],
 			json: Boolean(values.json),
+			maxIterations: maxIterationsRaw
+				? Number.parseInt(maxIterationsRaw, 10)
+				: undefined,
 		};
 	})
 	.run(run)
@@ -277,6 +308,18 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 			}
 			console.log(
 				`Executed story ${output.storyId}; state is now ${output.state}.`,
+			);
+			return;
+		}
+
+		if (output.mode === "run") {
+			if (!output.ok) {
+				console.log(output.reason ?? "Ralph run failed.");
+				process.exitCode = 1;
+				return;
+			}
+			console.log(
+				`Ralph run completed in ${output.iterations} iteration(s); completed stories: ${output.completedStories}.`,
 			);
 			return;
 		}

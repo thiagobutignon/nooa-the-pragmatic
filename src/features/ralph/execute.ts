@@ -143,6 +143,23 @@ export interface RalphReviewLoopResult {
 	reason?: string;
 }
 
+export interface RalphRunLoopResult {
+	mode: "run";
+	ok: boolean;
+	iterations: number;
+	completedStories: number;
+	blockedStories: number;
+	reason?: string;
+}
+
+export interface RalphRunLoopAdapters {
+	runStepProcess: (input: {
+		root: string;
+		iteration: number;
+		timeoutMs: number | null;
+	}) => Promise<{ ok: boolean; storyId?: string; reason?: string }>;
+}
+
 const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
 	setGoal,
 	runWorker: async (input) => {
@@ -279,6 +296,35 @@ const DEFAULT_RALPH_REVIEW_LOOP_ADAPTERS: RalphReviewLoopAdapters = {
 		};
 	},
 	appendProgress: appendRalphProgressEntry,
+};
+
+const DEFAULT_RALPH_RUN_LOOP_ADAPTERS: RalphRunLoopAdapters = {
+	runStepProcess: async (input) => {
+		const result = await execa(
+			process.execPath,
+			["run", "index.ts", "ralph", "step", "--json"],
+			{
+				cwd: input.root,
+				reject: false,
+				timeout: input.timeoutMs ?? undefined,
+				env: {
+					...process.env,
+					NOOA_DISABLE_REFLECTION: "1",
+				},
+			},
+		);
+
+		if (result.exitCode !== 0) {
+			throw new Error(result.stderr || result.stdout || "Ralph step failed");
+		}
+
+		const parsed = JSON.parse(result.stdout) as {
+			ok: boolean;
+			storyId?: string;
+			reason?: string;
+		};
+		return parsed;
+	},
 };
 
 async function detectBranchName(root: string): Promise<string> {
@@ -684,6 +730,149 @@ export async function executeRalphReviewLoop(
 	} finally {
 		await releaseRalphStateLock(root);
 	}
+}
+
+export async function executeRalphRun(
+	input?: {
+		root?: string;
+		maxIterations?: number;
+		blockedThreshold?: number;
+		stepTimeoutMs?: number | null;
+	},
+	adapters: RalphRunLoopAdapters = DEFAULT_RALPH_RUN_LOOP_ADAPTERS,
+): Promise<RalphRunLoopResult> {
+	const root = input?.root ?? process.cwd();
+	const maxIterations = input?.maxIterations ?? 10;
+	const blockedThreshold = input?.blockedThreshold ?? 1;
+	const stepTimeoutMs = input?.stepTimeoutMs ?? null;
+
+	const state = await loadRalphState(root);
+	if (!state) {
+		return {
+			mode: "run",
+			ok: false,
+			iterations: 0,
+			completedStories: 0,
+			blockedStories: 0,
+			reason: "No active Ralph run in this workspace",
+		};
+	}
+
+	let initialPrd: RalphPrd;
+	try {
+		initialPrd = await loadRalphPrd(root);
+	} catch {
+		return {
+			mode: "run",
+			ok: false,
+			iterations: 0,
+			completedStories: 0,
+			blockedStories: 0,
+			reason: "No Ralph PRD loaded for this workspace",
+		};
+	}
+
+	for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
+		const prdBefore = iteration === 1 ? initialPrd : await loadRalphPrd(root);
+		const completedBefore = prdBefore.userStories.filter(
+			(story) => story.passes,
+		).length;
+		const blockedBefore = prdBefore.userStories.filter(
+			(story) => story.state === "blocked",
+		).length;
+
+		if (blockedBefore >= blockedThreshold) {
+			return {
+				mode: "run",
+				ok: false,
+				iterations: iteration - 1,
+				completedStories: completedBefore,
+				blockedStories: blockedBefore,
+				reason: "Blocked story threshold reached",
+			};
+		}
+
+		if (
+			prdBefore.userStories.length > 0 &&
+			prdBefore.userStories.every((story) => story.passes)
+		) {
+			return {
+				mode: "run",
+				ok: true,
+				iterations: iteration - 1,
+				completedStories: completedBefore,
+				blockedStories: blockedBefore,
+			};
+		}
+
+		try {
+			await adapters.runStepProcess({
+				root,
+				iteration,
+				timeoutMs: stepTimeoutMs,
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			const prdAfterFailure = await loadRalphPrd(root);
+			return {
+				mode: "run",
+				ok: false,
+				iterations: iteration,
+				completedStories: prdAfterFailure.userStories.filter(
+					(story) => story.passes,
+				).length,
+				blockedStories: prdAfterFailure.userStories.filter(
+					(story) => story.state === "blocked",
+				).length,
+				reason: message,
+			};
+		}
+
+		const prdAfter = await loadRalphPrd(root);
+		const completedAfter = prdAfter.userStories.filter(
+			(story) => story.passes,
+		).length;
+		const blockedAfter = prdAfter.userStories.filter(
+			(story) => story.state === "blocked",
+		).length;
+
+		if (
+			prdAfter.userStories.length > 0 &&
+			prdAfter.userStories.every((story) => story.passes)
+		) {
+			return {
+				mode: "run",
+				ok: true,
+				iterations: iteration,
+				completedStories: completedAfter,
+				blockedStories: blockedAfter,
+			};
+		}
+
+		if (blockedAfter >= blockedThreshold) {
+			return {
+				mode: "run",
+				ok: false,
+				iterations: iteration,
+				completedStories: completedAfter,
+				blockedStories: blockedAfter,
+				reason: "Blocked story threshold reached",
+			};
+		}
+	}
+
+	const finalPrd = await loadRalphPrd(root);
+	return {
+		mode: "run",
+		ok: false,
+		iterations: maxIterations,
+		completedStories: finalPrd.userStories.filter((story) => story.passes)
+			.length,
+		blockedStories: finalPrd.userStories.filter(
+			(story) => story.state === "blocked",
+		).length,
+		reason: "Max iterations reached before backlog completion",
+	};
 }
 
 export async function executeRalphStep(
