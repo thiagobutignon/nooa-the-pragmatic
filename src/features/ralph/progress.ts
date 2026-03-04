@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { RalphLearningCandidate } from "./learnings";
 
 export interface RalphProgressEntry {
 	timestamp?: string;
@@ -15,6 +16,7 @@ export interface RalphProgressEntry {
 		ci?: boolean;
 		review?: boolean;
 	};
+	learnings?: RalphLearningCandidate[];
 	notes?: string[];
 }
 
@@ -55,6 +57,14 @@ export async function appendRalphProgressEntry(
 		record.reviewRounds ? `- Review Rounds: ${record.reviewRounds}` : undefined,
 		record.reviewers?.length
 			? `- Reviewers: ${record.reviewers.join(", ")}`
+			: undefined,
+		record.learnings?.length
+			? `- Learnings: ${record.learnings
+					.map(
+						(learning) =>
+							`${learning.text} [${learning.scope} -> ${learning.promotion} @ ${learning.score}]`,
+					)
+					.join("; ")}`
 			: undefined,
 		record.notes?.map((note) => `- ${note}`).join("\n"),
 		"",

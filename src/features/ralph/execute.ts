@@ -2,6 +2,7 @@ import { readFile, rm } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { execa } from "execa";
 import { setGoal } from "../goal/execute";
+import { buildRalphLearningCandidate } from "./learnings";
 import {
 	loadRalphPrd,
 	type RalphPrd,
@@ -564,6 +565,16 @@ export async function executeRalphReviewLoop(
 					status: "approved",
 					reviewRounds: activeStory.review?.rounds,
 					reviewers: [state.reviewer.model ?? "reviewer"],
+					learnings: reviewResult.summary
+						? [
+								buildRalphLearningCandidate({
+									text: reviewResult.summary,
+									observedInStories: 1,
+									peerReviewed: true,
+									affectsReusablePattern: true,
+								}),
+							]
+						: undefined,
 					notes: reviewResult.summary ? [reviewResult.summary] : undefined,
 				});
 				return {
@@ -593,6 +604,18 @@ export async function executeRalphReviewLoop(
 				status: activeStory.state === "blocked" ? "blocked" : "reviewing",
 				reviewRounds: activeStory.review?.rounds,
 				reviewers: [state.reviewer.model ?? "reviewer"],
+				learnings:
+					reviewResult.findings.length > 0
+						? reviewResult.findings.map((finding) =>
+								buildRalphLearningCandidate({
+									text: finding.message,
+									observedInStories: activeStory.review?.rounds ?? 1,
+									preventedFailure: true,
+									peerReviewed: true,
+									affectsReusablePattern: true,
+								}),
+							)
+						: undefined,
 				notes: reviewResult.findings.map((finding) => finding.message),
 			});
 
