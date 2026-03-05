@@ -3,15 +3,17 @@ import { handleCommandError, renderJson } from "../../core/cli-output";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { generateBacklogFromPrompt } from "./generate";
+import { validateBacklogPrd } from "./validate";
 import type { BacklogAction, BacklogMode } from "./types";
 
 export interface BacklogRunInput {
 	action?: BacklogAction;
 	json?: boolean;
 	prompt?: string;
+	inPath?: string;
 	outPath?: string;
 }
 
@@ -21,6 +23,7 @@ export interface BacklogRunResult {
 	message?: string;
 	prd?: unknown;
 	outPath?: string;
+	errors?: string[];
 }
 
 export const backlogMeta: AgentDocMeta = {
@@ -43,6 +46,7 @@ Subcommands:
 
 Flags:
   --json                Output results as JSON.
+  --in <path>           Input PRD JSON path.
   --out <path>          Persist generated PRD JSON to disk.
   -h, --help            Show help message.
 
@@ -59,6 +63,7 @@ Exit Codes:
 Error Codes:
   backlog.missing_action: Subcommand required
   backlog.missing_prompt: Prompt required for generate
+  backlog.missing_input_path: Input path required
   backlog.invalid_action: Unknown subcommand
   backlog.runtime_error: Unexpected error
 `;
@@ -77,6 +82,7 @@ SDK Usage:
 export const backlogSchema = {
 	action: { type: "string", required: true },
 	json: { type: "boolean", required: false },
+	in: { type: "string", required: false },
 	out: { type: "string", required: false },
 } satisfies SchemaSpec;
 
@@ -86,11 +92,13 @@ export const backlogOutputFields = [
 	{ name: "message", type: "string" },
 	{ name: "prd", type: "object" },
 	{ name: "outPath", type: "string" },
+	{ name: "errors", type: "array" },
 ];
 
 export const backlogErrors = [
 	{ code: "backlog.missing_action", message: "Subcommand required." },
 	{ code: "backlog.missing_prompt", message: "Prompt required for generate." },
+	{ code: "backlog.missing_input_path", message: "Input path required." },
 	{ code: "backlog.invalid_action", message: "Unknown subcommand." },
 	{ code: "backlog.runtime_error", message: "Unexpected error." },
 ];
@@ -151,8 +159,26 @@ export async function run(
 		};
 	}
 
+	if (action === "validate") {
+		if (!input.inPath) {
+			return {
+				ok: false,
+				error: sdkError("backlog.missing_input_path", "Input path required."),
+			};
+		}
+		const payload = JSON.parse(await readFile(input.inPath, "utf8"));
+		const validation = validateBacklogPrd(payload);
+		return {
+			ok: true,
+			data: {
+				mode: "validate",
+				message: validation.ok ? "PRD is valid" : "PRD is invalid",
+				errors: validation.errors,
+			},
+		};
+	}
+
 	if (
-		action !== "validate" &&
 		action !== "split" &&
 		action !== "board" &&
 		action !== "move"
@@ -185,6 +211,7 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 	.options({
 		options: {
 			...buildStandardOptions(),
+			in: { type: "string" },
 			out: { type: "string" },
 		},
 	})
@@ -196,6 +223,7 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			action,
 			json: Boolean(values.json),
 			prompt: action === "generate" ? args.join(" ").trim() : undefined,
+			inPath: typeof values.in === "string" ? values.in : undefined,
 			outPath: typeof values.out === "string" ? values.out : undefined,
 		};
 	})
@@ -220,12 +248,18 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			if (output.prd && !output.outPath) {
 				console.log(JSON.stringify(output.prd, null, 2));
 			}
+			if (output.errors && output.errors.length > 0) {
+				for (const error of output.errors) {
+					console.log(`- ${error}`);
+				}
+			}
 		}
 	})
 	.onFailure((error) => {
 		handleCommandError(error, [
 			"backlog.missing_action",
 			"backlog.missing_prompt",
+			"backlog.missing_input_path",
 			"backlog.invalid_action",
 		]);
 	})

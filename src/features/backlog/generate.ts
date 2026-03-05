@@ -1,4 +1,5 @@
 import type { BacklogPrd } from "./types";
+import { assertBacklogPrd } from "./validate";
 
 export interface GenerateBacklogInput {
 	prompt: string;
@@ -18,22 +19,6 @@ function toTitle(prompt: string) {
 	const base = prompt.trim().replace(/\s+/g, " ");
 	if (base.length <= 72) return base;
 	return `${base.slice(0, 69)}...`;
-}
-
-export function assertBacklogPrd(prd: BacklogPrd): void {
-	if (!prd.project || !prd.branchName || !prd.description) {
-		throw new Error("Generated PRD must include project, branchName and description");
-	}
-	if (!Array.isArray(prd.userStories) || prd.userStories.length === 0) {
-		throw new Error("Generated PRD must include at least one user story");
-	}
-	const first = prd.userStories[0];
-	if (!first?.id || !first.title || !first.description) {
-		throw new Error("Generated PRD story is missing required fields");
-	}
-	if (!Array.isArray(first.acceptanceCriteria) || first.acceptanceCriteria.length === 0) {
-		throw new Error("Generated PRD story must include acceptance criteria");
-	}
 }
 
 export async function generateBacklogFromPrompt(
