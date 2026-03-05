@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -45,6 +45,11 @@ function createPrd(): RalphPrd {
 			},
 		],
 	};
+}
+
+function captureSequence(...snapshots: string[][]) {
+	let index = 0;
+	return async () => snapshots[Math.min(index++, snapshots.length - 1)] ?? [];
 }
 
 describe("ralph step", () => {
@@ -108,6 +113,10 @@ describe("ralph step", () => {
 				setGoal: async (goal, cwd) => {
 					calls.push(`goal:${cwd}:${goal}`);
 				},
+				captureWorkspaceFiles: captureSequence(
+					[],
+					["demo/index.html", "demo/styles.css"],
+				),
 				runWorker: async (input) => {
 					calls.push(
 						`worker:${input.story.id}:${input.provider}:${input.model}:${input.turns}:${String(input.headless)}`,
@@ -121,8 +130,8 @@ describe("ralph step", () => {
 					calls.push("workflow");
 					return { ok: true };
 				},
-				runCi: async () => {
-					calls.push("ci");
+				runCi: async (input) => {
+					calls.push(`ci:${input.files.join(",")}`);
 					return { ok: true };
 				},
 				appendProgress: appendRalphProgressEntry,
@@ -149,8 +158,79 @@ describe("ralph step", () => {
 				expect.stringContaining("goal:"),
 				"worker:US-001:openai:gpt-5-codex:8:true",
 				"workflow",
-				"ci",
+				"ci:demo/index.html,demo/styles.css",
 			]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("resumes a story already in verifying without re-running implementation", async () => {
+		const root = await createTempRepo();
+		const calls: string[] = [];
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-resume-verifying",
+				branchName: "feature/ralph-resume-verifying",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [
+					{
+						id: "US-001",
+						title: "Highest priority",
+						description: "First story",
+						acceptanceCriteria: ["demo/index.html must exist"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "verifying",
+					},
+				],
+			});
+			await mkdir(join(root, "demo"), { recursive: true });
+			await writeFile(join(root, "demo", "index.html"), "<html></html>");
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {
+						calls.push("goal");
+					},
+					captureWorkspaceFiles: captureSequence(["demo/index.html"]),
+					runWorker: async () => {
+						calls.push("worker");
+						return { ok: true, finalAnswer: "implemented" };
+					},
+					runWorkflow: async () => {
+						calls.push("workflow");
+						return { ok: true };
+					},
+					runCi: async (input) => {
+						calls.push(`ci:${input.files.join(",")}`);
+						return { ok: true };
+					},
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			const prd = JSON.parse(
+				await readFile(join(root, ".nooa", "ralph", "prd.json"), "utf-8"),
+			) as RalphPrd;
+			const activeStory = prd.userStories.find(
+				(story) => story.id === "US-001",
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.storyId).toBe("US-001");
+			expect(activeStory?.state).toBe("peer_review_1");
+			expect(calls).toEqual(["workflow", "ci:demo/index.html"]);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
@@ -174,6 +254,7 @@ describe("ralph step", () => {
 				{ root },
 				{
 					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
 					runWorker: async () => {
 						throw new Error("Worker timeout after 300000ms");
 					},
@@ -203,6 +284,76 @@ describe("ralph step", () => {
 		}
 	});
 
+	test("continues when worker hits max turns but produced implementation evidence", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-soft-worker-fail",
+				branchName: "feature/ralph-soft-worker-fail",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
+					runWorker: async () => {
+						throw new Error("Goal not achieved after 8 turns.");
+					},
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.storyId).toBe("US-001");
+			expect(result.state).toBe("peer_review_1");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("continues when worker returns generic failure but produced implementation evidence", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-soft-generic-fail",
+				branchName: "feature/ralph-soft-generic-fail",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
+					runWorker: async () => ({ ok: false, finalAnswer: undefined }),
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.storyId).toBe("US-001");
+			expect(result.state).toBe("peer_review_1");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("fails when workflow verification rejects the story", async () => {
 		const root = await createTempRepo();
 		try {
@@ -222,6 +373,7 @@ describe("ralph step", () => {
 					{ root },
 					{
 						setGoal: async () => {},
+						captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
 						runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
 						runWorkflow: async () => ({
 							ok: false,
@@ -256,6 +408,7 @@ describe("ralph step", () => {
 					{ root },
 					{
 						setGoal: async () => {},
+						captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
 						runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
 						runWorkflow: async () => ({ ok: true }),
 						runCi: async () => ({
@@ -266,6 +419,107 @@ describe("ralph step", () => {
 					},
 				),
 			).rejects.toThrow("ci checks failed");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("fails when the worker produces no relevant implementation evidence", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-no-evidence",
+				branchName: "feature/ralph-no-evidence",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: async () => [],
+					runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			const state = await loadRalphState(root);
+			expect(result.ok).toBe(false);
+			expect(result.reason).toContain("No implementation evidence");
+			expect(state?.status).toBe("blocked");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("re-runs worker when verifying story has no evidence yet", async () => {
+		const root = await createTempRepo();
+		const calls: string[] = [];
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-verifying-rerun",
+				branchName: "feature/ralph-verifying-rerun",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [
+					{
+						id: "US-001",
+						title: "Highest priority",
+						description: "First story",
+						acceptanceCriteria: ["index.html must exist"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "verifying",
+					},
+				],
+			});
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {
+						calls.push("goal");
+					},
+					captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
+					runWorker: async () => {
+						calls.push("worker");
+						return { ok: true, finalAnswer: "implemented" };
+					},
+					runWorkflow: async () => {
+						calls.push("workflow");
+						return { ok: true };
+					},
+					runCi: async (input) => {
+						calls.push(`ci:${input.files.join(",")}`);
+						return { ok: true };
+					},
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.storyId).toBe("US-001");
+			expect(calls).toEqual([
+				"goal",
+				"worker",
+				"workflow",
+				"ci:demo/index.html",
+			]);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

@@ -273,7 +273,8 @@ RULES:
 						throw new Error("Security: Only 'nooa' commands are allowed.");
 					}
 
-					const { stdout, stderr, exitCode } = await execa(plan.command, {
+					const runtimeCommand = toRuntimeNooaCommand(plan.command);
+					const { stdout, stderr, exitCode } = await execa(runtimeCommand, {
 						shell: true,
 						reject: false,
 					});
@@ -332,4 +333,8 @@ RULES:
 			),
 		});
 	}
+}
+
+function toRuntimeNooaCommand(command: string) {
+	return command.replace(/\bnooa\b/g, "bun run index.ts");
 }

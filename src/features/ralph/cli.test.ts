@@ -94,4 +94,54 @@ describe("nooa ralph", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it("returns validation error for unknown subcommand", async () => {
+		const root = await createTempRepo(".nooa/ralph/\n");
+		try {
+			const res = await execa(bunPath, [binPath, "ralph", "wat"], {
+				reject: false,
+				env: baseEnv,
+				cwd: root,
+			});
+
+			expect(res.exitCode).toBe(2);
+			expect(res.stderr).toContain("Unknown subcommand");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("clears lock file via reset subcommand", async () => {
+		const root = await createTempRepo(".nooa/ralph/\n");
+		try {
+			await execa(bunPath, [binPath, "ralph", "init"], {
+				reject: false,
+				env: baseEnv,
+				cwd: root,
+			});
+			await writeFile(
+				join(root, ".nooa", "ralph", "state.lock"),
+				JSON.stringify({
+					owner: "manual-owner",
+					acquiredAt: new Date().toISOString(),
+				}),
+			);
+
+			const res = await execa(bunPath, [binPath, "ralph", "reset", "--json"], {
+				reject: false,
+				env: baseEnv,
+				cwd: root,
+			});
+
+			expect(res.exitCode).toBe(0);
+			const parsed = JSON.parse(res.stdout);
+			expect(parsed.mode).toBe("reset");
+			expect(parsed.clearedLock).toBe(true);
+			expect(existsSync(join(root, ".nooa", "ralph", "state.lock"))).toBe(
+				false,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });

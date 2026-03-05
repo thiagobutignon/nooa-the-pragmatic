@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadRalphPrd, type RalphPrd, saveRalphPrd } from "./prd";
@@ -129,6 +129,47 @@ describe("ralph state primitives", () => {
 
 		await releaseRalphStateLock(root);
 		expect(await Bun.file(lockPath).exists()).toBe(false);
+	});
+
+	test("reclaims stale lock before acquiring a new one", async () => {
+		const root = await createTempRoot();
+		const lockPath = getRalphStateLockPath(root);
+		await Bun.write(
+			lockPath,
+			JSON.stringify(
+				{
+					owner: "ralph-step:999999",
+					acquiredAt: "2000-01-01T00:00:00.000Z",
+				},
+				null,
+				2,
+			),
+		);
+
+		await acquireRalphStateLock(root, "fresh-owner");
+		const lockRaw = await readFile(lockPath, "utf-8");
+		expect(lockRaw).toContain("fresh-owner");
+	});
+
+	test("keeps active lock ownership when lock is not stale", async () => {
+		const root = await createTempRoot();
+		const lockPath = getRalphStateLockPath(root);
+		await mkdir(join(root, ".nooa", "ralph"), { recursive: true });
+		await writeFile(
+			lockPath,
+			JSON.stringify(
+				{
+					owner: "manual-owner",
+					acquiredAt: new Date().toISOString(),
+				},
+				null,
+				2,
+			),
+		);
+
+		await expect(acquireRalphStateLock(root, "second-owner")).rejects.toThrow(
+			"Ralph state lock is already held",
+		);
 	});
 
 	test("returns null when state does not exist", async () => {

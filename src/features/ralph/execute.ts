@@ -1,6 +1,8 @@
+import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { execa } from "execa";
+import { PolicyEngine } from "../../core/policy/PolicyEngine";
 import { setGoal } from "../goal/execute";
 import { buildRalphLearningCandidate } from "./learnings";
 import {
@@ -100,6 +102,7 @@ export interface RalphWorkerInvocation {
 
 export interface RalphStepAdapters {
 	setGoal: (goal: string, cwd: string) => Promise<void>;
+	captureWorkspaceFiles: (root: string) => Promise<string[]>;
 	runWorker: (
 		input: RalphWorkerInvocation,
 	) => Promise<{ ok: boolean; finalAnswer?: string }>;
@@ -107,7 +110,10 @@ export interface RalphStepAdapters {
 		root: string;
 		target: string;
 	}) => Promise<{ ok: boolean; reason?: string }>;
-	runCi: (input: { root: string }) => Promise<{ ok: boolean; reason?: string }>;
+	runCi: (input: {
+		root: string;
+		files: string[];
+	}) => Promise<{ ok: boolean; reason?: string }>;
 	appendProgress: (
 		root: string,
 		entry: RalphProgressEntry,
@@ -185,10 +191,38 @@ export interface RalphRunLoopAdapters {
 		iteration: number;
 		timeoutMs: number | null;
 	}) => Promise<{ ok: boolean; storyId?: string; reason?: string }>;
+	runReviewProcess?: (input: {
+		root: string;
+		storyId: string;
+		iteration: number;
+		timeoutMs: number | null;
+		}) => Promise<{
+		ok: boolean;
+		storyId: string;
+		state: RalphStory["state"];
+		rounds: number;
+		reason?: string;
+	}>;
 }
 
 const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
 	setGoal,
+	captureWorkspaceFiles: async (root) => {
+		const result = await execa("git", ["status", "--porcelain"], {
+			cwd: root,
+			reject: false,
+		});
+
+		if (result.exitCode !== 0) {
+			return [];
+		}
+
+		return result.stdout
+			.split("\n")
+			.filter(Boolean)
+			.map(parseGitPorcelainPath)
+			.filter(Boolean);
+	},
 	runWorker: async (input) => {
 		const args = [
 			"run",
@@ -263,27 +297,86 @@ const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
 		return parsed;
 	},
 	runCi: async (input) => {
-		const result = await execa(
-			process.execPath,
-			["run", "index.ts", "ci", "--json"],
-			{
+		const files = input.files.filter((file) => isRelevantStoryFile(file));
+		if (files.length === 0) {
+			return { ok: false, reason: "No story files available for Ralph CI" };
+		}
+
+		const testFiles = files.filter((file) =>
+			/\.(test|spec)\.[cm]?[jt]sx?$/.test(file),
+		);
+		if (testFiles.length > 0) {
+			const testResult = await execa("bun", ["test", ...testFiles], {
 				cwd: input.root,
 				reject: false,
 				env: {
 					...process.env,
 					NOOA_DISABLE_REFLECTION: "1",
 				},
-			},
-		);
+			});
 
-		if (result.exitCode !== 0) {
-			return { ok: false, reason: result.stderr || result.stdout };
+			if (testResult.exitCode !== 0) {
+				return {
+					ok: false,
+					reason: testResult.stderr || testResult.stdout || "Tests failed",
+				};
+			}
 		}
 
-		const parsed = JSON.parse(result.stdout) as {
-			ok: boolean;
-		};
-		return { ok: parsed.ok, reason: parsed.ok ? undefined : "CI failed" };
+		const lintableFiles = files.filter((file) =>
+			/\.(cjs|css|cts|html|js|json|jsx|mjs|mts|ts|tsx)$/.test(file),
+		);
+		if (lintableFiles.length > 0) {
+			const formatResult = await execa(
+				"bunx",
+				["biome", "format", "--write", ...lintableFiles],
+				{
+					cwd: input.root,
+					reject: false,
+					env: {
+						...process.env,
+						NOOA_DISABLE_REFLECTION: "1",
+					},
+				},
+			);
+			if (formatResult.exitCode !== 0) {
+				return {
+					ok: false,
+					reason:
+						formatResult.stderr || formatResult.stdout || "Format failed",
+				};
+			}
+
+			const lintResult = await execa(
+				"bunx",
+				["biome", "check", ...lintableFiles],
+				{
+					cwd: input.root,
+					reject: false,
+					env: {
+						...process.env,
+						NOOA_DISABLE_REFLECTION: "1",
+					},
+				},
+			);
+
+			if (lintResult.exitCode !== 0) {
+				return {
+					ok: false,
+					reason: lintResult.stderr || lintResult.stdout || "Lint failed",
+				};
+			}
+		}
+
+		const policyResult = await new PolicyEngine(input.root).checkFiles(files);
+		if (!policyResult.ok) {
+			return {
+				ok: false,
+				reason: `Policy violations: ${policyResult.violations.length}`,
+			};
+		}
+
+		return { ok: true };
 	},
 	appendProgress: appendRalphProgressEntry,
 };
@@ -292,34 +385,57 @@ const DEFAULT_RALPH_REVIEW_LOOP_ADAPTERS: RalphReviewLoopAdapters = {
 	setGoal,
 	runWorker: DEFAULT_RALPH_STEP_ADAPTERS.runWorker,
 	runReview: async (input) => {
-		const args = ["run", "index.ts", "review", "--json"];
-		const result = await execa(process.execPath, args, {
-			cwd: input.root,
-			reject: false,
-			timeout: input.timeoutMs ?? undefined,
-			env: {
-				...process.env,
-				NOOA_DISABLE_REFLECTION: "1",
-				NOOA_AI_PROVIDER: input.provider ?? process.env.NOOA_AI_PROVIDER,
-				NOOA_AI_MODEL: input.model ?? process.env.NOOA_AI_MODEL,
-			},
-		});
-
-		if (result.exitCode !== 0) {
+		const files = await resolveStoryReviewFiles(input.root, input.story);
+		if (files.length === 0) {
 			throw new Error(
-				result.stderr || result.stdout || "Review execution failed",
+				`No story files found for review (${input.story.id}); cannot run peer review`,
 			);
 		}
 
-		const parsed = JSON.parse(result.stdout) as {
-			ok?: boolean;
-			findings?: Array<{ severity: string; message: string }>;
-			summary?: string;
-		};
+		const aggregatedFindings: Array<{ severity: string; message: string }> = [];
+		const summaries: string[] = [];
+
+		for (const file of files) {
+			const args = ["run", "index.ts", "review", file, "--json"];
+			const result = await execa(process.execPath, args, {
+				cwd: input.root,
+				reject: false,
+				timeout: input.timeoutMs ?? undefined,
+				env: {
+					...process.env,
+					NOOA_DISABLE_REFLECTION: "1",
+					NOOA_AI_PROVIDER: input.provider ?? process.env.NOOA_AI_PROVIDER,
+					NOOA_AI_MODEL: input.model ?? process.env.NOOA_AI_MODEL,
+				},
+			});
+
+			const parsed = parseReviewJson(result.stdout);
+			if (!parsed) {
+				if (result.exitCode !== 0) {
+					throw new Error(
+						result.stderr || result.stdout || "Review execution failed",
+					);
+				}
+				throw new Error(`Unable to parse review output for ${file}`);
+			}
+
+			if (parsed.summary) {
+				summaries.push(`[${file}] ${parsed.summary}`);
+			}
+			for (const finding of parsed.findings ?? []) {
+				aggregatedFindings.push({
+					severity: finding.severity,
+					message: `[${file}] ${finding.message}`,
+				});
+			}
+		}
+
 		return {
-			ok: Boolean(parsed.ok),
-			findings: parsed.findings ?? [],
-			summary: parsed.summary,
+			ok: aggregatedFindings.length === 0,
+			findings: aggregatedFindings,
+			summary:
+				summaries.join("\n").trim() ||
+				`Reviewed ${files.length} file(s) with no findings.`,
 		};
 	},
 	appendProgress: appendRalphProgressEntry,
@@ -345,11 +461,53 @@ const DEFAULT_RALPH_RUN_LOOP_ADAPTERS: RalphRunLoopAdapters = {
 			throw new Error(result.stderr || result.stdout || "Ralph step failed");
 		}
 
-		const parsed = JSON.parse(result.stdout) as {
+		const parsed = parseRalphCommandJson(result.stdout) as {
 			ok: boolean;
 			storyId?: string;
 			reason?: string;
 		};
+		if (!parsed || typeof parsed.ok !== "boolean") {
+			throw new Error("Unable to parse Ralph step output");
+		}
+		return parsed;
+	},
+	runReviewProcess: async (input) => {
+		const result = await execa(
+			process.execPath,
+			[
+				"run",
+				"index.ts",
+				"ralph",
+				"review",
+				"--story",
+				input.storyId,
+				"--json",
+			],
+			{
+				cwd: input.root,
+				reject: false,
+				timeout: input.timeoutMs ?? undefined,
+				env: {
+					...process.env,
+					NOOA_DISABLE_REFLECTION: "1",
+				},
+			},
+		);
+
+		if (result.exitCode !== 0) {
+			throw new Error(result.stderr || result.stdout || "Ralph review failed");
+		}
+
+		const parsed = parseRalphCommandJson(result.stdout) as {
+			ok: boolean;
+			storyId: string;
+			state: RalphStory["state"];
+			rounds: number;
+			reason?: string;
+		};
+		if (!parsed || typeof parsed.ok !== "boolean" || !parsed.storyId) {
+			throw new Error("Unable to parse Ralph review output");
+		}
 		return parsed;
 	},
 };
@@ -517,12 +675,23 @@ export async function selectNextRalphStory(input?: {
 }
 
 function buildRalphStoryGoal(story: RalphStory): string {
+	const hardConstraints = [
+		"- Use ONLY NOOA CLI commands.",
+		"- Do NOT use external shell commands (mkdir, find, ls, cat, etc).",
+		"- Do NOT use `nooa scaffold command` for product/story implementation.",
+		"- Prefer `nooa code write` and `nooa code patch` for file edits.",
+		"- Use repository-relative paths only (never absolute paths, never `.worktrees/...`).",
+	];
+
 	return `Implement story ${story.id}: ${story.title}
 
 ${story.description}
 
 Acceptance criteria:
-${story.acceptanceCriteria.map((item) => `- ${item}`).join("\n")}`;
+${story.acceptanceCriteria.map((item) => `- ${item}`).join("\n")}
+
+Execution constraints:
+${hardConstraints.join("\n")}`;
 }
 
 function buildRalphCorrectionGoal(
@@ -543,6 +712,25 @@ function getNextReviewState(state: RalphStory["state"]): RalphStory["state"] {
 		return "peer_review_3";
 	}
 	throw new Error(`Story is not ready for another review round from ${state}`);
+}
+
+function finalizeApprovedStory(story: RalphStory): RalphStory {
+	const committed = transitionRalphStoryState(story, "committed");
+	return transitionRalphStoryState(committed, "passed");
+}
+
+function findReviewCandidate(prd: RalphPrd): RalphStory | null {
+	return (
+		[...prd.userStories]
+			.filter(
+				(story) =>
+					!story.passes &&
+					(story.state === "peer_review_1" ||
+						story.state === "peer_review_2" ||
+						story.state === "peer_review_3"),
+			)
+			.sort((left, right) => left.priority - right.priority)[0] ?? null
+	);
 }
 
 export async function executeRalphReviewLoop(
@@ -626,7 +814,7 @@ export async function executeRalphReviewLoop(
 			}
 
 			if (reviewResult.ok && reviewResult.findings.length === 0) {
-				activeStory = markRalphStoryApproved(activeStory, {
+				const approvedStory = markRalphStoryApproved(activeStory, {
 					reviewer: {
 						provider: state.reviewer.provider,
 						model: state.reviewer.model,
@@ -634,13 +822,14 @@ export async function executeRalphReviewLoop(
 					},
 					notes: reviewResult.summary ? [reviewResult.summary] : [],
 				});
+				activeStory = finalizeApprovedStory(approvedStory);
 				prd.userStories[storyIndex] = activeStory;
 				await saveRalphPrd(root, prd);
 				await adapters.appendProgress(root, {
 					runId: state.runId,
 					storyId: activeStory.id,
 					iteration: activeStory.review?.rounds ?? 1,
-					status: "approved",
+					status: "passed",
 					reviewRounds: activeStory.review?.rounds,
 					reviewers: [state.reviewer.model ?? "reviewer"],
 					learnings: reviewResult.summary
@@ -658,7 +847,7 @@ export async function executeRalphReviewLoop(
 				return {
 					ok: true,
 					storyId: activeStory.id,
-					state: activeStory.state ?? "approved",
+					state: activeStory.state ?? "passed",
 					rounds: activeStory.review?.rounds ?? 1,
 				};
 			}
@@ -822,14 +1011,15 @@ export async function executeRalphApproveStory(input?: {
 			},
 			notes: input?.notes,
 		});
-		prd.userStories[storyIndex] = approvedStory;
+		const passedStory = finalizeApprovedStory(approvedStory);
+		prd.userStories[storyIndex] = passedStory;
 		await saveRalphPrd(root, prd);
 		await appendRalphProgressEntry(root, {
 			runId: state.runId,
-			storyId: approvedStory.id,
-			iteration: approvedStory.review?.rounds ?? 1,
-			status: "approved",
-			reviewRounds: approvedStory.review?.rounds,
+			storyId: passedStory.id,
+			iteration: passedStory.review?.rounds ?? 1,
+			status: "passed",
+			reviewRounds: passedStory.review?.rounds,
 			reviewers: [state.reviewer.model ?? "reviewer"],
 			notes: input?.notes,
 		});
@@ -837,8 +1027,8 @@ export async function executeRalphApproveStory(input?: {
 		return {
 			mode: "approve",
 			ok: true,
-			storyId: approvedStory.id,
-			state: approvedStory.state ?? "approved",
+			storyId: passedStory.id,
+			state: passedStory.state ?? "passed",
 		};
 	} finally {
 		await releaseRalphStateLock(root);
@@ -944,12 +1134,28 @@ export async function executeRalphRun(
 			};
 		}
 
+		const reviewCandidate = findReviewCandidate(prdBefore);
 		try {
-			await adapters.runStepProcess({
-				root,
-				iteration,
-				timeoutMs: stepTimeoutMs,
-			});
+			if (reviewCandidate && adapters.runReviewProcess) {
+				await adapters.runReviewProcess({
+					root,
+					storyId: reviewCandidate.id,
+					iteration,
+					timeoutMs: stepTimeoutMs,
+				});
+			} else if (reviewCandidate) {
+				await adapters.runStepProcess({
+					root,
+					iteration,
+					timeoutMs: stepTimeoutMs,
+				});
+			} else {
+				await adapters.runStepProcess({
+					root,
+					iteration,
+					timeoutMs: stepTimeoutMs,
+				});
+			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			const prdAfterFailure = await loadRalphPrd(root);
@@ -1033,10 +1239,38 @@ export async function executeRalphStep(
 	}
 
 	const prd = await loadRalphPrd(root);
-	const story =
+	const currentStory = state.currentStoryId
+		? (prd.userStories.find(
+				(candidate) =>
+					candidate.id === state.currentStoryId &&
+					(candidate.state === "implementing" ||
+						candidate.state === "verifying"),
+			) ?? null)
+		: null;
+	const resumableStory =
+		currentStory ??
 		[...prd.userStories]
-			.filter((candidate) => !candidate.passes && candidate.state !== "blocked")
-			.sort((left, right) => left.priority - right.priority)[0] ?? null;
+			.filter(
+				(candidate) =>
+					!candidate.passes &&
+					(candidate.state === "implementing" ||
+						candidate.state === "verifying"),
+			)
+			.sort((left, right) => left.priority - right.priority)[0] ??
+		null;
+	const story =
+		resumableStory ??
+		[...prd.userStories]
+			.filter(
+				(candidate) =>
+					!candidate.passes &&
+					candidate.state !== "blocked" &&
+					(candidate.state === undefined ||
+						candidate.state === "pending" ||
+						candidate.state === "failed"),
+			)
+			.sort((left, right) => left.priority - right.priority)[0] ??
+		null;
 
 	if (!story) {
 		return {
@@ -1051,6 +1285,7 @@ export async function executeRalphStep(
 	await acquireRalphStateLock(root, `ralph-step:${process.pid}`);
 
 	try {
+		const initialWorkspaceFiles = await adapters.captureWorkspaceFiles(root);
 		state.currentStoryId = story.id;
 		state.status = "running";
 		await saveRalphState(root, state);
@@ -1067,60 +1302,116 @@ export async function executeRalphStep(
 			throw new Error(`Unable to locate story ${story.id} in PRD`);
 		}
 
-		let activeStory = transitionRalphStoryState(
-			{
-				...currentStory,
-				state: currentStory.state ?? "pending",
-			},
-			"implementing",
-		);
+		let activeStory =
+			currentStory.state === "implementing" ||
+			currentStory.state === "verifying"
+				? {
+						...currentStory,
+						state: currentStory.state,
+					}
+				: transitionRalphStoryState(
+						{
+							...currentStory,
+							state: currentStory.state ?? "pending",
+						},
+						"implementing",
+					);
 		prd.userStories[storyIndex] = activeStory;
 		await saveRalphPrd(root, prd);
 
-		const goal = buildRalphStoryGoal(activeStory);
-		await adapters.setGoal(goal, root);
+		const shouldRunWorker =
+			activeStory.state !== "verifying" ||
+			!hasStoryEvidence(root, activeStory, initialWorkspaceFiles);
+		let workerFailureMessage: string | null = null;
+		if (shouldRunWorker) {
+			const goal = buildRalphStoryGoal(activeStory);
+			await adapters.setGoal(goal, root);
 
-		try {
-			const workerResult = await adapters.runWorker({
-				root,
-				goal,
-				story: activeStory,
-				provider: state.worker.provider,
-				model: state.worker.model,
-				turns: 8,
-				headless: true,
-				timeoutMs: state.timeouts.workerMs,
-			});
+			try {
+				const workerResult = await adapters.runWorker({
+					root,
+					goal,
+					story: activeStory,
+					provider: state.worker.provider,
+					model: state.worker.model,
+					turns: 8,
+					headless: true,
+					timeoutMs: state.timeouts.workerMs,
+				});
 
-			if (!workerResult.ok) {
-				throw new Error(workerResult.finalAnswer || "Worker execution failed");
+				if (!workerResult.ok) {
+					workerFailureMessage =
+						workerResult.finalAnswer || "Worker execution failed";
+				}
+			} catch (error) {
+				workerFailureMessage =
+					error instanceof Error ? error.message : String(error);
 			}
-		} catch (error) {
+
+			if (activeStory.state !== "verifying") {
+				activeStory = transitionRalphStoryState(activeStory, "verifying");
+				prd.userStories[storyIndex] = activeStory;
+				await saveRalphPrd(root, prd);
+			}
+		}
+
+		const currentWorkspaceFiles = await adapters.captureWorkspaceFiles(root);
+		let storyFiles = deriveStoryFiles(
+			initialWorkspaceFiles,
+			currentWorkspaceFiles,
+		);
+		if (storyFiles.length === 0) {
+			const expectedArtifacts = extractExpectedArtifactPaths(activeStory);
+			storyFiles = expectedArtifacts.filter((file) =>
+				existsSync(join(root, file)),
+			);
+		}
+		if (storyFiles.length === 0) {
 			activeStory = { ...activeStory, state: "failed" };
 			prd.userStories[storyIndex] = activeStory;
 			state.status = "blocked";
 			await saveRalphPrd(root, prd);
 			await saveRalphState(root, state);
-			const message = error instanceof Error ? error.message : String(error);
 			await adapters.appendProgress(root, {
 				runId: state.runId,
 				storyId: activeStory.id,
 				iteration: 1,
 				status: "failed",
-				notes: [message],
+				notes: [
+					"No implementation evidence detected for this story. Ralph requires changed files outside internal state.",
+					...(workerFailureMessage ? [workerFailureMessage] : []),
+				],
 			});
 			return {
 				mode: "step",
 				ok: false,
 				storyId: activeStory.id,
 				state: activeStory.state,
-				reason: message,
+				reason: "No implementation evidence detected for this story",
 			};
 		}
 
-		activeStory = transitionRalphStoryState(activeStory, "verifying");
-		prd.userStories[storyIndex] = activeStory;
-		await saveRalphPrd(root, prd);
+		if (workerFailureMessage && !isRecoverableWorkerFailure(workerFailureMessage)) {
+			activeStory = { ...activeStory, state: "failed" };
+			prd.userStories[storyIndex] = activeStory;
+			state.status = "blocked";
+			await saveRalphPrd(root, prd);
+			await saveRalphState(root, state);
+			await adapters.appendProgress(root, {
+				runId: state.runId,
+				storyId: activeStory.id,
+				iteration: 1,
+				status: "failed",
+				notes: [workerFailureMessage],
+			});
+			return {
+				mode: "step",
+				ok: false,
+				storyId: activeStory.id,
+				state: activeStory.state,
+				reason: workerFailureMessage,
+			};
+		}
 
 		const workflowResult = await adapters.runWorkflow({
 			root,
@@ -1130,7 +1421,7 @@ export async function executeRalphStep(
 			throw new Error(workflowResult.reason || "Workflow verification failed");
 		}
 
-		const ciResult = await adapters.runCi({ root });
+		const ciResult = await adapters.runCi({ root, files: storyFiles });
 		if (!ciResult.ok) {
 			throw new Error(ciResult.reason || "CI verification failed");
 		}
@@ -1148,7 +1439,14 @@ export async function executeRalphStep(
 				workflow: true,
 				ci: true,
 			},
-			notes: ["Story executed and moved into peer review."],
+			notes: [
+				"Story executed and moved into peer review.",
+				...(workerFailureMessage
+					? [
+							`Worker reported unfinished goal but produced implementation artifacts: ${workerFailureMessage}`,
+						]
+					: []),
+			],
 		});
 
 		return {
@@ -1164,4 +1462,138 @@ export async function executeRalphStep(
 
 export async function resetRalphLock(root: string = process.cwd()) {
 	await rm(join(root, ".nooa", "ralph", "state.lock"), { force: true });
+}
+
+function deriveStoryFiles(before: string[], after: string[]) {
+	const beforeSet = new Set(before);
+	return after.filter(
+		(file) => !beforeSet.has(file) && isRelevantStoryFile(file),
+	);
+}
+
+function isRelevantStoryFile(file: string) {
+	return (
+		!file.startsWith(".nooa/") &&
+		!file.startsWith("memory/") &&
+		file !== "nooa.db" &&
+		!file.startsWith("src/features/replay/tmp-replay/")
+	);
+}
+
+function parseGitPorcelainPath(line: string) {
+	const trimmed = line.trimEnd();
+	if (trimmed.length <= 3) {
+		return "";
+	}
+
+	const pathPart = trimmed.slice(3).trim();
+	if (pathPart.includes(" -> ")) {
+		return pathPart.split(" -> ").at(-1)?.trim() ?? "";
+	}
+
+	return pathPart;
+}
+
+function parseReviewJson(stdout: string) {
+	if (!stdout.trim()) {
+		return null;
+	}
+
+	try {
+		return JSON.parse(stdout) as {
+			ok?: boolean;
+			summary?: string;
+			findings?: Array<{ severity: string; message: string }>;
+		};
+	} catch {
+		const match = stdout.match(/\{[\s\S]*\}\s*$/);
+		if (!match) {
+			return null;
+		}
+		try {
+			return JSON.parse(match[0]) as {
+				ok?: boolean;
+				summary?: string;
+				findings?: Array<{ severity: string; message: string }>;
+			};
+		} catch {
+			return null;
+		}
+	}
+}
+
+function parseRalphCommandJson(stdout: string) {
+	const trimmed = stdout.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	const telemetryBoundary = trimmed.indexOf('\n{"level":"');
+	const candidate =
+		telemetryBoundary >= 0 ? trimmed.slice(0, telemetryBoundary).trim() : trimmed;
+	try {
+		return JSON.parse(candidate) as Record<string, unknown>;
+	} catch {
+		return null;
+	}
+}
+
+function isRecoverableWorkerFailure(message: string) {
+	return (
+		/goal not achieved after \d+ turns?/i.test(message) ||
+		message.trim().toLowerCase() === "worker execution failed"
+	);
+}
+
+function hasStoryEvidence(
+	root: string,
+	story: RalphStory,
+	workspaceFiles: string[],
+) {
+	const relevantWorkspaceFiles = workspaceFiles.filter((file) =>
+		isRelevantStoryFile(file),
+	);
+	if (relevantWorkspaceFiles.length > 0) {
+		return true;
+	}
+
+	const expectedArtifacts = extractExpectedArtifactPaths(story);
+	return expectedArtifacts.some((file) => existsSync(join(root, file)));
+}
+
+function extractExpectedArtifactPaths(story: RalphStory) {
+	const text = [
+		story.title,
+		story.description,
+		story.notes,
+		...(story.acceptanceCriteria ?? []),
+	]
+		.filter(Boolean)
+		.join("\n");
+	const matches =
+		text.match(/\b[\w./-]+\.(html|css|js|ts|tsx|json|md)\b/gi) ?? [];
+	return Array.from(new Set(matches.map((match) => match.trim())));
+}
+
+async function resolveStoryReviewFiles(root: string, story: RalphStory) {
+	const expectedArtifacts = extractExpectedArtifactPaths(story)
+		.filter((file) => isRelevantStoryFile(file))
+		.filter((file) => existsSync(join(root, file)));
+	if (expectedArtifacts.length > 0) {
+		return expectedArtifacts;
+	}
+
+	const status = await execa("git", ["status", "--porcelain"], {
+		cwd: root,
+		reject: false,
+	});
+	if (status.exitCode !== 0) {
+		return [];
+	}
+
+	return status.stdout
+		.split("\n")
+		.filter(Boolean)
+		.map(parseGitPorcelainPath)
+		.filter((file) => isRelevantStoryFile(file));
 }

@@ -94,7 +94,8 @@ describe("ralph review loop", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.rounds).toBe(1);
-			expect(story?.state).toBe("approved");
+			expect(story?.state).toBe("passed");
+			expect(story?.passes).toBe(true);
 			expect(calls).toEqual(["review:US-001:anthropic:claude-3.7:0"]);
 		} finally {
 			await rm(root, { recursive: true, force: true });
@@ -140,7 +141,8 @@ describe("ralph review loop", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.rounds).toBe(2);
-			expect(story?.state).toBe("approved");
+			expect(story?.state).toBe("passed");
+			expect(story?.passes).toBe(true);
 			expect(progress.some((entry) => entry.status === "reviewing")).toBe(true);
 			expect(calls).toEqual([
 				"review:1:peer_review_1",
@@ -182,7 +184,7 @@ describe("ralph review loop", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.rounds).toBe(3);
-			expect(result.state).toBe("approved");
+			expect(result.state).toBe("passed");
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

@@ -1,4 +1,11 @@
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import {
+	mkdir,
+	readFile,
+	rename,
+	rm,
+	stat,
+	writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 
 export type RalphStoryState =
@@ -260,6 +267,8 @@ export function getRalphStateLockPath(root: string) {
 	return join(getRalphDir(root), "state.lock");
 }
 
+const DEFAULT_RALPH_LOCK_STALE_MS = 15 * 60 * 1000;
+
 export async function loadRalphState(root: string): Promise<RalphState | null> {
 	try {
 		const raw = await readFile(getRalphStatePath(root), "utf-8");
@@ -295,21 +304,96 @@ export async function acquireRalphStateLock(
 	owner: string,
 ): Promise<void> {
 	await mkdir(getRalphDir(root), { recursive: true });
-	try {
-		await writeFile(
-			getRalphStateLockPath(root),
-			JSON.stringify({ owner, acquiredAt: new Date().toISOString() }, null, 2),
-			{ flag: "wx" },
-		);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		if (message.toLowerCase().includes("exist")) {
-			throw new Error("Ralph state lock is already held");
+	const lockPath = getRalphStateLockPath(root);
+
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		try {
+			await writeFile(
+				lockPath,
+				JSON.stringify({ owner, acquiredAt: new Date().toISOString() }, null, 2),
+				{ flag: "wx" },
+			);
+			return;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (!message.toLowerCase().includes("exist")) {
+				throw error;
+			}
+
+			const stale = await isRalphLockStale(lockPath);
+			if (!stale || attempt === 1) {
+				throw new Error("Ralph state lock is already held");
+			}
+
+			await rm(lockPath, { force: true });
 		}
-		throw error;
 	}
 }
 
 export async function releaseRalphStateLock(root: string): Promise<void> {
 	await rm(getRalphStateLockPath(root), { force: true });
+}
+
+function parseOwnerPid(owner: string): number | null {
+	const match = owner.match(/:(\d+)$/);
+	if (!match) {
+		return null;
+	}
+
+	const pid = Number.parseInt(match[1], 10);
+	return Number.isFinite(pid) && pid > 0 ? pid : null;
+}
+
+function isPidAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		const code =
+			typeof error === "object" && error && "code" in error
+				? String((error as { code?: string }).code)
+				: "";
+		if (code === "ESRCH") {
+			return false;
+		}
+		return true;
+	}
+}
+
+async function isRalphLockStale(lockPath: string): Promise<boolean> {
+	const now = Date.now();
+	const raw = await readFile(lockPath, "utf-8").catch(() => "");
+	let owner = "";
+	let acquiredAt = "";
+
+	if (raw.trim()) {
+		try {
+			const parsed = JSON.parse(raw) as { owner?: unknown; acquiredAt?: unknown };
+			if (typeof parsed.owner === "string") {
+				owner = parsed.owner;
+			}
+			if (typeof parsed.acquiredAt === "string") {
+				acquiredAt = parsed.acquiredAt;
+			}
+		} catch {
+			// fall back to mtime-only stale detection when lock content is malformed
+		}
+	}
+
+	const pid = parseOwnerPid(owner);
+	if (pid !== null && !isPidAlive(pid)) {
+		return true;
+	}
+
+	const acquiredAtMs = acquiredAt ? Date.parse(acquiredAt) : Number.NaN;
+	if (Number.isFinite(acquiredAtMs)) {
+		return now - acquiredAtMs > DEFAULT_RALPH_LOCK_STALE_MS;
+	}
+
+	const lockStat = await stat(lockPath).catch(() => null);
+	if (!lockStat) {
+		return true;
+	}
+
+	return now - lockStat.mtimeMs > DEFAULT_RALPH_LOCK_STALE_MS;
 }

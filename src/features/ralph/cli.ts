@@ -12,6 +12,7 @@ import {
 	getRalphStatus,
 	importRalphPrdFile,
 	initializeRalphRun,
+	resetRalphLock,
 	type RalphApproveStoryResult,
 	type RalphImportPrdResult,
 	type RalphInitResult,
@@ -34,6 +35,7 @@ export type RalphAction =
 	| "approve"
 	| "promote-learning"
 	| "run"
+	| "reset"
 	| "help";
 
 export interface RalphRunInput {
@@ -54,6 +56,7 @@ export type RalphRunResult =
 	| RalphApproveStoryResult
 	| RalphPromoteLearningResult
 	| RalphRunLoopResult
+	| { mode: "reset"; clearedLock: true }
 	| { mode: "help"; raw: string };
 
 export const ralphMeta: AgentDocMeta = {
@@ -77,6 +80,7 @@ Subcommands:
   approve              Mark a story as approved without another review round.
   promote-learning     Show promotion candidates extracted for one story.
   run                  Execute repeated fresh Ralph steps.
+  reset                Force-clear Ralph state lock.
 
 Flags:
   --json               Output results as JSON.
@@ -94,6 +98,7 @@ Examples:
   nooa ralph approve --story US-001 --json
   nooa ralph promote-learning --story US-001 --json
   nooa ralph run --max-iterations 1 --json
+  nooa ralph reset --json
 
 Exit Codes:
   0: Success
@@ -144,10 +149,12 @@ export const ralphOutputFields = [
 	{ name: "iterations", type: "number" },
 	{ name: "completedStories", type: "number" },
 	{ name: "blockedStories", type: "number" },
+	{ name: "clearedLock", type: "boolean" },
 ];
 
 export const ralphErrors = [
 	{ code: "ralph.missing_action", message: "Subcommand required." },
+	{ code: "ralph.invalid_action", message: "Unknown subcommand." },
 	{ code: "ralph.missing_path", message: "Path required." },
 	{
 		code: "ralph.unsafe_state_path",
@@ -247,6 +254,20 @@ export async function run(
 					data: await executeRalphRun({
 						maxIterations: input.maxIterations,
 					}),
+				};
+			case "reset":
+				await resetRalphLock();
+				return {
+					ok: true,
+					data: { mode: "reset", clearedLock: true },
+				};
+			default:
+				return {
+					ok: false,
+					error: sdkError(
+						"ralph.invalid_action",
+						`Unknown subcommand: ${String(action)}`,
+					),
 				};
 		}
 	} catch (error) {
@@ -392,6 +413,11 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 			return;
 		}
 
+		if (output.mode === "reset") {
+			console.log("Ralph state lock cleared.");
+			return;
+		}
+
 		if (output.story) {
 			console.log(`Selected story: ${output.story.id} - ${output.story.title}`);
 			return;
@@ -402,6 +428,7 @@ const ralphBuilder = new CommandBuilder<RalphRunInput, RalphRunResult>()
 	.onFailure((error) => {
 		handleCommandError(error, [
 			"ralph.missing_action",
+			"ralph.invalid_action",
 			"ralph.missing_path",
 			"ralph.unsafe_state_path",
 		]);

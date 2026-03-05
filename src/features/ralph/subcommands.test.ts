@@ -86,13 +86,13 @@ describe("ralph subcommands", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.storyId).toBe("US-001");
-			expect(result.state).toBe("approved");
+			expect(result.state).toBe("passed");
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
 
-	test("approve subcommand marks a reviewed story as approved", async () => {
+	test("approve subcommand marks a reviewed story as passed", async () => {
 		const root = await createTempRepo();
 
 		try {
@@ -115,7 +115,7 @@ describe("ralph subcommands", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.storyId).toBe("US-001");
-			expect(result.state).toBe("approved");
+			expect(result.state).toBe("passed");
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

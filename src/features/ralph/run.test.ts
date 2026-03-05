@@ -354,6 +354,123 @@ describe("ralph run", () => {
 		}
 	});
 
+	test("processes peer review stories before opening a new step", async () => {
+		const root = await createTempRepo();
+		const calls: string[] = [];
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-review-first",
+				branchName: "feature/ralph-review-first",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(
+				root,
+				createPrd([
+					{
+						id: "US-001",
+						title: "Story one",
+						description: "One",
+						acceptanceCriteria: ["done"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "peer_review_1",
+					},
+					{
+						id: "US-002",
+						title: "Story two",
+						description: "Two",
+						acceptanceCriteria: ["done"],
+						priority: 2,
+						passes: false,
+						notes: "",
+						state: "pending",
+					},
+				]),
+			);
+
+			const result = await executeRalphRun(
+				{ root, maxIterations: 3, blockedThreshold: 1 },
+				{
+					runStepProcess: async ({ iteration }) => {
+						calls.push(`step:${iteration}`);
+						await saveRalphPrd(
+							root,
+							createPrd([
+								{
+									id: "US-001",
+									title: "Story one",
+									description: "One",
+									acceptanceCriteria: ["done"],
+									priority: 1,
+									passes: true,
+									notes: "",
+									state: "passed",
+								},
+								{
+									id: "US-002",
+									title: "Story two",
+									description: "Two",
+									acceptanceCriteria: ["done"],
+									priority: 2,
+									passes: true,
+									notes: "",
+									state: "passed",
+								},
+							]),
+						);
+						return { ok: true };
+					},
+					runReviewProcess: async ({ storyId, iteration }) => {
+						calls.push(`review:${iteration}:${storyId}`);
+						await saveRalphPrd(
+							root,
+							createPrd([
+								{
+									id: "US-001",
+									title: "Story one",
+									description: "One",
+									acceptanceCriteria: ["done"],
+									priority: 1,
+									passes: true,
+									notes: "",
+									state: "passed",
+								},
+								{
+									id: "US-002",
+									title: "Story two",
+									description: "Two",
+									acceptanceCriteria: ["done"],
+									priority: 2,
+									passes: false,
+									notes: "",
+									state: "pending",
+								},
+							]),
+						);
+						return {
+							ok: true,
+							storyId,
+							state: "passed",
+							rounds: 1,
+						};
+					},
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.completedStories).toBe(2);
+			expect(calls).toEqual(["review:1:US-001", "step:2"]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("parent process enforces global step timeout policy", async () => {
 		const root = await createTempRepo();
 

@@ -1,0 +1,86 @@
+{
+	"project": "ralph-loop-landing-demo",
+	"branchName": "feature/ralph-loop-landing-demo",
+	"description": "Educational fixture/demo landing page about the Ralph Loop, built as a static HTML/CSS/JS site for dogfooding the NOOA Ralph runner without coupling to the main product.",
+	"userStories": [
+		{
+			"id": "US-001",
+			"title": "Scaffold a static demo shell",
+			"description": "As a reviewer of the Ralph loop, I want the demo to exist as an isolated static site fixture so the loop can implement and verify it without touching the main product.",
+			"acceptanceCriteria": [
+				"The demo lives in an isolated fixture/demo directory, not in the main product surface.",
+				"The demo includes at minimum src/features/demo/index.html, src/features/demo/styles.css, and src/features/demo/script.js.",
+				"The page opens directly in a browser without requiring a build step or backend server.",
+				"The demo declares itself as an educational Ralph Loop fixture/demo."
+			],
+			"priority": 1,
+			"passes": false,
+			"notes": "Keep the implementation HTML/CSS/JS only. No framework, no API, no package-level complexity unless strictly needed for local preview. For this story, do not run `nooa scaffold command`; create/update only the static files under src/features/demo/.",
+			"state": "pending"
+		},
+		{
+			"id": "US-002",
+			"title": "Explain the Ralph Loop in the hero and overview",
+			"description": "As someone discovering Ralph for the first time, I want the page header and opening sections to explain what the Ralph Loop is and why it exists so I understand the premise in under a minute.",
+			"acceptanceCriteria": [
+				"The hero defines Ralph Loop in plain language.",
+				"The opening copy explains the problem it solves: fresh context, peer review, CLI-first verification, and iterative story execution.",
+				"The page frames Ralph as an educational process runner, not generic AI hype.",
+				"The visual presentation feels intentional and editorial rather than template-like.",
+				"Implementation updates are applied to src/features/demo/index.html and, when needed, src/features/demo/styles.css or src/features/demo/script.js."
+			],
+			"priority": 2,
+			"passes": false,
+			"notes": "Prefer concise and concrete copy. Avoid marketing fluff. The tone should teach, not sell.",
+			"state": "pending"
+		},
+		{
+			"id": "US-003",
+			"title": "Visualize the macro-loop and micro-loop",
+			"description": "As a reader trying to operationalize the process, I want to see the difference between the feature-level macro-loop and the story-level micro-loop so I can understand how planning, review, TDD, and execution fit together.",
+			"acceptanceCriteria": [
+				"The page contains a clear visual section for the macro-loop: plan, peer review rounds, approved backlog.",
+				"The page contains a clear visual section for the micro-loop: story selection, TDD, CLI/core-first implementation, verification, peer review, approval.",
+				"The relationship between the two loops is explained in prose alongside the visuals.",
+				"The visuals remain legible on mobile widths.",
+				"Implementation updates are applied to src/features/demo/index.html and, when needed, src/features/demo/styles.css or src/features/demo/script.js."
+			],
+			"priority": 3,
+			"passes": false,
+			"notes": "Use static HTML/CSS/JS only. Lightweight animation is fine, but the meaning must remain available without motion.",
+			"state": "pending"
+		},
+		{
+			"id": "US-004",
+			"title": "Teach the key Ralph principles",
+			"description": "As a developer evaluating the approach, I want dedicated sections for peer review, TDD, CLI-first verification, and learnings promotion so I understand the behavioral constraints that make the loop trustworthy.",
+			"acceptanceCriteria": [
+				"The page explains why the worker cannot self-approve.",
+				"The page explains why TDD and CLI-first verification reduce theatrical code.",
+				"The page explains how learnings are captured locally first and only promoted when justified.",
+				"Each principle is explained with concrete wording rather than vague slogans.",
+				"Implementation updates are applied to src/features/demo/index.html and, when needed, src/features/demo/styles.css or src/features/demo/script.js."
+			],
+			"priority": 4,
+			"passes": false,
+			"notes": "This section should feel educational and operational. It can include short command examples or structured callouts, but should remain static.",
+			"state": "pending"
+		},
+		{
+			"id": "US-005",
+			"title": "Polish the demo for real dogfooding",
+			"description": "As someone using this page to validate the Ralph runner, I want the final demo to be polished enough to feel deliberate, responsive, and easy to inspect so it serves as a credible end-to-end fixture.",
+			"acceptanceCriteria": [
+				"The page is responsive on desktop and mobile.",
+				"The page has accessible heading structure, readable contrast, and visible focus states for interactive elements.",
+				"JavaScript is limited to progressive enhancements such as navigation, section reveals, or diagram toggles.",
+				"A final section shows example Ralph-related commands or a CTA to inspect/run the loop locally.",
+				"Implementation updates are applied to src/features/demo/index.html and, when needed, src/features/demo/styles.css or src/features/demo/script.js."
+			],
+			"priority": 5,
+			"passes": false,
+			"notes": "Favor restrained polish over complexity. The success condition is a believable educational demo that the Ralph loop can implement and verify.",
+			"state": "pending"
+		}
+	]
+}
