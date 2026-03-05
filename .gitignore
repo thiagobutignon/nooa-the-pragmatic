@@ -38,5 +38,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 memory/
 *.local.md
 .nooa/*.local.md
+.nooa/ralph/
 .nooa/memory.lock
 .nooa/memory/

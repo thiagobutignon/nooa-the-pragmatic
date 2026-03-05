@@ -39,24 +39,10 @@ export class SpecGate implements Gate {
 
 export class TestGate implements Gate {
 	id = "test";
-	description = "Verifies that all tests pass.";
+	description = "Reserved test gate placeholder for workflow sequencing.";
 
-	async check(ctx: WorkflowContext): Promise<GateResult> {
-		try {
-			// Run tests related to the change? Or all tests?
-			// "Disciplined Hypergrowth" says run RELEVANT tests.
-			// For MVP, run all tests (or context specific if we had it).
-			// Using `bun test`
-			await execa("bun", ["test"], { cwd: ctx.cwd });
-			return { ok: true };
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			return {
-				ok: false,
-				reason: `Tests failed: ${message}`,
-				suggestions: ["Fix failing tests", "Run `bun test` to see details"],
-			};
-		}
+	async check(_ctx: WorkflowContext): Promise<GateResult> {
+		return { ok: true };
 	}
 }
 

@@ -45,12 +45,15 @@ export async function summarizeMemory(root: string = process.cwd()) {
     });
 
     // 4. Sort and Format
-    filtered.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    filtered.sort((a, b) =>
+        normalizeTimestamp(b.timestamp).localeCompare(normalizeTimestamp(a.timestamp)),
+    );
     
-    // De-duplicate by ID (durable might repeat daily)
+    // De-duplicate repeated content while keeping the most recent occurrence.
     const uniqueMap = new Map<string, MemoryEntry>();
     for (const e of filtered) {
-        if (!uniqueMap.has(e.id)) uniqueMap.set(e.id, e);
+        const key = [e.type, e.scope, normalizeSummaryContent(e.content)].join("::");
+        if (!uniqueMap.has(key)) uniqueMap.set(key, e);
     }
     const unique = Array.from(uniqueMap.values()).slice(0, 20); // Limit to top 20
 
@@ -67,7 +70,7 @@ export async function summarizeMemory(root: string = process.cwd()) {
     for (const [type, typeEntries] of Object.entries(grouped)) {
         summary += `### Recent ${type.charAt(0).toUpperCase() + type.slice(1)}s\n`;
         typeEntries.forEach(e => {
-            const date = e.timestamp.split("T")[0];
+            const date = normalizeTimestamp(e.timestamp).split("T")[0];
             summary += `- [${date}] ${e.content}\n`;
         });
         summary += "\n";
@@ -75,6 +78,17 @@ export async function summarizeMemory(root: string = process.cwd()) {
 
     await writeFile(summaryPath, summary.trim());
     return summaryPath;
+}
+
+function normalizeSummaryContent(content: string) {
+    return content.replace(/\s+/g, " ").trim();
+}
+
+function normalizeTimestamp(timestamp: MemoryEntry["timestamp"]) {
+    if (timestamp instanceof Date) {
+        return timestamp.toISOString();
+    }
+    return String(timestamp);
 }
 
 function processBlocks(content: string, entries: MemoryEntry[]) {

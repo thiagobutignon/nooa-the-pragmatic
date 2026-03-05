@@ -55,6 +55,7 @@ Feature modules are **Self-Describing**. They define their own schema, which aut
 | `pr` | Manage GitHub pull requests (create, merge, close). |
 | `prompt` | Create/edit/publish prompt templates with changelog. |
 | `push` | Push worktree changes to remote with safety checks. |
+| `ralph` | Run backlog loop (`init`, `import-prd`, `step`, `review`, `approve`, `run`). |
 | `read` | Read file contents (TTY-aware + JSON output). |
 | `review` | Execute code review prompts with scoring. |
 | `run` | Execute chained commands (`nooa run -- ...`). |
@@ -75,6 +76,21 @@ Some commands require GitHub access (e.g. `nooa pr`). Authenticate via GitHub CL
 
 ```bash
 gh auth login
+```
+
+### Ralph Dogfooding (Complex Story Budget)
+
+Use higher worker turns/time for complex story execution:
+
+```bash
+NOOA_AI_PROVIDER=ollama \
+NOOA_AI_MODEL=gpt-oss:20b \
+NOOA_REVIEW_AI_PROVIDER=ollama \
+NOOA_REVIEW_AI_MODEL=llama3.1:8b \
+NOOA_WORKER_TIMEOUT_MS=420000 \
+NOOA_REVIEWER_TIMEOUT_MS=240000 \
+NOOA_WORKER_TURNS=20 \
+bun run index.ts ralph step --json
 ```
 
 ---
