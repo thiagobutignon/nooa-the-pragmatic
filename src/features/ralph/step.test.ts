@@ -354,6 +354,43 @@ describe("ralph step", () => {
 		}
 	});
 
+	test("fails when recoverable worker failure has no changed files in this step", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-soft-no-delta",
+				branchName: "feature/ralph-soft-no-delta",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+			await mkdir(join(root, "demo"), { recursive: true });
+			await writeFile(join(root, "demo", "index.html"), "<html></html>");
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], []),
+					runWorker: async () => {
+						throw new Error("Goal not achieved after 8 turns.");
+					},
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(result.ok).toBe(false);
+			expect(result.reason).toContain("No implementation evidence");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("fails when workflow verification rejects the story", async () => {
 		const root = await createTempRepo();
 		try {
@@ -520,6 +557,108 @@ describe("ralph step", () => {
 				"workflow",
 				"ci:demo/index.html",
 			]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("uses NOOA_WORKER_TURNS when configured", async () => {
+		const root = await createTempRepo();
+		const calls: string[] = [];
+		const previousTurns = process.env.NOOA_WORKER_TURNS;
+		process.env.NOOA_WORKER_TURNS = "16";
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-worker-turns",
+				branchName: "feature/ralph-worker-turns",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
+					runWorker: async (input) => {
+						calls.push(`turns:${input.turns}`);
+						return { ok: true, finalAnswer: "implemented" };
+					},
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			expect(calls).toEqual(["turns:16"]);
+		} finally {
+			if (previousTurns === undefined) {
+				delete process.env.NOOA_WORKER_TURNS;
+			} else {
+				process.env.NOOA_WORKER_TURNS = previousTurns;
+			}
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("detects evidence when worker edits the same tracked story file path", async () => {
+		const root = await createTempRepo();
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-same-path-edit",
+				branchName: "feature/ralph-same-path-edit",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				project: "NOOA",
+				branchName: "feature/ralph-step",
+				description: "Ralph step fixture",
+				userStories: [
+					{
+						id: "US-001",
+						title: "Story",
+						description: "Updates demo file",
+						acceptanceCriteria: ["Update demo/index.html"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "pending",
+					},
+				],
+			});
+			await mkdir(join(root, "demo"), { recursive: true });
+			await writeFile(join(root, "demo", "index.html"), "<p>before</p>");
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence(["demo/index.html"], [
+						"demo/index.html",
+					]),
+					runWorker: async () => {
+						await writeFile(join(root, "demo", "index.html"), "<p>after</p>");
+						return { ok: false, finalAnswer: "Goal not achieved after 8 turns." };
+					},
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.state).toBe("peer_review_1");
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

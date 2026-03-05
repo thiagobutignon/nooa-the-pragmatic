@@ -1,0 +1,67 @@
+{
+	"project": "ralph-loop-landing-demo-complex",
+	"branchName": "feature/ralph-loop",
+	"description": "Complex educational landing page about Ralph Loop, implemented incrementally by Ralph in static HTML/CSS/JS with deliberate layout, interaction, and accessibility.",
+	"userStories": [
+		{
+			"id": "US-001",
+			"title": "Build an intentional editorial hero and narrative structure",
+			"description": "As a technical reader, I want a non-generic hero and structured narrative sections so I can immediately understand the Ralph Loop and why it is different from toy agent demos.",
+			"acceptanceCriteria": [
+				"The page includes a high-impact hero with title, subtitle, context callout, and a clearly visible CTA.",
+				"The layout uses at least three distinct narrative zones (hero, architecture story, execution story) with intentional visual rhythm.",
+				"The page avoids generic boilerplate styling and uses custom CSS variables, spacing scale, and typography hierarchy.",
+				"The implementation updates src/features/demo/index.html and src/features/demo/styles.css."
+			],
+			"priority": 1,
+			"passes": false,
+			"notes": "Keep HTML/CSS/JS only. No frameworks. Preserve educational tone and avoid hype claims.",
+			"state": "pending"
+		},
+		{
+			"id": "US-002",
+			"title": "Add interactive macro-loop and micro-loop visualizations",
+			"description": "As an engineer validating the process, I want interactive visualizations for macro-loop and micro-loop so I can inspect each phase and understand operational sequencing.",
+			"acceptanceCriteria": [
+				"The page contains separate macro-loop and micro-loop sections with clear phase lists.",
+				"Each loop has interactive controls (tabs, toggles, or buttons) that change the visible explanation.",
+				"The interaction is progressively enhanced: content remains understandable with JavaScript disabled.",
+				"The implementation updates src/features/demo/index.html, src/features/demo/styles.css, and src/features/demo/script.js."
+			],
+			"priority": 2,
+			"passes": false,
+			"notes": "Prefer simple robust JS over animation-heavy code.",
+			"state": "pending"
+		},
+		{
+			"id": "US-003",
+			"title": "Show dogfooding evidence panel and execution checklist",
+			"description": "As a reviewer, I want a panel that explains verification gates and dogfooding evidence so I can trust the process output.",
+			"acceptanceCriteria": [
+				"The page includes an explicit evidence panel describing TDD, CLI-first, peer review, and learnings promotion gates.",
+				"The page includes a checklist/timeline style component for story progression states.",
+				"Visuals include meaningful states (pending, implementing, review, passed, blocked) without relying only on color.",
+				"The implementation updates src/features/demo/index.html, src/features/demo/styles.css, and src/features/demo/script.js."
+			],
+			"priority": 3,
+			"passes": false,
+			"notes": "Make this section audit-friendly and easy to scan.",
+			"state": "pending"
+		},
+		{
+			"id": "US-004",
+			"title": "Polish responsiveness and keyboard accessibility",
+			"description": "As a user on desktop or mobile, I want responsive and accessible behavior so the page remains useful across screen sizes and input methods.",
+			"acceptanceCriteria": [
+				"The page adapts layout between mobile and desktop with deliberate breakpoints.",
+				"All interactive elements are keyboard operable with visible focus states.",
+				"Semantic headings and landmark structure are clear for assistive technologies.",
+				"The implementation updates src/features/demo/index.html and src/features/demo/styles.css, and updates src/features/demo/script.js only if needed."
+			],
+			"priority": 4,
+			"passes": false,
+			"notes": "Do not overcomplicate; focus on practical accessibility wins.",
+			"state": "pending"
+		}
+	]
+}

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { execa } from "execa";
 import { PolicyEngine } from "../../core/policy/PolicyEngine";
@@ -324,9 +324,13 @@ const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
 		}
 
 		const lintableFiles = files.filter((file) =>
-			/\.(cjs|css|cts|html|js|json|jsx|mjs|mts|ts|tsx)$/.test(file),
+			/\.(cjs|css|cts|js|json|jsx|mjs|mts|ts|tsx)$/.test(file),
 		);
 		if (lintableFiles.length > 0) {
+			for (const file of lintableFiles) {
+				await normalizeEscapedLineBreaks(input.root, file);
+			}
+
 			const formatResult = await execa(
 				"bunx",
 				["biome", "format", "--write", ...lintableFiles],
@@ -742,6 +746,7 @@ export async function executeRalphReviewLoop(
 ): Promise<RalphReviewLoopResult> {
 	const root = input?.root ?? process.cwd();
 	const state = await loadRalphState(root);
+	const workerTurns = resolveRalphWorkerTurns();
 	if (!state) {
 		throw new Error("No active Ralph run in this workspace");
 	}
@@ -912,7 +917,7 @@ export async function executeRalphReviewLoop(
 					story: activeStory,
 					provider: state.worker.provider,
 					model: state.worker.model,
-					turns: 8,
+					turns: workerTurns,
 					headless: true,
 					timeoutMs: state.timeouts.workerMs,
 				});
@@ -1228,6 +1233,7 @@ export async function executeRalphStep(
 ): Promise<RalphStepResult> {
 	const root = input?.root ?? process.cwd();
 	const state = await loadRalphState(root);
+	const workerTurns = resolveRalphWorkerTurns();
 	if (!state) {
 		return {
 			mode: "step",
@@ -1301,6 +1307,12 @@ export async function executeRalphStep(
 		if (!currentStory) {
 			throw new Error(`Unable to locate story ${story.id} in PRD`);
 		}
+		const resumedFromVerifying = currentStory.state === "verifying";
+		const expectedArtifacts = extractExpectedArtifactPaths(currentStory);
+		const artifactSignaturesBefore = await captureArtifactSignatures(
+			root,
+			expectedArtifacts,
+		);
 
 		let activeStory =
 			currentStory.state === "implementing" ||
@@ -1334,7 +1346,7 @@ export async function executeRalphStep(
 					story: activeStory,
 					provider: state.worker.provider,
 					model: state.worker.model,
-					turns: 8,
+					turns: workerTurns,
 					headless: true,
 					timeoutMs: state.timeouts.workerMs,
 				});
@@ -1356,15 +1368,26 @@ export async function executeRalphStep(
 		}
 
 		const currentWorkspaceFiles = await adapters.captureWorkspaceFiles(root);
-		let storyFiles = deriveStoryFiles(
+		const derivedStoryFiles = deriveStoryFiles(
 			initialWorkspaceFiles,
 			currentWorkspaceFiles,
 		);
+		let storyFiles = derivedStoryFiles;
 		if (storyFiles.length === 0) {
-			const expectedArtifacts = extractExpectedArtifactPaths(activeStory);
-			storyFiles = expectedArtifacts.filter((file) =>
-				existsSync(join(root, file)),
+			const changedExpectedArtifacts = await detectChangedArtifacts(
+				root,
+				artifactSignaturesBefore,
 			);
+			storyFiles = changedExpectedArtifacts.filter((file) =>
+				isRelevantStoryFile(file),
+			);
+		}
+		if (storyFiles.length === 0) {
+			if (resumedFromVerifying) {
+				storyFiles = expectedArtifacts.filter((file) =>
+					existsSync(join(root, file)),
+				);
+			}
 		}
 		if (storyFiles.length === 0) {
 			activeStory = { ...activeStory, state: "failed" };
@@ -1388,6 +1411,32 @@ export async function executeRalphStep(
 				storyId: activeStory.id,
 				state: activeStory.state,
 				reason: "No implementation evidence detected for this story",
+			};
+		}
+
+		if (workerFailureMessage && storyFiles.length === 0) {
+			activeStory = { ...activeStory, state: "failed" };
+			prd.userStories[storyIndex] = activeStory;
+			state.status = "blocked";
+			await saveRalphPrd(root, prd);
+			await saveRalphState(root, state);
+			await adapters.appendProgress(root, {
+				runId: state.runId,
+				storyId: activeStory.id,
+				iteration: 1,
+				status: "failed",
+				notes: [
+					workerFailureMessage,
+					"Recoverable worker failures require actual changed files in this step.",
+				],
+			});
+			return {
+				mode: "step",
+				ok: false,
+				storyId: activeStory.id,
+				state: activeStory.state,
+				reason:
+					"Recoverable worker failure had no changed files for this story",
 			};
 		}
 
@@ -1522,6 +1571,76 @@ function parseReviewJson(stdout: string) {
 	}
 }
 
+async function normalizeEscapedLineBreaks(root: string, file: string) {
+	const fullPath = join(root, file);
+	let content = "";
+	try {
+		content = await readFile(fullPath, "utf-8");
+	} catch {
+		return;
+	}
+
+	if (!content.includes("\\n")) {
+		return;
+	}
+
+	const lineBreakCount = content.split("\n").length - 1;
+	const escapedBreakCount = content.split("\\n").length - 1;
+	if (escapedBreakCount === 0) {
+		return;
+	}
+
+	// Recovery for malformed model output that serializes literal "\n" tokens.
+	if (lineBreakCount <= 1 || escapedBreakCount > lineBreakCount) {
+		const normalized = content.replaceAll("\\n", "\n").replaceAll("\\t", "\t");
+		await writeFile(fullPath, normalized, "utf-8");
+	}
+}
+
+type ArtifactSignature = {
+	path: string;
+	signature: string | null;
+};
+
+async function captureArtifactSignatures(root: string, files: string[]) {
+	const signatures: ArtifactSignature[] = [];
+	for (const file of files) {
+		const fullPath = join(root, file);
+		try {
+			const content = await readFile(fullPath, "utf-8");
+			signatures.push({
+				path: file,
+				signature: `${content.length}:${content.slice(0, 128)}:${content.slice(-128)}`,
+			});
+		} catch {
+			signatures.push({ path: file, signature: null });
+		}
+	}
+	return signatures;
+}
+
+async function detectChangedArtifacts(
+	root: string,
+	before: ArtifactSignature[],
+): Promise<string[]> {
+	const changed: string[] = [];
+	for (const artifact of before) {
+		const fullPath = join(root, artifact.path);
+		let afterSignature: string | null = null;
+		try {
+			const content = await readFile(fullPath, "utf-8");
+			afterSignature = `${content.length}:${content.slice(0, 128)}:${content.slice(-128)}`;
+		} catch {
+			afterSignature = null;
+		}
+
+		if (afterSignature !== artifact.signature) {
+			changed.push(artifact.path);
+		}
+	}
+	return changed;
+}
+
 function parseRalphCommandJson(stdout: string) {
 	const trimmed = stdout.trim();
 	if (!trimmed) {
@@ -1543,6 +1662,18 @@ function isRecoverableWorkerFailure(message: string) {
 		/goal not achieved after \d+ turns?/i.test(message) ||
 		message.trim().toLowerCase() === "worker execution failed"
 	);
+}
+
+function resolveRalphWorkerTurns() {
+	const raw = process.env.NOOA_WORKER_TURNS;
+	if (!raw) {
+		return 8;
+	}
+	const parsed = Number.parseInt(raw, 10);
+	if (!Number.isFinite(parsed) || parsed < 1) {
+		return 8;
+	}
+	return Math.min(parsed, 64);
 }
 
 function hasStoryEvidence(
