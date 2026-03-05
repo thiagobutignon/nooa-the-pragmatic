@@ -21,7 +21,7 @@
 
 **Step 1: Write the failing test**
 - Criar teste em `src/features/backlog/cli.test.ts` para `nooa backlog --help`.
-- Esperado: help mostra `generate`, `split`, `board`, `move`.
+- Esperado: help mostra `generate`, `validate`, `split`, `board`, `move`.
 
 **Step 2: Run test to verify it fails**
 - Run: `bun test src/features/backlog/cli.test.ts`
@@ -207,9 +207,9 @@
 **Step 3: Write minimal implementation**
 - Helper de compatibilidade Ralph.
 - Comando opcional: `nooa backlog import-ralph --in prd.json` (wrapper de import).
-- Implementar sincronização bidirecional mínima:
-  - `syncFromRalph(prdPath, ralphPrdPath)` para refletir estados do Ralph no board.
-  - `syncToRalph(prdPath, ralphPrdPath)` para movimentos válidos iniciados no board.
+- Política de autoridade de estado (MVP): Ralph é a fonte de verdade.
+  - `syncFromRalph(prdPath, ralphPrdPath)` obrigatório para refletir estados reais no board.
+  - `syncToRalph(prdPath, ralphPrdPath)` limitado a atualizações seguras/validadas; em conflito, priorizar Ralph e registrar aviso.
 
 **Step 4: Run test to verify it passes**
 - Run: `bun test src/features/backlog/ralph-bridge.test.ts`
@@ -251,7 +251,10 @@
   - chamar endpoint `/backlog/generate` e validar payload resultante com `/backlog/validate`.
 
 **Step 5: Commit**
-- `git add src/features/backlog/api.ts src/features/backlog/api.test.ts <router-file>`
+- Descobrir o arquivo de roteamento HTTP antes do commit:
+  - `rg -n "Bun\\.serve|router|route|/ralph|/backlog" src index.ts`
+  - Se não existir roteador HTTP atual, criar `src/features/backlog/api-router.ts` e registrar no ponto de bootstrap identificado.
+- `git add src/features/backlog/api.ts src/features/backlog/api.test.ts <resolved-router-file>`
 - `git commit -m "feat(backlog): expose backlog generation and board via api"`
 
 ---
