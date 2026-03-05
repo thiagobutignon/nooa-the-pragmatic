@@ -7,10 +7,11 @@ import {
 	spyOn,
 	test,
 } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryEngine } from "../../features/memory/engine";
+import { formatMemoryAsMarkdown } from "../memory/schema";
 import { autoReflect } from "./hook";
 
 // We will use spyOn locally in beforeEach or tests
@@ -94,6 +95,35 @@ describe("Auto Reflection Hook", () => {
 		await autoReflect("ai", ["-v", "--bar"], { ok: true }, testDir);
 
 		expect(addEntryMock).not.toHaveBeenCalled();
+		spy.mockRestore();
+	});
+
+	test("autoReflect skips duplicate observations already written today", async () => {
+		const today = new Date().toISOString().split("T")[0];
+		const memoryDir = join(testDir, "memory");
+		await mkdir(memoryDir, { recursive: true });
+		const dailyPath = join(memoryDir, `${today}.md`);
+		const existing = formatMemoryAsMarkdown({
+			id: "mem_existing",
+			timestamp: new Date().toISOString(),
+			type: "observation",
+			scope: "session",
+			confidence: "high",
+			tags: ["auto-reflection", "cli", "outcome:failure"],
+			sources: ["cli:ralph"],
+			content: "Ran command: ralph step --json\nOutcome: Failure",
+		});
+		await writeFile(dailyPath, `${existing}\n`);
+
+		const spy = spyOn(MemoryEngine.prototype, "addEntry").mockImplementation(
+			addEntryMock as unknown,
+		);
+
+		await autoReflect("ralph", ["step", "--json"], false, testDir);
+
+		expect(addEntryMock).not.toHaveBeenCalled();
+		const daily = await readFile(dailyPath, "utf-8");
+		expect(daily.match(/Ran command: ralph step --json/g)?.length).toBe(1);
 		spy.mockRestore();
 	});
 });
