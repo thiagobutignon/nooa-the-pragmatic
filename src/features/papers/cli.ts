@@ -141,6 +141,8 @@ export interface PapersRunInput {
 	json?: boolean;
 	/** @internal injected in tests to skip real delays */
 	_sleep?: (ms: number) => Promise<void>;
+	/** @internal injected in tests to avoid shared global fetch state */
+	_fetch?: typeof fetch;
 }
 
 export interface PapersRunResult {
@@ -226,6 +228,7 @@ const NOOA_VERSION = "1.1.0";
 async function fetchWithRetry(
 	url: string,
 	sleep: (ms: number) => Promise<void>,
+	fetchImpl: typeof fetch,
 ): Promise<Response> {
 	let lastError: Error | null = null;
 
@@ -236,7 +239,7 @@ async function fetchWithRetry(
 		try {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-			const response = await fetch(url, {
+			const response = await fetchImpl(url, {
 				signal: controller.signal,
 				headers: {
 					"User-Agent": `nooa/${NOOA_VERSION} (https://github.com/thiagobutignon/nooa-the-pragmatic)`,
@@ -274,6 +277,7 @@ export async function run(
 		typeof startRaw === "string" ? parseInt(startRaw, 10) : startRaw;
 	const noAbstract = Boolean(input.noAbstract);
 	const sleep = input._sleep ?? ((ms) => Bun.sleep(ms));
+	const fetchImpl = input._fetch ?? fetch;
 
 	if (Number.isNaN(limitNum) || limitNum < 1 || limitNum > 20) {
 		return {
@@ -290,7 +294,7 @@ export async function run(
 
 	let responseText: string;
 	try {
-		const response = await fetchWithRetry(url, sleep);
+		const response = await fetchWithRetry(url, sleep, fetchImpl);
 		if (!response.ok) {
 			return {
 				ok: false,
