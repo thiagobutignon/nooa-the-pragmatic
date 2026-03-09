@@ -16,11 +16,12 @@
 - Create: `src/features/backlog/cli.ts`
 - Create: `src/features/backlog/cli.test.ts`
 - Create: `src/features/backlog/types.ts`
-- Modify: `index.ts` (registrar comando)
+- Modify: `index.ts` (registrar comando + agent docs no registry)
+- Create/Modify: `docs/features/backlog.md` (gerado via self-evolving module)
 
 **Step 1: Write the failing test**
 - Criar teste em `src/features/backlog/cli.test.ts` para `nooa backlog --help`.
-- Esperado: help mostra `generate`, `split`, `board`, `move`.
+- Esperado: help mostra `generate`, `validate`, `split`, `board`, `move`.
 
 **Step 2: Run test to verify it fails**
 - Run: `bun test src/features/backlog/cli.test.ts`
@@ -30,10 +31,17 @@
 - Implementar `cli.ts` com `CommandBuilder` no padrão do repo.
 - Subcomandos válidos: `generate | split | board | move`.
 - Registrar em `index.ts`.
+- Exportar obrigatoriamente:
+  - `backlogAgentDoc = backlogBuilder.buildAgentDoc(false)`
+  - `backlogFeatureDoc = (includeChangelog) => backlogBuilder.buildFeatureDoc(includeChangelog)`
+- Configurar `.telemetry(...)` no builder (`eventPrefix: "backlog"` + metadados básicos de sucesso/falha).
 
 **Step 4: Run test to verify it passes**
 - Run: `bun test src/features/backlog/cli.test.ts`
 - Expected: PASS.
+- Dogfooding imediato:
+  - `bun run index.ts backlog --help`
+  - `bun run index.ts backlog generate --help`
 
 **Step 5: Commit**
 - `git add src/features/backlog/cli.ts src/features/backlog/cli.test.ts src/features/backlog/types.ts index.ts`
@@ -65,14 +73,48 @@
 - Garantir saída válida para `nooa ralph import-prd`.
 - Expor no CLI:  
   - `nooa backlog generate "<texto>" --out docs/plans/.../prd.json --json`.
+- Incluir validação de schema no fluxo de saída (falha explícita em payload inválido).
 
 **Step 4: Run test to verify it passes**
 - Run: `bun test src/features/backlog/generate.test.ts`
 - Expected: PASS.
+- Dogfooding imediato:
+  - `bun run index.ts backlog generate "Criar landing do Ralph Loop" --json`
+  - `bun run index.ts backlog generate "Criar landing do Ralph Loop" --out docs/plans/dogfooding/tmp-prd.json`
 
 **Step 5: Commit**
 - `git add src/features/backlog/generate.ts src/features/backlog/generate.test.ts src/features/backlog/cli.ts src/features/backlog/types.ts`
 - `git commit -m "feat(backlog): add generate subcommand for ralph-compatible prd"`
+
+---
+
+### Task 2.5: `backlog validate` (schema guard explícito)
+
+**Files:**
+- Create: `src/features/backlog/validate.ts`
+- Create: `src/features/backlog/validate.test.ts`
+- Modify: `src/features/backlog/cli.ts`
+- Modify: `src/features/backlog/types.ts`
+
+**Step 1: Write the failing test**
+- PRD válido retorna `ok: true`.
+- PRD inválido (sem `userStories[].acceptanceCriteria`) retorna erro detalhado.
+
+**Step 2: Run test to verify it fails**
+- Run: `bun test src/features/backlog/validate.test.ts`
+
+**Step 3: Write minimal implementation**
+- Implementar `validateBacklogPrd(prd)` com erros determinísticos.
+- CLI: `nooa backlog validate --in prd.json --json`.
+
+**Step 4: Run test to verify it passes**
+- Run: `bun test src/features/backlog/validate.test.ts`
+- Dogfooding imediato:
+  - `bun run index.ts backlog validate --in docs/plans/dogfooding/tmp-prd.json --json`
+
+**Step 5: Commit**
+- `git add src/features/backlog/validate.ts src/features/backlog/validate.test.ts src/features/backlog/cli.ts src/features/backlog/types.ts`
+- `git commit -m "feat(backlog): add validate subcommand for prd schema guard"`
 
 ---
 
@@ -86,6 +128,9 @@
 **Step 1: Write the failing test**
 - Cenário: PRD com stories longas -> `split --max-stories 8 --max-ac 5`.
 - Esperado: stories quebradas por prioridade, IDs estáveis (`US-001...`), limite respeitado.
+- Edge cases obrigatórios:
+  - PRD já com mais de `max-stories` (definir e testar: rejeitar com erro explícito).
+  - Story com mais de `max-ac` (definir e testar: dividir em novas stories, sem truncar AC silenciosamente).
 
 **Step 2: Run test to verify it fails**
 - Run: `bun test src/features/backlog/split.test.ts`
@@ -96,6 +141,8 @@
 
 **Step 4: Run test to verify it passes**
 - Run: `bun test src/features/backlog/split.test.ts`
+- Dogfooding imediato:
+  - `bun run index.ts backlog split --in docs/plans/dogfooding/tmp-prd.json --out docs/plans/dogfooding/tmp-prd.split.json --json`
 
 **Step 5: Commit**
 - `git add src/features/backlog/split.ts src/features/backlog/split.test.ts src/features/backlog/cli.ts`
@@ -130,6 +177,9 @@
 
 **Step 4: Run test to verify it passes**
 - Run: `bun test src/features/backlog/board.test.ts`
+- Dogfooding imediato:
+  - `bun run index.ts backlog board --in docs/plans/dogfooding/tmp-prd.split.json --json`
+  - `bun run index.ts backlog move --in docs/plans/dogfooding/tmp-prd.split.json --story US-001 --to review --out docs/plans/dogfooding/tmp-prd.split.json --json`
 
 **Step 5: Commit**
 - `git add src/features/backlog/board.ts src/features/backlog/board.test.ts src/features/backlog/cli.ts`
@@ -157,9 +207,15 @@
 **Step 3: Write minimal implementation**
 - Helper de compatibilidade Ralph.
 - Comando opcional: `nooa backlog import-ralph --in prd.json` (wrapper de import).
+- Política de autoridade de estado (MVP): Ralph é a fonte de verdade.
+  - `syncFromRalph(prdPath, ralphPrdPath)` obrigatório para refletir estados reais no board.
+  - `syncToRalph(prdPath, ralphPrdPath)` limitado a atualizações seguras/validadas; em conflito, priorizar Ralph e registrar aviso.
 
 **Step 4: Run test to verify it passes**
 - Run: `bun test src/features/backlog/ralph-bridge.test.ts`
+- Dogfooding imediato:
+  - `bun run index.ts ralph import-prd docs/plans/dogfooding/tmp-prd.split.json`
+  - `bun run index.ts backlog board --in .nooa/ralph/prd.json --json`
 
 **Step 5: Commit**
 - `git add src/features/backlog/ralph-bridge.ts src/features/backlog/ralph-bridge.test.ts src/features/backlog/cli.ts`
@@ -191,9 +247,14 @@
 
 **Step 4: Run test to verify it passes**
 - Run: `bun test src/features/backlog/api.test.ts`
+- Dogfooding imediato:
+  - chamar endpoint `/backlog/generate` e validar payload resultante com `/backlog/validate`.
 
 **Step 5: Commit**
-- `git add src/features/backlog/api.ts src/features/backlog/api.test.ts <router-file>`
+- Descobrir o arquivo de roteamento HTTP antes do commit:
+  - `rg -n "Bun\\.serve|router|route|/ralph|/backlog" src index.ts`
+  - Se não existir roteador HTTP atual, criar `src/features/backlog/api-router.ts` e registrar no ponto de bootstrap identificado.
+- `git add src/features/backlog/api.ts src/features/backlog/api.test.ts <resolved-router-file>`
 - `git commit -m "feat(backlog): expose backlog generation and board via api"`
 
 ---
@@ -211,6 +272,8 @@
   - mapear payload API -> colunas
   - mover card no estado local
   - gerar payload de mensagem para AI (`generate`).
+- Adicionar teste de integração UI/API:
+  - fluxo `generate -> preencher board -> move -> refresh` com mock HTTP.
 
 **Step 2: Run test to verify it fails**
 - Run: `bun test src/features/backlog/ui/ui.test.ts`
@@ -279,7 +342,12 @@
 **Step 2: Verify generated docs/help**
 - `bun run index.ts backlog --help`
 - `bun run index.ts backlog generate --help`
+- `bun run index.ts backlog split --help`
+- `bun run index.ts backlog board --help`
+- `bun run index.ts backlog move --help`
+- `bun run index.ts backlog validate --help`
 - Conferir doc de feature gerado.
+- Conferir exports `backlogAgentDoc/backlogFeatureDoc` e registro no registry de tools.
 
 **Step 3: Commit + push + PR**
 - `git push -u origin feature/ralph-loop`
@@ -293,7 +361,7 @@
 - Não implementar drag-and-drop com biblioteca externa; usar controles simples primeiro.
 
 ## Riscos e mitigação
-- **LLM output inconsistente:** adicionar validadores estritos de schema PRD.
+- **LLM output inconsistente:** validar sempre via `backlog validate` antes de `ralph import-prd`.
 - **Stories super amplas:** `split` obrigatório com limites.
 - **Drift CLI/API:** API reaproveita serviços puros da CLI (fonte única).
 
@@ -302,4 +370,3 @@
 - Board CLI e UI representam corretamente estado do fluxo.
 - API funcional para geração/split/move/board.
 - Dogfooding documentado com evidência de execução real.
-

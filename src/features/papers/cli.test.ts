@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { run } from "./cli";
 
 const MOCK_ARXIV_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -22,19 +22,28 @@ const MOCK_ARXIV_XML = `<?xml version="1.0" encoding="UTF-8"?>
 
 const noSleep = async (_ms: number) => {};
 
+function createFetchMock(response: Response | Promise<Response>) {
+	return mock(() => Promise.resolve(response));
+}
+
+function getArxivCalls(fetchMock: ReturnType<typeof mock>) {
+	return fetchMock.mock.calls.filter((call) =>
+		String(call[0]).startsWith("https://export.arxiv.org/api/query?"),
+	);
+}
+
 describe("papers.run()", () => {
-	afterEach(() => {
-		mock.restore();
-	});
-
-	// ── Happy path ──────────────────────────────────────────────────────────
-
 	test("returns papers on successful fetch", async () => {
-		spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(MOCK_ARXIV_XML, { status: 200 }),
 		);
 
-		const result = await run({ limit: 5, category: "cs.AI", _sleep: noSleep });
+		const result = await run({
+			limit: 5,
+			category: "cs.AI",
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
@@ -46,53 +55,62 @@ describe("papers.run()", () => {
 	});
 
 	test("defaults to limit 5 and category cs.AI", async () => {
-		const fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(MOCK_ARXIV_XML, { status: 200 }),
 		);
 
-		await run({ _sleep: noSleep });
+		await run({ _sleep: noSleep, _fetch: fetchMock as typeof fetch });
 
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+		const arxivCalls = getArxivCalls(fetchMock);
+		expect(arxivCalls).toHaveLength(1);
+		const calledUrl = String(arxivCalls[0]?.[0]);
 		expect(calledUrl).toContain("cs.AI");
 		expect(calledUrl).toContain("max_results=5");
 	});
 
 	test("respects custom limit and category", async () => {
-		const fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(MOCK_ARXIV_XML, { status: 200 }),
 		);
 
-		await run({ limit: "3", category: "cs.LG", _sleep: noSleep });
+		await run({
+			limit: "3",
+			category: "cs.LG",
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
-		const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+		const calledUrl = String(getArxivCalls(fetchMock)[0]?.[0]);
 		expect(calledUrl).toContain("cs.LG");
 		expect(calledUrl).toContain("max_results=3");
 	});
 
 	test("includes start offset in URL when --start is set", async () => {
-		const fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(MOCK_ARXIV_XML, { status: 200 }),
 		);
 
-		await run({ limit: 5, start: "10", _sleep: noSleep });
+		await run({
+			limit: 5,
+			start: "10",
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
-		const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+		const calledUrl = String(getArxivCalls(fetchMock)[0]?.[0]);
 		expect(calledUrl).toContain("start=10");
 	});
 
 	test("defaults to start=0", async () => {
-		const fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(MOCK_ARXIV_XML, { status: 200 }),
 		);
 
-		await run({ _sleep: noSleep });
+		await run({ _sleep: noSleep, _fetch: fetchMock as typeof fetch });
 
-		const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+		const calledUrl = String(getArxivCalls(fetchMock)[0]?.[0]);
 		expect(calledUrl).toContain("start=0");
 	});
-
-	// ── Validation ───────────────────────────────────────────────────────────
 
 	test("returns papers.invalid_limit for limit 0", async () => {
 		const result = await run({ limit: "0", _sleep: noSleep });
@@ -115,28 +133,30 @@ describe("papers.run()", () => {
 		expect(result.error.code).toBe("papers.invalid_limit");
 	});
 
-	// ── Network resilience (retry) ────────────────────────────────────────────
-
 	test("retries on 503 and succeeds on second attempt", async () => {
 		let calls = 0;
-		spyOn(globalThis, "fetch").mockImplementation(async () => {
+		const fetchMock = mock(async () => {
 			calls++;
 			if (calls === 1) return new Response("", { status: 503 });
 			return new Response(MOCK_ARXIV_XML, { status: 200 });
 		});
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		expect(calls).toBe(2);
 	});
 
 	test("fails with papers.fetch_failed after exhausting retries", async () => {
-		spyOn(globalThis, "fetch").mockResolvedValue(
-			new Response("", { status: 503 }),
-		);
+		const fetchMock = createFetchMock(new Response("", { status: 503 }));
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
@@ -145,54 +165,59 @@ describe("papers.run()", () => {
 
 	test("retries on network error and succeeds on second attempt", async () => {
 		let calls = 0;
-		spyOn(globalThis, "fetch").mockImplementation(async () => {
+		const fetchMock = mock(async () => {
 			calls++;
 			if (calls === 1) throw new Error("ECONNREFUSED");
 			return new Response(MOCK_ARXIV_XML, { status: 200 });
 		});
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		expect(calls).toBe(2);
 	});
 
 	test("returns papers.fetch_failed after all retries exhausted on network error", async () => {
-		spyOn(globalThis, "fetch").mockRejectedValue(new Error("ECONNREFUSED"));
+		const fetchMock = mock(() => Promise.reject(new Error("ECONNREFUSED")));
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(false);
 		if (result.ok) return;
 		expect(result.error.code).toBe("papers.fetch_failed");
 	});
 
-	// ── User-Agent ────────────────────────────────────────────────────────────
-
 	test("sends nooa User-Agent header to arXiv", async () => {
-		const fetchSpy = spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(MOCK_ARXIV_XML, { status: 200 }),
 		);
 
-		await run({ _sleep: noSleep });
+		await run({ _sleep: noSleep, _fetch: fetchMock as typeof fetch });
 
-		const calledOptions = fetchSpy.mock.calls[0]?.[1] as RequestInit;
+		const calledOptions = getArxivCalls(fetchMock)[0]?.[1] as RequestInit;
 		const headers = calledOptions?.headers as Record<string, string>;
 		expect(headers?.["User-Agent"]).toMatch(/^nooa\//);
 	});
-
-	// ── URL normalization ─────────────────────────────────────────────────────
 
 	test("normalizes http arxiv URLs to https", async () => {
 		const xmlWithHttp = MOCK_ARXIV_XML.replace(
 			"https://arxiv.org/abs/2502.00001",
 			"http://arxiv.org/abs/2502.00001",
 		);
-		spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(xmlWithHttp, { status: 200 }),
 		);
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
@@ -204,18 +229,19 @@ describe("papers.run()", () => {
 			"https://arxiv.org/abs/2502.00001",
 			"https://arxiv.org/abs/2502.00001v3",
 		);
-		spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(xmlWithVersion, { status: 200 }),
 		);
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(result.data.papers[0]?.url).toBe("https://arxiv.org/abs/2502.00001");
 	});
-
-	// ── XML entity decoding ───────────────────────────────────────────────────
 
 	test("decodes XML entities in title and abstract", async () => {
 		const xmlWithEntities = `<?xml version="1.0" encoding="UTF-8"?>
@@ -228,11 +254,14 @@ describe("papers.run()", () => {
     <author><name>Dana Lee</name></author>
   </entry>
 </feed>`;
-		spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(xmlWithEntities, { status: 200 }),
 		);
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
@@ -242,8 +271,6 @@ describe("papers.run()", () => {
 		expect(result.data.papers[0]?.abstract).toContain("x < y");
 		expect(result.data.papers[0]?.abstract).toContain('"improvements"');
 	});
-
-	// ── Whitespace normalization ──────────────────────────────────────────────
 
 	test("collapses excessive whitespace in title and abstract", async () => {
 		const xmlWithWhitespace = `<?xml version="1.0" encoding="UTF-8"?>
@@ -258,11 +285,14 @@ describe("papers.run()", () => {
     <author><name>Eve Grant</name></author>
   </entry>
 </feed>`;
-		spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(xmlWithWhitespace, { status: 200 }),
 		);
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
@@ -272,29 +302,30 @@ describe("papers.run()", () => {
 		expect(result.data.papers[0]?.abstract).not.toMatch(/\s{2,}/);
 	});
 
-	// ── --no-abstract ─────────────────────────────────────────────────────────
-
 	test("returns empty string for abstract when noAbstract is true", async () => {
-		spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(MOCK_ARXIV_XML, { status: 200 }),
 		);
 
-		const result = await run({ noAbstract: true, _sleep: noSleep });
+		const result = await run({
+			noAbstract: true,
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(result.data.papers[0]?.abstract).toBe("");
 	});
 
-	// ── Edge cases ────────────────────────────────────────────────────────────
-
 	test("returns empty papers array for empty feed", async () => {
 		const emptyXml = `<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>`;
-		spyOn(globalThis, "fetch").mockResolvedValue(
-			new Response(emptyXml, { status: 200 }),
-		);
+		const fetchMock = createFetchMock(new Response(emptyXml, { status: 200 }));
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
@@ -316,11 +347,14 @@ describe("papers.run()", () => {
     <author><name>Frank Brown</name></author>
   </entry>
 </feed>`;
-		spyOn(globalThis, "fetch").mockResolvedValue(
+		const fetchMock = createFetchMock(
 			new Response(xmlMissingFields, { status: 200 }),
 		);
 
-		const result = await run({ _sleep: noSleep });
+		const result = await run({
+			_sleep: noSleep,
+			_fetch: fetchMock as typeof fetch,
+		});
 
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
