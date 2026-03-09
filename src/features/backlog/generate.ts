@@ -31,7 +31,9 @@ export async function generateBacklogFromPrompt(
 
 	const project = input.project ?? "Ralph Loop Backlog";
 	const branchSeed = input.branchName ?? slugify(prompt);
-	const branchName = branchSeed ? `feature/${branchSeed}` : "feature/backlog-item";
+	const branchName = branchSeed
+		? `feature/${branchSeed}`
+		: "feature/backlog-item";
 	const title = toTitle(prompt);
 
 	const prd: BacklogPrd = {

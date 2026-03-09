@@ -1,13 +1,13 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { buildStandardOptions } from "../../core/cli-flags";
 import { handleCommandError, renderJson } from "../../core/cli-output";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
 import { generateBacklogFromPrompt } from "./generate";
-import { validateBacklogPrd } from "./validate";
 import type { BacklogAction, BacklogMode } from "./types";
+import { validateBacklogPrd } from "./validate";
 
 export interface BacklogRunInput {
 	action?: BacklogAction;
@@ -29,7 +29,9 @@ export interface BacklogRunResult {
 export const backlogMeta: AgentDocMeta = {
 	name: "backlog",
 	description: "Generate and operate backlog PRDs and kanban state",
-	changelog: [{ version: "1.0.0", changes: ["Initial backlog command scaffold"] }],
+	changelog: [
+		{ version: "1.0.0", changes: ["Initial backlog command scaffold"] },
+	],
 };
 
 export const backlogHelp = `
@@ -144,7 +146,11 @@ export async function run(
 		const prd = await generateBacklogFromPrompt({ prompt: input.prompt });
 		if (input.outPath) {
 			await mkdir(dirname(input.outPath), { recursive: true });
-			await writeFile(input.outPath, `${JSON.stringify(prd, null, 2)}\n`, "utf8");
+			await writeFile(
+				input.outPath,
+				`${JSON.stringify(prd, null, 2)}\n`,
+				"utf8",
+			);
 		}
 		return {
 			ok: true,
@@ -178,14 +184,13 @@ export async function run(
 		};
 	}
 
-	if (
-		action !== "split" &&
-		action !== "board" &&
-		action !== "move"
-	) {
+	if (action !== "split" && action !== "board" && action !== "move") {
 		return {
 			ok: false,
-			error: sdkError("backlog.invalid_action", `Unknown subcommand: ${action}`),
+			error: sdkError(
+				"backlog.invalid_action",
+				`Unknown subcommand: ${action}`,
+			),
 		};
 	}
 

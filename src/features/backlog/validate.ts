@@ -22,7 +22,10 @@ export function validateBacklogPrd(input: unknown): BacklogValidationResult {
 	if (typeof input.branchName !== "string" || input.branchName.trim() === "") {
 		errors.push("branchName must be a non-empty string");
 	}
-	if (typeof input.description !== "string" || input.description.trim() === "") {
+	if (
+		typeof input.description !== "string" ||
+		input.description.trim() === ""
+	) {
 		errors.push("description must be a non-empty string");
 	}
 
@@ -51,7 +54,9 @@ export function validateBacklogPrd(input: unknown): BacklogValidationResult {
 				);
 			}
 			if (!Array.isArray(story.acceptanceCriteria)) {
-				errors.push(`userStories[${index}].acceptanceCriteria must be an array`);
+				errors.push(
+					`userStories[${index}].acceptanceCriteria must be an array`,
+				);
 			} else if (story.acceptanceCriteria.length === 0) {
 				errors.push(
 					`userStories[${index}].acceptanceCriteria must contain at least 1 item`,
