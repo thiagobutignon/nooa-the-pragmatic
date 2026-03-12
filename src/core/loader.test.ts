@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { loadCommands } from "./registry";
@@ -53,6 +53,17 @@ describe("Command Loader", () => {
 		expect(registry.get("foo")?.description).toBe("foo desc");
 		expect(registry.get("bar")).toBeDefined();
 		expect(registry.get("baz")).toBeUndefined();
+	});
+
+	test("skips directories without cli.ts without logging an error", async () => {
+		await mkdir(join(tmpDir, "no-cli"), { recursive: true });
+		const consoleErrorSpy = spyOn(console, "error").mockImplementation(() => {});
+
+		const registry = await loadCommands(tmpDir);
+
+		expect(registry.get("no-cli")).toBeUndefined();
+		expect(consoleErrorSpy).not.toHaveBeenCalled();
+		consoleErrorSpy.mockRestore();
 	});
 
 	afterAll(async () => {

@@ -15,6 +15,7 @@ coverage
 logs
 _.log
 report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+*.cpuprofile
 
 # dotenv environment variable files
 .env
@@ -39,5 +40,6 @@ memory/
 *.local.md
 .nooa/*.local.md
 .nooa/ralph/
+.nooa/profile/
 .nooa/memory.lock
 .nooa/memory/
