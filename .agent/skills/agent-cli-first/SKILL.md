@@ -11,13 +11,19 @@ description: Use when starting a new project or feature, or when an agent is dri
 
 CLI-first is not a preference. It is a control system: it forces a tight, deterministic loop where an agent can run the product, observe stdout/stderr, and converge quickly.
 
+In NOOA, the default flow is:
+
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+
 If the agent can run the feature as a command, it can:
 - test it
 - debug it (stderr)
+- inspect it with `nooa debug`
+- profile it with `nooa profile`
 - iterate without “UI fog”
 - verify outcomes deterministically
 
-**UI/API/MCP come later as adapters.**
+**API/MCP/UI come later as adapters.**
 
 ---
 
@@ -84,9 +90,12 @@ flowchart LR
 7. **No UI/API until CLI passes gates.**
    If you need UI to “see if it works”, you’re drifting.
 
+8. **Runtime investigation must be commandable.**
+   If the feature can fail or get slow, there should be a direct command path to debug it and, when relevant, profile it.
+
 ---
 
-## The Workflow: Spec → RED → GREEN → Gates
+## The Workflow: Spec → RED → GREEN → Debug → Profile → Dogfood → Gates
 
 ### 1) Spec via `--help` (Write this first)
 
@@ -144,6 +153,22 @@ Implementation order:
 
 Do not put business rules in CLI parsing.
 
+### 4) Debug path
+
+Before adapters, make sure failure investigation has a command path:
+- use `nooa debug` for runtime/state failures
+- avoid UI-first or API-first reproduction as the default path
+
+### 5) Profile path
+
+When the command can become CPU-heavy or latency-sensitive:
+- add a profile path early
+- prefer `nooa profile` over blind optimization
+
+### 6) Dogfood
+
+Execute the command, debug path, and profile path when relevant before exposing the behavior through adapters.
+
 ---
 
 ### 4) Gates: Definition of Done (DoD)
@@ -153,6 +178,8 @@ A task is not “done” until these pass:
 * `lint`
 * `typecheck`
 * `test` (including CLI tests)
+* `nooa debug ...` when the behavior can fail at runtime
+* `nooa profile ...` when CPU cost or hotspots matter
 * **Dogfooding** (manual execution, help check)
 * optional: `security audit`, `coverage`, `format`
 
@@ -164,6 +191,12 @@ If gates fail: attach outputs and go back to GREEN.
 
 * “I’ll add a quick React form to test it.”
   → You just added a second system (UI state) to debug the first system (logic).
+
+* “We can debug it through the API later.”
+  → Later means slower. Add the command path first.
+
+* “Performance tuning can wait until UI exists.”
+  → Wrong order. Expose the profile path before hiding hotspots behind adapters.
 
 * “I need the browser to see the result.”
   → The agent can’t reliably “see” it. Add `--json` output.
@@ -198,6 +231,8 @@ Your CLI is agent-ready when:
 * [ ] exit codes are correct and consistent
 * [ ] `--dry-run` exists for side-effect commands
 * [ ] CLI tests exist and run in CI
+* [ ] Runtime failures can be investigated by command
+* [ ] Performance hotspots can be investigated by command when relevant
 * [ ] **Dogfooding** checklist complete
 * [ ] gates pass reliably
 
@@ -214,7 +249,10 @@ Your CLI is agent-ready when:
 3. minimal behavior (GREEN)
 4. **Dogfooding** (Verify)
 5. gates
-6. then adapters (API/MCP/UI)
+6. debug path
+7. profile path
+8. dogfooding
+9. then adapters (API/MCP/UI)
 
 ---
 

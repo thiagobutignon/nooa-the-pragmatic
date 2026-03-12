@@ -31,6 +31,14 @@ When operating inside this repository on development work, read:
 
 Do this during bootstrap, before implementation. Treat it as the canonical local workflow reference that explains how the repo expects planning, worktrees, TDD, direct execution, verification, and review to fit together.
 
+## NOOA Build Order
+
+In this repository, default to this build order unless the task proves a narrower path:
+
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+
+If work starts from API or UI before the command, investigation path, and dogfooding path exist, treat that as drift.
+
 ```dot
 digraph skill_flow {
     "User message received" [shape=doublecircle];
@@ -83,6 +91,8 @@ When multiple skills could apply, use this order:
 "Start new project/feature" → agent-cli-first.
 "Write content/post" → linkedin-post.
 "Fix this bug" → debugging first, then domain-specific skills.
+
+Inside NOOA, `agent-cli-first`, `test-driven-development`, `systematic-debugging`, and `dogfooding` should usually appear together for runtime-facing work.
 
 ## Skill Types
 
