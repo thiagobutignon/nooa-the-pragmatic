@@ -5,6 +5,7 @@ export interface GenerateBacklogInput {
 	prompt: string;
 	project?: string;
 	branchName?: string;
+	profileCommand?: string[];
 }
 
 function slugify(value: string) {
@@ -51,6 +52,7 @@ export async function generateBacklogFromPrompt(
 					"A story deve manter compatibilidade com o fluxo Ralph.",
 					"O estado inicial da story deve ser pending com passes=false.",
 				],
+				profileCommand: input.profileCommand,
 				priority: 1,
 				passes: false,
 				state: "pending",

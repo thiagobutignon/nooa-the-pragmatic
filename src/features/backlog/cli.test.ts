@@ -20,5 +20,6 @@ describe("nooa backlog", () => {
 		expect(res.stdout).toContain("split");
 		expect(res.stdout).toContain("board");
 		expect(res.stdout).toContain("move");
+		expect(res.stdout).toContain("profile-command");
 	});
 });

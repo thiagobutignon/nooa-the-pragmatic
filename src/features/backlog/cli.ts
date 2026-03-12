@@ -15,6 +15,7 @@ export interface BacklogRunInput {
 	prompt?: string;
 	inPath?: string;
 	outPath?: string;
+	profileCommand?: string[];
 }
 
 export interface BacklogRunResult {
@@ -50,11 +51,14 @@ Flags:
   --json                Output results as JSON.
   --in <path>           Input PRD JSON path.
   --out <path>          Persist generated PRD JSON to disk.
+  --profile-command <json>
+                        Optional JSON array used to seed story.profileCommand.
   -h, --help            Show help message.
 
 Examples:
   nooa backlog --help
   nooa backlog generate --help
+  nooa backlog generate "Improve latency" --profile-command '["node","scripts/profile-target.js"]'
   nooa backlog board --help
 
 Exit Codes:
@@ -86,6 +90,7 @@ export const backlogSchema = {
 	json: { type: "boolean", required: false },
 	in: { type: "string", required: false },
 	out: { type: "string", required: false },
+	"profile-command": { type: "string", required: false },
 } satisfies SchemaSpec;
 
 export const backlogOutputFields = [
@@ -136,14 +141,17 @@ export async function run(
 		if (!input.prompt?.trim()) {
 			return {
 				ok: false,
-				error: sdkError(
+			error: sdkError(
 					"backlog.missing_prompt",
 					"Prompt required for generate.",
 				),
 			};
 		}
 
-		const prd = await generateBacklogFromPrompt({ prompt: input.prompt });
+		const prd = await generateBacklogFromPrompt({
+			prompt: input.prompt,
+			profileCommand: input.profileCommand,
+		});
 		if (input.outPath) {
 			await mkdir(dirname(input.outPath), { recursive: true });
 			await writeFile(
@@ -218,18 +226,34 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			...buildStandardOptions(),
 			in: { type: "string" },
 			out: { type: "string" },
+			"profile-command": { type: "string" },
 		},
 	})
 	.parseInput(async ({ positionals, values }) => {
 		const commandIndex = positionals.indexOf("backlog");
 		const action = positionals[commandIndex + 1] as BacklogAction | undefined;
 		const args = positionals.slice(commandIndex + 2);
+		const profileCommandRaw =
+			typeof values["profile-command"] === "string"
+				? values["profile-command"]
+				: undefined;
+		let profileCommand: string[] | undefined;
+		if (profileCommandRaw) {
+			const parsed = JSON.parse(profileCommandRaw) as unknown;
+			if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+				throw new Error(
+					"--profile-command must be a JSON array of strings",
+				);
+			}
+			profileCommand = parsed;
+		}
 		return {
 			action,
 			json: Boolean(values.json),
 			prompt: action === "generate" ? args.join(" ").trim() : undefined,
 			inPath: typeof values.in === "string" ? values.in : undefined,
 			outPath: typeof values.out === "string" ? values.out : undefined,
+			profileCommand,
 		};
 	})
 	.run(run)

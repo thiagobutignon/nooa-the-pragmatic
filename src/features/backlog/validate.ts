@@ -62,6 +62,23 @@ export function validateBacklogPrd(input: unknown): BacklogValidationResult {
 					`userStories[${index}].acceptanceCriteria must contain at least 1 item`,
 				);
 			}
+			if (story.profileCommand !== undefined) {
+				if (!Array.isArray(story.profileCommand)) {
+					errors.push(
+						`userStories[${index}].profileCommand must be an array when provided`,
+					);
+				} else if (
+					story.profileCommand.length === 0 ||
+					story.profileCommand.some(
+						(segment) =>
+							typeof segment !== "string" || segment.trim().length === 0,
+					)
+				) {
+					errors.push(
+						`userStories[${index}].profileCommand must contain non-empty string segments`,
+					);
+				}
+			}
 		});
 	}
 
