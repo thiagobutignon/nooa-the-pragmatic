@@ -908,6 +908,13 @@ function shouldProfileRalphStory(story: RalphStory): boolean {
 	return /(performance|cpu|hotspot|latency|throughput|profile)/.test(text);
 }
 
+function getRalphProfileCommandHint(story: RalphStory): string[] | null {
+	if (story.profileCommand?.length) {
+		return story.profileCommand;
+	}
+	return null;
+}
+
 export async function executeRalphReviewLoop(
 	input?: {
 		root?: string;
@@ -1705,16 +1712,21 @@ export async function executeRalphStep(
 		const testFiles = storyFiles.filter((file) =>
 			/\.(test|spec)\.[cm]?[jt]sx?$/.test(file),
 		);
+		const hintedProfileCommand = getRalphProfileCommandHint(activeStory);
 		if (
-			testFiles.length > 0 &&
 			shouldProfileRalphStory(activeStory) &&
 			adapters.inspectProfile
 		) {
 			try {
+				const profileCommand =
+					hintedProfileCommand ??
+					(testFiles.length > 0 ? ["bun", "test", ...testFiles] : null);
+				if (profileCommand) {
 				successInvestigation = await adapters.inspectProfile({
 					root,
-					command: ["bun", "test", ...testFiles],
+					command: profileCommand,
 				});
+				}
 			} catch {}
 		}
 

@@ -48,6 +48,7 @@ export interface RalphStoryRecord {
 	title: string;
 	description: string;
 	acceptanceCriteria: string[];
+	profileCommand?: string[];
 	priority: number;
 	passes: boolean;
 	notes: string;
