@@ -69,7 +69,18 @@ You MUST complete each phase before proceeding to the next.
    - New dependencies, config changes
    - Environmental differences
 
-4. **Gather Evidence in Multi-Component Systems**
+4. **Prefer Atomic Investigation Primitives Before Guessing**
+
+   **WHEN working inside NOOA, prefer evidence capture commands over manual speculation:**
+   - `nooa debug inspect-test-failure -- <test command...>`
+   - `nooa debug inspect-on-failure -- <runtime command...>`
+   - `nooa debug inspect-at <file>:<line> -- <runtime command...>`
+   - `nooa debug capture -- <runtime command...>`
+   - `nooa profile inspect -- <runtime command...>` for CPU/perf issues
+
+   **Why:** These commands capture state, stack, source, exception, or hotspots in a single atomic run. They are usually better than trying to keep an interactive session alive across turns.
+
+5. **Gather Evidence in Multi-Component Systems**
 
    **WHEN system has multiple components (CI → build → signing, API → service → database):**
 
@@ -107,7 +118,7 @@ You MUST complete each phase before proceeding to the next.
 
    **This reveals:** Which layer fails (secrets → workflow ✓, workflow → build ✗)
 
-5. **Trace Data Flow**
+6. **Trace Data Flow**
 
    **WHEN error is deep in call stack:**
 

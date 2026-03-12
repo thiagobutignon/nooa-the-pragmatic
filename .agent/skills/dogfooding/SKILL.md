@@ -42,6 +42,19 @@ bun run index.ts <command> <args>
 # Verify exit code: echo $?
 ```
 
+**For agent-first investigation commands, prefer atomic runs:**
+```bash
+nooa debug inspect-test-failure --json -- bun test path/to/test.ts
+nooa debug inspect-on-failure --json -- node script.js
+nooa debug inspect-at path/to/file.ts:42 --json -- node script.js
+nooa profile inspect --json -- node script.js
+```
+
+Verify that:
+- JSON contains stable investigation fields, not only human text
+- output is useful without a follow-up interactive session
+- replay/ralph-facing evidence is present when the command claims to be agent-first
+
 ### 2. Execute Edge Cases
 ```bash
 # Missing required arguments
