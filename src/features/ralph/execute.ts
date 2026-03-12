@@ -125,6 +125,10 @@ export interface RalphStepAdapters {
 		stack?: Array<{ file: string; line: number; column?: number }>;
 		exception?: { reason?: string; message?: string };
 	}>;
+	inspectProfile?: (input: {
+		root: string;
+		command: string[];
+	}) => Promise<RalphProgressInvestigation>;
 	appendProgress: (
 		root: string,
 		entry: RalphProgressEntry,
@@ -428,6 +432,32 @@ const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
 			stack?: Array<{ file: string; line: number; column?: number }>;
 			exception?: { reason?: string; message?: string };
 		};
+	},
+	inspectProfile: async (input) => {
+		const result = await execa(
+			process.execPath,
+			["run", "index.ts", "profile", "inspect", "--json", "--", ...input.command],
+			{
+				cwd: input.root,
+				reject: false,
+				env: {
+					...process.env,
+					NOOA_DISABLE_REFLECTION: "1",
+				},
+			},
+		);
+
+		if (result.exitCode !== 0) {
+			throw new Error(result.stderr || result.stdout || "profile inspect failed");
+		}
+
+		const parsed = JSON.parse(result.stdout) as {
+			investigation?: RalphProgressInvestigation;
+		};
+		if (!parsed.investigation) {
+			throw new Error("profile inspect returned no investigation");
+		}
+		return parsed.investigation;
 	},
 	appendProgress: appendRalphProgressEntry,
 };
@@ -863,6 +893,19 @@ function rankRalphCandidateForExecution(story: RalphStory): number {
 		return 1;
 	}
 	return 2;
+}
+
+function shouldProfileRalphStory(story: RalphStory): boolean {
+	const text = [
+		story.title,
+		story.description,
+		...(story.acceptanceCriteria ?? []),
+		story.notes,
+	]
+		.filter(Boolean)
+		.join("\n")
+		.toLowerCase();
+	return /(performance|cpu|hotspot|latency|throughput|profile)/.test(text);
 }
 
 export async function executeRalphReviewLoop(
@@ -1658,6 +1701,23 @@ export async function executeRalphStep(
 		prd.userStories[storyIndex] = activeStory;
 		await saveRalphPrd(root, prd);
 
+		let successInvestigation: RalphProgressInvestigation | undefined;
+		const testFiles = storyFiles.filter((file) =>
+			/\.(test|spec)\.[cm]?[jt]sx?$/.test(file),
+		);
+		if (
+			testFiles.length > 0 &&
+			shouldProfileRalphStory(activeStory) &&
+			adapters.inspectProfile
+		) {
+			try {
+				successInvestigation = await adapters.inspectProfile({
+					root,
+					command: ["bun", "test", ...testFiles],
+				});
+			} catch {}
+		}
+
 		await adapters.appendProgress(root, {
 			runId: state.runId,
 			storyId: activeStory.id,
@@ -1667,6 +1727,7 @@ export async function executeRalphStep(
 				workflow: true,
 				ci: true,
 			},
+			investigation: successInvestigation,
 			notes: [
 				"Story executed and moved into peer review.",
 				...(workerFailureMessage
