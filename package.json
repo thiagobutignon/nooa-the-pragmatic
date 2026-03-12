@@ -22,6 +22,8 @@
 	},
 	"scripts": {
 		"start": "bun run index.ts",
+		"desktop:dev": "cd apps/desktop && bun run tauri dev",
+		"desktop:build": "cd apps/desktop && bun run tauri build",
 		"tui:read": "bun run src/tui/screens/read/app.tsx",
 		"test": "bun test",
 		"test:coverage": "bun test --coverage",
