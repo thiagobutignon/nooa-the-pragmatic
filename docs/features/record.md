@@ -58,6 +58,7 @@ Error Codes:
       <field name="cwd" type="string" />
       <field name="stdout" type="string" />
       <field name="stderr" type="string" />
+      <field name="env" type="object" />
       <field name="filesTouched" type="array" />
     </output>
   </contract>

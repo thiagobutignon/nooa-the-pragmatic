@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadTrace } from "./storage";
@@ -61,6 +61,41 @@ describe("trace execute", () => {
 		expect(result.data.stderrSummary).toContain("boom");
 		expect(result.data.stdoutSummary).toBe("");
 		expect(await loadTrace(root, result.data.traceId)).not.toBeNull();
+	});
+
+	test("accepts general local commands beyond node bun and nooa", async () => {
+		const root = await createRoot();
+		const result = await runTrace({
+			action: "inspect",
+			command: ["sh", "-c", "echo shell-ok"],
+			cwd: root,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.data.exitCode).toBe(0);
+		expect(result.data.stdoutSummary).toContain("shell-ok");
+	});
+
+	test("detects edits to existing files as touched", async () => {
+		const root = await createRoot();
+		const target = join(root, "existing.txt");
+		await writeFile(target, "before");
+
+		const result = await runTrace({
+			action: "inspect",
+			command: [
+				"node",
+				"-e",
+				"require('node:fs').appendFileSync('existing.txt','-after')",
+			],
+			cwd: root,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.data.filesTouched).toContain("existing.txt");
+		expect(await readFile(target, 'utf8')).toBe("before-after");
 	});
 
 	test("rejects missing commands", async () => {

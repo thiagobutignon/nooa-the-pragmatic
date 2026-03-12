@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { type Options as ExecaOptions, execa } from "execa";
 import { createTraceId } from "../../core/logger";
@@ -32,12 +32,8 @@ type ExecaLike = (
 	signal?: string | null;
 }>;
 
-function detectRuntime(command: string[] | undefined): "node" | "bun" | "nooa" | null {
-	const file = command?.[0];
-	if (!file) return null;
-	const name = basename(file);
-	if (name === "node" || name === "bun" || name === "nooa") return name;
-	return null;
+function hasExecutable(command: string[] | undefined): boolean {
+	return Boolean(command?.[0]);
 }
 
 function summarizeStream(text: string, maxLength = 400) {
@@ -48,10 +44,19 @@ function summarizeStream(text: string, maxLength = 400) {
 		: `${trimmed.slice(0, maxLength - 3)}...`;
 }
 
-async function snapshotFiles(root: string, current = ""): Promise<string[]> {
+type FileSnapshotEntry = {
+	path: string;
+	size: number;
+	mtimeMs: number;
+};
+
+async function snapshotFiles(
+	root: string,
+	current = "",
+): Promise<FileSnapshotEntry[]> {
 	const dir = current ? join(root, current) : root;
 	const entries = await readdir(dir, { withFileTypes: true });
-	const files: string[] = [];
+	const files: FileSnapshotEntry[] = [];
 
 	for (const entry of entries) {
 		const relativePath = current ? join(current, entry.name) : entry.name;
@@ -65,16 +70,57 @@ async function snapshotFiles(root: string, current = ""): Promise<string[]> {
 			files.push(...(await snapshotFiles(root, relativePath)));
 			continue;
 		}
-		files.push(relativePath);
+		const filePath = join(root, relativePath);
+		const metadata = await stat(filePath);
+		files.push({
+			path: relativePath,
+			size: metadata.size,
+			mtimeMs: metadata.mtimeMs,
+		});
 	}
 
-	return files.sort();
+	return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function diffTouchedFiles(before: string[], after: string[]) {
-	const beforeSet = new Set(before);
-	const afterSet = new Set(after);
-	return [...after.filter((file) => !beforeSet.has(file)), ...before.filter((file) => !afterSet.has(file))];
+function diffTouchedFiles(before: FileSnapshotEntry[], after: FileSnapshotEntry[]) {
+	const beforeMap = new Map(before.map((entry) => [entry.path, entry]));
+	const afterMap = new Map(after.map((entry) => [entry.path, entry]));
+	const touched = new Set<string>();
+
+	for (const [path, entry] of afterMap) {
+		const previous = beforeMap.get(path);
+		if (!previous) {
+			touched.add(path);
+			continue;
+		}
+		if (previous.size !== entry.size || previous.mtimeMs !== entry.mtimeMs) {
+			touched.add(path);
+		}
+	}
+
+	for (const path of beforeMap.keys()) {
+		if (!afterMap.has(path)) {
+			touched.add(path);
+		}
+	}
+
+	return Array.from(touched).sort();
+}
+
+export function sanitizeEnvironment(
+	env: NodeJS.ProcessEnv,
+): Record<string, string> {
+	const allowedKeys = ["CI", "NODE_ENV", "NOOA_DISABLE_REFLECTION"];
+	const sanitized: Record<string, string> = {};
+
+	for (const key of allowedKeys) {
+		const value = env[key];
+		if (typeof value === "string" && value.length > 0) {
+			sanitized[key] = value;
+		}
+	}
+
+	return sanitized;
 }
 
 export async function executeTraceInspect(
@@ -92,8 +138,7 @@ export async function captureTraceExecution(
 	input: TraceInspectInput,
 	runCommand: ExecaLike = execa,
 ): Promise<TraceExecutionCapture> {
-	const runtime = detectRuntime(input.command);
-	if (!runtime || !input.command?.length) {
+	if (!hasExecutable(input.command)) {
 		throw new Error("trace.invalid_target");
 	}
 
@@ -152,8 +197,7 @@ export async function runTrace(
 		};
 	}
 
-	const runtime = detectRuntime(input.command);
-	if (!runtime) {
+	if (!hasExecutable(input.command)) {
 		return {
 			ok: false,
 			error: sdkError(

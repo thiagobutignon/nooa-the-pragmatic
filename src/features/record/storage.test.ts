@@ -50,6 +50,9 @@ describe("record storage", () => {
 			signal: null,
 			stdout: "ok",
 			stderr: "",
+			env: {
+				NOOA_DISABLE_REFLECTION: "1",
+			},
 			filesTouched: ["tmp/output.txt"],
 		};
 

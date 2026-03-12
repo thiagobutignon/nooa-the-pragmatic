@@ -13,6 +13,7 @@ export interface RecordArtifact {
 	signal: string | null;
 	stdout: string;
 	stderr: string;
+	env: Record<string, string>;
 	filesTouched: string[];
 }
 

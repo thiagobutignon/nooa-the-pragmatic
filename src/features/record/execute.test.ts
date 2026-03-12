@@ -41,11 +41,13 @@ describe("record execute", () => {
 		expect(result.data.stderr).toContain("err-raw-1234567890");
 		expect(result.data.filesTouched).toContain("recorded.txt");
 		expect(result.data.traceId).toBeString();
+		expect(result.data.env?.NOOA_DISABLE_REFLECTION).toBe("1");
 
 		const storedRecord = await loadRecord(root, result.data.recordId);
 		const storedTrace = await loadTrace(root, result.data.traceId);
 
 		expect(storedRecord?.traceId).toBe(result.data.traceId);
+		expect(storedRecord?.env?.NOOA_DISABLE_REFLECTION).toBe("1");
 		expect(storedTrace?.links.recordId).toBe(result.data.recordId);
 	});
 

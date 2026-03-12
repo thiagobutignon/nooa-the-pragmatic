@@ -66,6 +66,7 @@ export const recordOutputFields = [
 	{ name: "cwd", type: "string" },
 	{ name: "stdout", type: "string" },
 	{ name: "stderr", type: "string" },
+	{ name: "env", type: "object" },
 	{ name: "filesTouched", type: "array" },
 ];
 
@@ -107,6 +108,7 @@ export interface RecordRunResult {
 	cwd?: string;
 	stdout?: string;
 	stderr?: string;
+	env?: Record<string, string>;
 	filesTouched?: string[];
 }
 

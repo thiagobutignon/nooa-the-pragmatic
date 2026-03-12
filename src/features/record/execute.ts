@@ -1,6 +1,6 @@
 import { createTraceId } from "../../core/logger";
 import { sdkError, type SdkResult } from "../../core/types";
-import { captureTraceExecution } from "../trace/execute";
+import { captureTraceExecution, sanitizeEnvironment } from "../trace/execute";
 import { updateTrace } from "../trace/storage";
 import { saveRecord, type RecordArtifact } from "./storage";
 
@@ -39,6 +39,10 @@ export async function executeRecordInspect(
 		signal: trace.signal,
 		stdout: traceCapture.stdout,
 		stderr: traceCapture.stderr,
+		env: sanitizeEnvironment({
+			...process.env,
+			NOOA_DISABLE_REFLECTION: "1",
+		}),
 		filesTouched: trace.filesTouched,
 	};
 
