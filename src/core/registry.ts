@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { access, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Command } from "./command";
 
@@ -38,11 +38,15 @@ export async function loadCommands(
 		if (entry.isDirectory()) {
 			try {
 				const cliPath = join(featuresDir, entry.name, "cli.ts");
+				await access(cliPath);
 				const module = await import(cliPath);
 				if (module.default?.name) {
 					registry.register(module.default);
 				}
 			} catch (e) {
+				if (e instanceof Error && "code" in e && e.code === "ENOENT") {
+					continue;
+				}
 				console.error(`Error loading command from ${entry.name}:`, e);
 			}
 		}
