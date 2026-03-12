@@ -11,7 +11,7 @@ export interface DesktopActionRequest {
 }
 
 export interface DesktopChatMessage {
-	role: "user" | "assistant";
+	role: "user" | "assistant" | "system";
 	content: string;
 }
 
@@ -19,7 +19,12 @@ export interface DesktopSessionState {
 	sessionId: string;
 	workspacePath: string;
 	mode: DesktopPermissionMode;
+	title?: string;
+	archived?: boolean;
+	createdAt?: string;
+	updatedAt?: string;
 	history: DesktopChatMessage[];
+	events: DesktopEvent[];
 	pendingApproval: DesktopActionRequest | null;
 }
 
@@ -68,7 +73,57 @@ export interface DesktopBridgeResponse {
 	events: DesktopEvent[];
 }
 
+export interface DesktopWorkspaceEntry {
+	path: string;
+	lastOpenedAt: string;
+	lastSessionId: string | null;
+}
+
+export interface DesktopConversationEntry {
+	sessionId: string;
+	workspacePath: string;
+	title: string;
+	archived: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface DesktopBootstrapResponse {
+	recentWorkspaces: DesktopWorkspaceEntry[];
+	conversations: DesktopConversationEntry[];
+	session: DesktopBridgeResponse | null;
+}
+
 export type DesktopBridgeRequest =
+	| {
+			type: "bootstrap";
+			workspacePath?: string;
+	  }
+	| {
+			type: "new_session";
+			workspacePath: string;
+			mode: DesktopPermissionMode;
+	  }
+	| {
+			type: "open_session";
+			workspacePath: string;
+			sessionId: string;
+			mode: DesktopPermissionMode;
+	  }
+	| {
+			type: "archive_session";
+			workspacePath: string;
+			sessionId: string;
+	  }
+	| {
+			type: "delete_session";
+			workspacePath: string;
+			sessionId: string;
+	  }
+	| {
+			type: "forget_workspace";
+			workspacePath: string;
+	  }
 	| {
 			type: "send_message";
 			sessionId: string;
@@ -81,10 +136,12 @@ export type DesktopBridgeRequest =
 			sessionId: string;
 			workspacePath: string;
 			mode: DesktopPermissionMode;
+			requestId: string;
 	  }
 	| {
 			type: "deny";
 			sessionId: string;
 			workspacePath: string;
 			mode: DesktopPermissionMode;
+			requestId: string;
 	  };

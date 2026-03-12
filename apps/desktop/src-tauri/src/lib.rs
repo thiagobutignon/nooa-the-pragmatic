@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 struct DesktopActionRequest {
     request_id: String,
     kind: String,
@@ -14,7 +14,7 @@ struct DesktopActionRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
 enum DesktopEvent {
     Assistant {
         markdown: String,
@@ -54,8 +54,31 @@ enum DesktopPermissionMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
 enum DesktopBridgeRequest {
+    Bootstrap {
+        workspace_path: Option<String>,
+    },
+    NewSession {
+        workspace_path: String,
+        mode: DesktopPermissionMode,
+    },
+    OpenSession {
+        workspace_path: String,
+        session_id: String,
+        mode: DesktopPermissionMode,
+    },
+    ArchiveSession {
+        workspace_path: String,
+        session_id: String,
+    },
+    DeleteSession {
+        workspace_path: String,
+        session_id: String,
+    },
+    ForgetWorkspace {
+        workspace_path: String,
+    },
     SendMessage {
         session_id: String,
         workspace_path: String,
@@ -66,21 +89,57 @@ enum DesktopBridgeRequest {
         session_id: String,
         workspace_path: String,
         mode: DesktopPermissionMode,
+        request_id: String,
     },
     Deny {
         session_id: String,
         workspace_path: String,
         mode: DesktopPermissionMode,
+        request_id: String,
     },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 struct DesktopBridgeResponse {
     session_id: String,
     workspace_path: String,
     mode: DesktopPermissionMode,
     events: Vec<DesktopEvent>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopWorkspaceEntry {
+    path: String,
+    last_opened_at: String,
+    last_session_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopBootstrapResponse {
+    recent_workspaces: Vec<DesktopWorkspaceEntry>,
+    conversations: Vec<DesktopConversationEntry>,
+    session: Option<DesktopBridgeResponse>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopConversationEntry {
+    session_id: String,
+    workspace_path: String,
+    title: String,
+    archived: bool,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum DesktopBridgeResult {
+    Session(DesktopBridgeResponse),
+    Bootstrap(DesktopBootstrapResponse),
 }
 
 fn repo_root() -> Result<PathBuf, String> {
@@ -95,7 +154,7 @@ fn bridge_script_path(repo_root: &Path) -> PathBuf {
     repo_root.join("src/runtime/desktop/bridge.ts")
 }
 
-fn run_bridge_process(request: &DesktopBridgeRequest) -> Result<DesktopBridgeResponse, String> {
+fn run_bridge_process(request: &DesktopBridgeRequest) -> Result<DesktopBridgeResult, String> {
     let repo_root = repo_root()?;
     let bridge_path = bridge_script_path(&repo_root);
     let payload = serde_json::to_vec(request)
@@ -131,7 +190,7 @@ fn run_bridge_process(request: &DesktopBridgeRequest) -> Result<DesktopBridgeRes
 }
 
 #[tauri::command]
-async fn desktop_bridge(request: DesktopBridgeRequest) -> Result<DesktopBridgeResponse, String> {
+async fn desktop_bridge(request: DesktopBridgeRequest) -> Result<DesktopBridgeResult, String> {
     tauri::async_runtime::spawn_blocking(move || run_bridge_process(&request))
         .await
         .map_err(|error| format!("Desktop bridge task failed: {error}"))?
