@@ -676,6 +676,200 @@ describe("ralph step", () => {
 		}
 	});
 
+	test("captures profile investigation for performance stories after verification succeeds", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-profile-investigation",
+				branchName: "feature/ralph-profile-investigation",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [
+					{
+						id: "US-001",
+						title: "Improve performance",
+						description: "Reduce CPU hotspots in the flow",
+						acceptanceCriteria: ["performance profile stays healthy"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "pending",
+					},
+				],
+			});
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], ["demo/failing.test.ts"]),
+					runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					inspectProfile: async () => ({
+						kind: "profile_hotspots",
+						runtime: "node",
+						duration_ms: 67,
+						hotspots: [
+							{
+								function: "busySpin",
+								url: "/tmp/cpu-busy.js",
+								line: 1,
+								column: 1,
+								self_ms: 8,
+								samples: 2,
+							},
+						],
+					}),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			const progress = await loadRalphProgressEntries(root);
+			const reviewingEntry = progress.at(-1);
+
+			expect(result.ok).toBe(true);
+			expect(reviewingEntry?.status).toBe("reviewing");
+			expect(reviewingEntry?.investigation).toEqual({
+				kind: "profile_hotspots",
+				runtime: "node",
+				duration_ms: 67,
+				hotspots: [
+					{
+						function: "busySpin",
+						url: "/tmp/cpu-busy.js",
+						line: 1,
+						column: 1,
+						self_ms: 8,
+						samples: 2,
+					},
+				],
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("uses explicit profile commands for performance stories without test files", async () => {
+		const root = await createTempRepo();
+		let inspectedCommand: string[] | null = null;
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-profile-hint",
+				branchName: "feature/ralph-profile-hint",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [
+					{
+						id: "US-001",
+						title: "Improve latency",
+						description: "Reduce CPU time.",
+						acceptanceCriteria: ["latency improves"],
+						profileCommand: ["node", "scripts/profile-target.js"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "pending",
+					},
+				],
+			});
+
+			await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], ["src/app.ts"]),
+					runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					inspectProfile: async (input) => {
+						inspectedCommand = input.command;
+						return {
+							kind: "profile_hotspots",
+							runtime: "node",
+							duration_ms: 80,
+							hotspots: [],
+						};
+					},
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(inspectedCommand).toEqual(["node", "scripts/profile-target.js"]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("does not infer profile commands from free-form story text", async () => {
+		const root = await createTempRepo();
+		let inspectCalls = 0;
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-profile-no-text-fallback",
+				branchName: "feature/ralph-profile-no-text-fallback",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [
+					{
+						id: "US-001",
+						title: "Improve latency",
+						description:
+							"Reduce CPU time. Profile command: node scripts/profile-target.js",
+						acceptanceCriteria: ["latency improves"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "pending",
+					},
+				],
+			});
+
+			await executeRalphStep(
+				{ root },
+				{
+					setGoal: async () => {},
+					captureWorkspaceFiles: captureSequence([], ["src/app.ts"]),
+					runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					inspectProfile: async () => {
+						inspectCalls += 1;
+						return {
+							kind: "profile_hotspots",
+							runtime: "node",
+							duration_ms: 80,
+							hotspots: [],
+						};
+					},
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(inspectCalls).toBe(0);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("fails when the worker produces no relevant implementation evidence", async () => {
 		const root = await createTempRepo();
 		try {

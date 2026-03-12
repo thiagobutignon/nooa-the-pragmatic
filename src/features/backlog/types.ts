@@ -4,6 +4,7 @@ export type BacklogAction =
 	| "split"
 	| "board"
 	| "move"
+	| "import-ralph"
 	| "help";
 
 export type BacklogMode = BacklogAction | "noop";
@@ -13,6 +14,7 @@ export interface BacklogStory {
 	title: string;
 	description: string;
 	acceptanceCriteria: string[];
+	profileCommand?: string[];
 	priority: number;
 	passes: boolean;
 	state: string;

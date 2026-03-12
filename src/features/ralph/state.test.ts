@@ -74,6 +74,7 @@ describe("ralph state primitives", () => {
 					title: "Add auth state",
 					description: "As a user, I want auth state persisted.",
 					acceptanceCriteria: ["Typecheck passes"],
+					profileCommand: ["node", "scripts/profile-auth.js"],
 					priority: 1,
 					passes: false,
 					notes: "",
@@ -88,6 +89,10 @@ describe("ralph state primitives", () => {
 		expect(loaded.branchName).toBe("ralph/auth-flow");
 		expect(loaded.userStories).toHaveLength(1);
 		expect(loaded.userStories[0]?.state).toBe("pending");
+		expect(loaded.userStories[0]?.profileCommand).toEqual([
+			"node",
+			"scripts/profile-auth.js",
+		]);
 	});
 
 	test("appends progress entries to markdown and jsonl", async () => {

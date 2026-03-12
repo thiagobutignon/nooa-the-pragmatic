@@ -1,10 +1,16 @@
-# NOOA: The Pragmatic Programmer Agent
+# NOOA: Agent-First Engineering System
 
-> "Identity is a contract. Memory is an asset. Governance is a guardrail."
+> "Identity is a contract. Memory is an asset. Investigation is a capability."
 
-NOOA is a self-aware, evolving programming agent designed for hypergrowth. It possesses an **Agentic Soul**, a **Persistent Memory System**, and **Automated Governance**.
+NOOA is no longer just a programming agent shell. It is an **agent-first engineering system** for building, debugging, verifying, replaying, and evolving software with explicit runtime evidence.
 
-## 🛡️ Core Pillars
+The project is now organized around a practical loop:
+
+`reproduce -> inspect -> fix -> verify -> replay -> learn`
+
+That loop is exposed through commands, persisted through artifacts, and reusable by other agents.
+
+## Core Pillars
 
 ### 1. Agentic Soul (Identity & Principles)
 NOOA isn't just a tool; it has a **Constitution** and a **Soul**. It follows a strict precedence hierarchy:
@@ -14,12 +20,32 @@ NOOA isn't just a tool; it has a **Constitution** and a **Soul**. It follows a s
 Persistent, multi-layered memory system that curates daily logs into high-density summaries.
 - **Reflection Engine**: Automated capture of material changes to ensure NOOA never forgets a lesson.
 
-### 3. Governance (Zero-Preguiça)
+### 3. Governance (Zero-Preguica)
 Automated quality gates that block incomplete intentions (`TODO`, `MOCK`, `FIXME`) from reaching the repository.
 - **`nooa check`**: Policy-driven auditor.
 - **`nooa ci`**: Local pipeline (test + lint + check) for unbreakable contracts.
 
-### 4. Self-Evolving Architecture (Drift-Proof)
+### 4. Agent-First Investigation
+NOOA now has native investigation primitives designed for coding agents, not only humans.
+
+- **`nooa debug inspect-at`**: run to a file/line and capture a snapshot
+- **`nooa debug inspect-on-failure`**: capture stack/source/state on runtime failure
+- **`nooa debug inspect-test-failure`**: convert test failures into structured evidence
+- **`nooa debug capture`**: grab one-shot startup/runtime evidence
+- **`nooa profile inspect`**: capture CPU hotspot summaries as reusable investigation artifacts
+
+These commands are atomic by design: launch, capture evidence, and stop. That makes them much easier for agents to use reliably than long-lived interactive sessions.
+
+### 5. Replayable Engineering State
+NOOA does not treat debugging as disposable terminal output anymore.
+
+- **`nooa replay`** records investigation state as nodes and edges
+- Ralph progress writes structured investigation artifacts into replay
+- retries, fixes, and impacts are explicit in the graph
+
+This makes failures and recoveries navigable for future agents instead of buried in prose.
+
+### 6. Self-Evolving Architecture (Drift-Proof)
 Feature modules are **Self-Describing**. They define their own schema, which automatically generates:
 - CLI Help & Usage
 - Agent Tool Definitions (for autonomous operation)
@@ -36,7 +62,19 @@ NOOA should evolve in this order:
 
 The command surface is the primary product contract. Runtime investigation should be possible from commands before behavior is hidden behind adapters or visual layers.
 
-## 🚀 Commands
+## What Changed
+
+Recent work materially repositioned the project:
+
+- `nooa debug` became an **agent-first investigation surface**
+- `nooa profile` became part of the same evidence model
+- `ralph` now consumes investigation artifacts instead of relying only on notes
+- `replay` now shows failed attempts, retries, fixes, impacts, and profile/test evidence
+- local skills and workflow docs now bias toward atomic evidence capture over guesswork
+
+In practice, this means new agents entering the repo can inherit working investigation capabilities instead of rediscovering them manually.
+
+## Command Surface
 
 | Command | Purpose |
 |---------|---------|
@@ -51,6 +89,7 @@ The command surface is the primary product contract. Runtime investigation shoul
 | `commit` | Commit changes only after validation passes. |
 | `context` | Build surgical context bundles for prompts or subagents. |
 | `cron` | Schedule autonomous jobs (`add`, `list`, `run`, `health`, `history`, etc.). |
+| `debug` | Agent-first runtime debugging with atomic evidence capture. |
 | `doctor` | Verify local environment health (node, git, tooling). |
 | `embed` | Generate embeddings and record telemetry. |
 | `eval` | Compare/evaluate prompt outputs (`report`, `history`, `compare`). |
@@ -81,13 +120,46 @@ The command surface is the primary product contract. Runtime investigation shoul
 | `workflow` | Run a verification workflow sequence. |
 | `worktree` | Handle isolated worktrees (create, list, prune, lock). |
 
-## 📖 Documentation
+## Recommended Flows
+
+### Investigate a failing test
+
+```bash
+nooa debug inspect-test-failure --json -- bun test path/to/test.ts
+```
+
+### Capture runtime state at a known location
+
+```bash
+nooa debug inspect-at src/app.ts:42 --json -- node src/app.ts
+```
+
+### Capture CPU hotspots
+
+```bash
+nooa profile inspect --json -- node scripts/profile-target.js
+```
+
+### Inspect investigation history
+
+```bash
+nooa replay show <node-id>
+```
+
+### Let Ralph reuse investigation artifacts
+
+- failed tests can attach structured debug evidence
+- performance stories can attach profile evidence
+- replay keeps retries, fixes, and impacts connected
+
+## Documentation
 
 - [Feature Documentation](docs/features/)
 - [Project Policy](.nooa/POLICY.md)
 - [Constitution](.nooa/CONSTITUTION.md)
+- [AI-Assisted Development Workflow](docs/reference/ai-assisted-development-workflow.md)
 
-## 🔐 Environment
+## Environment
 
 Some commands require GitHub access (e.g. `nooa pr`). Authenticate via GitHub CLI:
 
@@ -112,4 +184,4 @@ bun run index.ts ralph step --json
 
 ---
 
-**NOOA v1.6.1** — *Engineering with Soul.*
+**NOOA v1.6.1** — *Engineering with Soul, Evidence, and Replay.*

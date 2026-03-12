@@ -55,4 +55,48 @@ describe("backlog generate", () => {
 		expect(Array.isArray(persisted.userStories)).toBe(true);
 		expect(persisted.userStories[0]?.state).toBe("pending");
 	});
+
+	it("can seed generated stories with an explicit profileCommand", async () => {
+		const result = await generateBacklogFromPrompt({
+			prompt: "Improve API latency",
+			profileCommand: ["node", "scripts/profile-api.js"],
+		});
+
+		expect(result.userStories[0]?.profileCommand).toEqual([
+			"node",
+			"scripts/profile-api.js",
+		]);
+	});
+
+	it("writes a generated profileCommand via CLI", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-backlog-generate-profile-"));
+		const outPath = join(root, "prd.json");
+
+		const res = await execa(
+			bunPath,
+			[
+				binPath,
+				"backlog",
+				"generate",
+				"Improve API latency",
+				"--profile-command",
+				'["node","scripts/profile-api.js"]',
+				"--out",
+				outPath,
+				"--json",
+			],
+			{
+				reject: false,
+				env: baseEnv,
+				cwd: repoRoot,
+			},
+		);
+
+		expect(res.exitCode).toBe(0);
+		const persisted = JSON.parse(await readFile(outPath, "utf8"));
+		expect(persisted.userStories[0]?.profileCommand).toEqual([
+			"node",
+			"scripts/profile-api.js",
+		]);
+	});
 });

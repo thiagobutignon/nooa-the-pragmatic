@@ -110,6 +110,11 @@ Error Codes:
   ralph.missing_path: Path required
   ralph.unsafe_state_path: .nooa/ralph/ is not git-ignored
   ralph.runtime_error: Unexpected error
+
+PRD Notes:
+  Stories may define an optional \`profileCommand\` array for performance work.
+  Example story field:
+    "profileCommand": ["node", "scripts/profile-target.js"]
 `;
 
 export const ralphSdkUsage = `

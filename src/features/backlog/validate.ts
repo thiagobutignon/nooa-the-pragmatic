@@ -1,5 +1,21 @@
 import type { BacklogPrd } from "./types";
 
+const BACKLOG_ALLOWED_STATES = [
+	"pending",
+	"implementing",
+	"verifying",
+	"peer_review_1",
+	"peer_fix_1",
+	"peer_review_2",
+	"peer_fix_2",
+	"peer_review_3",
+	"approved",
+	"committed",
+	"passed",
+	"failed",
+	"blocked",
+] as const;
+
 export interface BacklogValidationResult {
 	ok: boolean;
 	errors: string[];
@@ -61,6 +77,33 @@ export function validateBacklogPrd(input: unknown): BacklogValidationResult {
 				errors.push(
 					`userStories[${index}].acceptanceCriteria must contain at least 1 item`,
 				);
+			}
+			if (
+				typeof story.state !== "string" ||
+				!BACKLOG_ALLOWED_STATES.includes(
+					story.state as (typeof BACKLOG_ALLOWED_STATES)[number],
+				)
+			) {
+				errors.push(
+					`userStories[${index}].state must be one of: ${BACKLOG_ALLOWED_STATES.join(", ")}`,
+				);
+			}
+			if (story.profileCommand !== undefined) {
+				if (!Array.isArray(story.profileCommand)) {
+					errors.push(
+						`userStories[${index}].profileCommand must be an array when provided`,
+					);
+				} else if (
+					story.profileCommand.length === 0 ||
+					story.profileCommand.some(
+						(segment) =>
+							typeof segment !== "string" || segment.trim().length === 0,
+					)
+				) {
+					errors.push(
+						`userStories[${index}].profileCommand must contain non-empty string segments`,
+					);
+				}
 			}
 		});
 	}
