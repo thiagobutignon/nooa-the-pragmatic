@@ -15,6 +15,9 @@ export type ReplayNode = {
 			kind: string;
 			reason?: string;
 			message?: string;
+			traceId?: string;
+			recordId?: string;
+			benchId?: string;
 			location?: {
 				file: string;
 				line: number;

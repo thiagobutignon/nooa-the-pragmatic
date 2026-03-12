@@ -72,19 +72,19 @@ Exit Codes:
   <examples>
     <example>
       <input>nooa replay add A</input>
-      <output>Creates a node</output>
+      <output>Add a step node 'A' to the replay graph.</output>
     </example>
     <example>
       <input>nooa replay link node_a node_b</input>
-      <output>Creates an edge</output>
-    </example>
-    <example>
-      <input>nooa replay fix node_b "Fix B"</input>
-      <output>Creates a fix node</output>
+      <output>Link 'node_a' to 'node_b' with a 'next' edge.</output>
     </example>
     <example>
       <input>nooa replay show --json</input>
-      <output>{ ... }</output>
+      <output>Show the replay graph in JSON format.</output>
+    </example>
+    <example>
+      <input>nooa replay fix node_b 'Fix B'</input>
+      <output>Register a fix for 'node_b' with label 'Fix B'.</output>
     </example>
   </examples>
   <errors>

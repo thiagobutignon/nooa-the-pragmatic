@@ -191,6 +191,15 @@ function renderReplayNode(
 		if (investigation.message) {
 			lines.push(`Message: ${investigation.message}`);
 		}
+		if (investigation.traceId) {
+			lines.push(`Trace: ${investigation.traceId}`);
+		}
+		if (investigation.recordId) {
+			lines.push(`Record: ${investigation.recordId}`);
+		}
+		if (investigation.benchId) {
+			lines.push(`Bench: ${investigation.benchId}`);
+		}
 		const location = formatReplayLocation(investigation.location);
 		if (location) {
 			lines.push(`Location: ${location}`);

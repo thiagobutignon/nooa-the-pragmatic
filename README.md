@@ -67,12 +67,15 @@ The command surface is the primary product contract. Runtime investigation shoul
 | `message` | Send human-style messages via agent channels. |
 | `papers` | Fetch the latest AI research papers from arXiv. |
 | `pr` | Manage GitHub pull requests (create, merge, close). |
+| `record` | Capture agent-first raw execution records for local commands. |
 | `profile` | Capture agent-first CPU hotspot summaries for commands. |
 | `prompt` | Create/edit/publish prompt templates with changelog. |
 | `push` | Push worktree changes to remote with safety checks. |
 | `ralph` | Run backlog loop (`init`, `import-prd`, `step`, `review`, `approve`, `run`). |
 | `read` | Read file contents (TTY-aware + JSON output). |
+| `bench` | Run repeated traced executions and summarize duration statistics. |
 | `review` | Execute code review prompts with scoring. |
+| `trace` | Capture agent-first execution traces for local commands. |
 | `run` | Execute chained commands (`nooa run -- ...`). |
 | `scaffold` | Generate consistent project scaffolding with AI notes. |
 | `search` | Search files and contents (rg/native engines). |
