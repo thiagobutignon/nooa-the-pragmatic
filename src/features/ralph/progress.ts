@@ -5,7 +5,7 @@ import { loadReplay, type ReplayNode, saveReplay } from "../replay/storage";
 import type { RalphLearningCandidate } from "./learnings";
 
 export interface RalphProgressInvestigation {
-	kind: "test_failure";
+	kind: "test_failure" | "profile_hotspots";
 	reason?: string;
 	message?: string;
 	location?: {
@@ -14,6 +14,16 @@ export interface RalphProgressInvestigation {
 		column?: number;
 	};
 	source?: string[];
+	runtime?: string;
+	duration_ms?: number;
+	hotspots?: Array<{
+		function: string;
+		url: string;
+		line: number;
+		column?: number;
+		self_ms: number;
+		samples: number;
+	}>;
 }
 
 export interface RalphProgressEntry {

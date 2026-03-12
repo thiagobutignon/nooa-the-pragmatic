@@ -154,6 +154,16 @@ function formatReplayRelation(node: ReplayNode) {
 	return `${node.id} ${node.label}`;
 }
 
+function formatReplayHotspot(hotspot: {
+	function: string;
+	url: string;
+	line: number;
+	self_ms: number;
+	samples: number;
+}) {
+	return `- ${hotspot.function} (${hotspot.self_ms}ms, ${hotspot.samples} samples) ${hotspot.url}:${hotspot.line}`;
+}
+
 function renderReplayNode(
 	node: ReplayNode,
 	summary?: { nodes: number; edges: number },
@@ -166,6 +176,18 @@ function renderReplayNode(
 	const investigation = node.meta?.investigation;
 	if (investigation) {
 		lines.push(`Investigation: ${investigation.kind}`);
+		if (investigation.kind === "profile_hotspots") {
+			if (investigation.runtime) {
+				lines.push(`Runtime: ${investigation.runtime}`);
+			}
+			if (typeof investigation.duration_ms === "number") {
+				lines.push(`Profile duration: ${investigation.duration_ms}ms`);
+			}
+			if (investigation.hotspots?.length) {
+				lines.push("Hotspots:");
+				lines.push(...investigation.hotspots.slice(0, 5).map(formatReplayHotspot));
+			}
+		}
 		if (investigation.message) {
 			lines.push(`Message: ${investigation.message}`);
 		}

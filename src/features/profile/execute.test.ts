@@ -59,6 +59,60 @@ describe("profile execute", () => {
 		expect(summary.hotspots[0]?.samples).toBe(3);
 	});
 
+	it("aggregates duplicate frames so runtime internals do not flood the summary", () => {
+		const profile: CpuProfile = {
+			nodes: [
+				{
+					id: 1,
+					callFrame: {
+						functionName: "compileForInternalLoader",
+						scriptId: "10",
+						url: "node:internal/bootstrap/realm",
+						lineNumber: 382,
+						columnNumber: 26,
+					},
+				},
+				{
+					id: 2,
+					callFrame: {
+						functionName: "compileForInternalLoader",
+						scriptId: "11",
+						url: "node:internal/bootstrap/realm",
+						lineNumber: 382,
+						columnNumber: 26,
+					},
+				},
+				{
+					id: 3,
+					callFrame: {
+						functionName: "busySpin",
+						scriptId: "1",
+						url: "/tmp/cpu-busy.js",
+						lineNumber: 0,
+						columnNumber: 0,
+					},
+				},
+			],
+			samples: [1, 2, 3, 3],
+			timeDeltas: [1_000, 1_500, 4_000, 4_000],
+		};
+
+		const summary = summarizeCpuProfile(profile);
+		expect(summary.hotspots).toHaveLength(2);
+		expect(summary.hotspots[0]).toMatchObject({
+			function: "busySpin",
+			url: "/tmp/cpu-busy.js",
+			samples: 2,
+			self_ms: 8,
+		});
+		expect(summary.hotspots[1]).toMatchObject({
+			function: "compileForInternalLoader",
+			url: "node:internal/bootstrap/realm",
+			samples: 2,
+			self_ms: 2.5,
+		});
+	});
+
 	it("rejects unsupported runtimes", async () => {
 		const result = await run({
 			action: "inspect",

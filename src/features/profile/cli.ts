@@ -67,6 +67,7 @@ export const profileOutputFields = [
 	{ name: "profile_path", type: "string" },
 	{ name: "total_samples", type: "number" },
 	{ name: "total_profiled_ms", type: "number" },
+	{ name: "investigation", type: "string" },
 	{ name: "hotspots", type: "string" },
 ];
 
@@ -188,6 +189,12 @@ const profileBuilder = new CommandBuilder<
 				profile_path: output.profile_path,
 				total_samples: output.total_samples,
 				total_profiled_ms: output.total_profiled_ms,
+				investigation: {
+					kind: "profile_hotspots",
+					runtime: output.runtime,
+					duration_ms: output.duration_ms,
+					hotspots: output.hotspots,
+				},
 				hotspots: output.hotspots,
 				stdout: output.stdout,
 				stderr: output.stderr,

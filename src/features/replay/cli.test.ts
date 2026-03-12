@@ -259,6 +259,76 @@ describe("replay.run", () => {
 		expect(stdout).toContain("Source:");
 	});
 
+	test("show output renders profile investigation context for humans", async () => {
+		const cliRoot = join(tmpRoot, "cli-show-profile-investigation");
+		await rm(cliRoot, { recursive: true, force: true });
+		await mkdir(join(cliRoot, ".nooa"), { recursive: true });
+
+		await Bun.write(
+			join(cliRoot, ".nooa/replay.json"),
+			JSON.stringify({
+				version: "1.0.0",
+				nodes: [
+					{
+						id: "node-profile",
+						label: "US-010 [profiled]",
+						type: "step",
+						createdAt: new Date().toISOString(),
+						meta: {
+							summary:
+								"run=ralph-auth story=US-010 iteration=1 status=reviewing investigation=profile_hotspots",
+							tags: [
+								"ralph",
+								"story:US-010",
+								"status:reviewing",
+								"investigation:profile_hotspots",
+							],
+							investigation: {
+								kind: "profile_hotspots",
+								runtime: "node",
+								duration_ms: 67,
+								hotspots: [
+									{
+										function: "busySpin",
+										url: "/tmp/cpu-busy.js",
+										line: 1,
+										column: 1,
+										self_ms: 8,
+										samples: 2,
+									},
+									{
+										function: "compileForInternalLoader",
+										url: "node:internal/bootstrap/realm",
+										line: 383,
+										column: 27,
+										self_ms: 2.5,
+										samples: 2,
+									},
+								],
+							},
+						},
+					},
+				],
+				edges: [],
+			}),
+		);
+
+		const repoRoot = process.cwd();
+		const { stdout } = await execa(
+			"bun",
+			["index.ts", "replay", "show", "node-profile", "--root", cliRoot],
+			{
+				cwd: repoRoot,
+			},
+		);
+
+		expect(stdout).toContain("Investigation: profile_hotspots");
+		expect(stdout).toContain("Runtime: node");
+		expect(stdout).toContain("Profile duration: 67ms");
+		expect(stdout).toContain("Hotspots:");
+		expect(stdout).toContain("- busySpin (8ms, 2 samples) /tmp/cpu-busy.js:1");
+	});
+
 	test("show output renders replay relationships for humans", async () => {
 		const cliRoot = join(tmpRoot, "cli-show-relations");
 		await rm(cliRoot, { recursive: true, force: true });

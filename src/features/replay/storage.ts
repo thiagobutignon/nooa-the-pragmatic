@@ -21,6 +21,16 @@ export type ReplayNode = {
 				column?: number;
 			};
 			source?: string[];
+			runtime?: string;
+			duration_ms?: number;
+			hotspots?: Array<{
+				function: string;
+				url: string;
+				line: number;
+				column?: number;
+				self_ms: number;
+				samples: number;
+			}>;
 		};
 	};
 	fixOf?: string;

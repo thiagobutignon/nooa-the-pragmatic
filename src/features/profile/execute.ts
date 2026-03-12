@@ -123,21 +123,31 @@ export function summarizeCpuProfile(profile: CpuProfile): ProfileSummary {
 		sampleMicros.set(nodeId, (sampleMicros.get(nodeId) ?? 0) + micros);
 	}
 
-	const hotspots = profile.nodes
-		.map((node) => {
-			const samples = sampleCounts.get(node.id) ?? node.hitCount ?? 0;
-			const self_ms =
-				Math.round(((sampleMicros.get(node.id) ?? 0) / 1000) * 100) / 100;
-			return {
-				function: node.callFrame.functionName || "(anonymous)",
-				url: node.callFrame.url || "<unknown>",
-				line: Math.max(1, node.callFrame.lineNumber + 1),
-				column: Math.max(1, node.callFrame.columnNumber + 1),
-				self_ms,
-				samples,
-			};
-		})
-		.filter((node) => node.samples > 0 || node.self_ms > 0)
+	const aggregated = new Map<string, ProfileHotspot>();
+	for (const node of profile.nodes) {
+		const entry: ProfileHotspot = {
+			function: node.callFrame.functionName || "(anonymous)",
+			url: node.callFrame.url || "<unknown>",
+			line: Math.max(1, node.callFrame.lineNumber + 1),
+			column: Math.max(1, node.callFrame.columnNumber + 1),
+			self_ms:
+				Math.round(((sampleMicros.get(node.id) ?? 0) / 1000) * 100) / 100,
+			samples: sampleCounts.get(node.id) ?? node.hitCount ?? 0,
+		};
+		if (entry.samples === 0 && entry.self_ms === 0) {
+			continue;
+		}
+		const key = `${entry.function}:${entry.url}:${entry.line}:${entry.column}`;
+		const existing = aggregated.get(key);
+		if (!existing) {
+			aggregated.set(key, entry);
+			continue;
+		}
+		existing.samples += entry.samples;
+		existing.self_ms = Math.round((existing.self_ms + entry.self_ms) * 100) / 100;
+	}
+
+	const hotspots = Array.from(aggregated.values())
 		.sort((left, right) => {
 			const leftUserCode =
 				left.url.startsWith("file://") || left.url.startsWith("/");
