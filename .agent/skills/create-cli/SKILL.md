@@ -14,7 +14,7 @@ Design CLI surface area (syntax + behavior), human-first, script-friendly.
 
 In NOOA, design commands to fit this order:
 
-`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
 
 ## Do This First
 
@@ -33,7 +33,7 @@ Ask, then proceed with best-guess defaults if user is unsure:
 - Interactivity: prompts allowed? need `--no-input`? confirmations for destructive ops?
 - Config model: flags/env/config-file; precedence; XDG vs repo-local.
 - Platform/runtime constraints: macOS/Linux/Windows; single binary vs runtime.
-- Investigation path: how an agent will debug failures and profile hotspots without going through API or UI.
+- Investigation path: how an agent will debug failures and profile hotspots without going through API, desktop, or UI.
 
 ## Deliverables (what to output)
 

@@ -32,7 +32,7 @@ Feature modules are **Self-Describing**. They define their own schema, which aut
 
 NOOA should evolve in this order:
 
-`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
 
 The command surface is the primary product contract. Runtime investigation should be possible from commands before behavior is hidden behind adapters or visual layers.
 

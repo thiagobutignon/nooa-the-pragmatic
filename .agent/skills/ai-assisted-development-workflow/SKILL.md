@@ -11,7 +11,7 @@ This skill is the local entry point for NOOA's canonical AI-assisted development
 
 The default implementation order in NOOA is:
 
-`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
 
 Use it when you need the project's full workflow, not just one isolated tactic. The authoritative long-form reference is:
 

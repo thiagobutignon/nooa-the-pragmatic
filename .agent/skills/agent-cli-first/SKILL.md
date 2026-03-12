@@ -13,7 +13,7 @@ CLI-first is not a preference. It is a control system: it forces a tight, determ
 
 In NOOA, the default flow is:
 
-`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
 
 If the agent can run the feature as a command, it can:
 - test it
@@ -23,7 +23,7 @@ If the agent can run the feature as a command, it can:
 - iterate without “UI fog”
 - verify outcomes deterministically
 
-**API/MCP/UI come later as adapters.**
+**API/MCP/Desktop/UI come later as adapters.**
 
 ---
 
@@ -252,7 +252,7 @@ Your CLI is agent-ready when:
 6. debug path
 7. profile path
 8. dogfooding
-9. then adapters (API/MCP/UI)
+9. then adapters (API/MCP/Desktop/UI)
 
 ---
 

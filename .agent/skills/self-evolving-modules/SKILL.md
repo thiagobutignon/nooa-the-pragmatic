@@ -13,7 +13,7 @@ A **self-evolving module** defines a command's specification (inputs, outputs, e
 
 For NOOA runtime-facing work, modules should support this order:
 
-`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
 
 ## Quick Start (TL;DR)
 

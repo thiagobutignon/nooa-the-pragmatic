@@ -35,9 +35,9 @@ Do this during bootstrap, before implementation. Treat it as the canonical local
 
 In this repository, default to this build order unless the task proves a narrower path:
 
-`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
 
-If work starts from API or UI before the command, investigation path, and dogfooding path exist, treat that as drift.
+If work starts from API, desktop, or UI before the command, investigation path, and dogfooding path exist, treat that as drift.
 
 ```dot
 digraph skill_flow {

@@ -12,7 +12,7 @@ Observability is not optional for a programming agent. If you cannot trace opera
 
 In NOOA, observability should support this ladder:
 
-`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> UI/TUI`
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
 
 ## When to Use
 Use this skill when:
