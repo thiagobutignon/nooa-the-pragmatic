@@ -126,9 +126,119 @@ export interface ReplayRunResult {
 	traceId: string;
 	node?: ReplayNode;
 	edge?: ReplayEdge;
+	relations?: {
+		previous: ReplayNode[];
+		next: ReplayNode[];
+		retries: ReplayNode[];
+		fixes: ReplayNode[];
+		impacts: ReplayNode[];
+	};
 	summary?: {
 		nodes: number;
 		edges: number;
+	};
+}
+
+function formatReplayLocation(location?: {
+	file: string;
+	line: number;
+	column?: number;
+}) {
+	if (!location) {
+		return null;
+	}
+	return `${location.file}:${location.line}${location.column ? `:${location.column}` : ""}`;
+}
+
+function formatReplayRelation(node: ReplayNode) {
+	return `${node.id} ${node.label}`;
+}
+
+function renderReplayNode(
+	node: ReplayNode,
+	summary?: { nodes: number; edges: number },
+	relations?: ReplayRunResult["relations"],
+) {
+	const lines = [`Node ${node.id}`, `Label: ${node.label}`, `Type: ${node.type}`];
+	if (node.meta?.summary) {
+		lines.push(`Summary: ${node.meta.summary}`);
+	}
+	const investigation = node.meta?.investigation;
+	if (investigation) {
+		lines.push(`Investigation: ${investigation.kind}`);
+		if (investigation.message) {
+			lines.push(`Message: ${investigation.message}`);
+		}
+		const location = formatReplayLocation(investigation.location);
+		if (location) {
+			lines.push(`Location: ${location}`);
+		}
+		if (investigation.source?.length) {
+			lines.push("Source:");
+			lines.push(...investigation.source);
+		}
+	}
+	if (relations?.previous.length) {
+		lines.push("Previous:");
+		lines.push(...relations.previous.map(formatReplayRelation));
+	}
+	if (relations?.next.length) {
+		lines.push("Next:");
+		lines.push(...relations.next.map(formatReplayRelation));
+	}
+	if (relations?.retries.length) {
+		lines.push("Retries:");
+		lines.push(...relations.retries.map(formatReplayRelation));
+	}
+	if (relations?.fixes.length) {
+		lines.push("Fixes:");
+		lines.push(...relations.fixes.map(formatReplayRelation));
+	}
+	if (relations?.impacts.length) {
+		lines.push("Impacts:");
+		lines.push(...relations.impacts.map(formatReplayRelation));
+	}
+	if (summary) {
+		lines.push(`Graph: ${summary.nodes} nodes, ${summary.edges} edges`);
+	}
+	console.log(lines.join("\n"));
+}
+
+function buildReplayRelations(
+	nodeId: string,
+	nodes: ReplayNode[],
+	edges: ReplayEdge[],
+): ReplayRunResult["relations"] {
+	const byId = new Map(nodes.map((node) => [node.id, node]));
+	return {
+		previous: edges
+			.filter((edge) => edge.kind === "next" && edge.to === nodeId)
+			.map((edge) => byId.get(edge.from))
+			.filter((node): node is ReplayNode => Boolean(node)),
+		next: edges
+			.filter((edge) => edge.kind === "next" && edge.from === nodeId)
+			.map((edge) => byId.get(edge.to))
+			.filter((node): node is ReplayNode => Boolean(node)),
+		retries: edges
+			.filter((edge) => edge.kind === "retry" && edge.from === nodeId)
+			.map((edge) => byId.get(edge.to))
+			.filter((node): node is ReplayNode => Boolean(node)),
+		fixes: edges
+			.filter((edge) => edge.kind === "fixes" && edge.to === nodeId)
+			.map((edge) => byId.get(edge.from))
+			.filter((node): node is ReplayNode => Boolean(node)),
+		impacts: edges
+			.filter((edge) => edge.kind === "impact")
+			.filter((edge) =>
+				edges.some(
+					(fixesEdge) =>
+						fixesEdge.kind === "fixes" &&
+						fixesEdge.to === nodeId &&
+						fixesEdge.from === edge.from,
+				),
+			)
+			.map((edge) => byId.get(edge.to))
+			.filter((node): node is ReplayNode => Boolean(node)),
 	};
 }
 
@@ -253,6 +363,7 @@ export async function run(
 					ok: true,
 					traceId,
 					node,
+					relations: buildReplayRelations(input.id, data.nodes, data.edges),
 					summary: graph.getSummary(),
 				},
 			};
@@ -344,6 +455,10 @@ const replayBuilder = new CommandBuilder<ReplayRunInput, ReplayRunResult>()
 			return;
 		}
 		if (output.node) {
+			if (output.summary) {
+				renderReplayNode(output.node, output.summary, output.relations);
+				return;
+			}
 			if (output.node.type === "fix") {
 				console.log(`Created fix node ${output.node.id}`);
 				return;

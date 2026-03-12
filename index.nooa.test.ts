@@ -15,6 +15,7 @@ describe("nooa root", () => {
 		const res = await run(["--help"]);
 		expect(res.exitCode).toBe(0);
 		expect(res.stdout).toContain("Usage: nooa");
+		expect(res.stdout).toContain("debug");
 		expect(res.stdout).toContain("search");
 		expect(res.stdout).toContain("Search files and file contents");
 	});

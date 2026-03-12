@@ -119,6 +119,63 @@ describe("replay.run", () => {
 		expect(result.data.summary.nodes).toBeGreaterThanOrEqual(1);
 	});
 
+	test("show returns structured investigation metadata for a node", async () => {
+		await rm(tmpRoot, { recursive: true, force: true });
+		await mkdir(join(tmpRoot, ".nooa"), { recursive: true });
+
+		const investigationNode = {
+			id: "node-investigation",
+			label: "US-001 [failed]",
+			type: "step",
+			createdAt: new Date().toISOString(),
+			meta: {
+				summary:
+					"run=ralph-auth story=US-001 iteration=1 status=failed investigation=test_failure location=/tmp/demo/failing.test.ts:7:3",
+				tags: [
+					"ralph",
+					"story:US-001",
+					"status:failed",
+					"investigation:test_failure",
+				],
+				investigation: {
+					kind: "test_failure",
+					reason: "test_failure",
+					message: "expect(received).toBe(expected)",
+					location: {
+						file: "/tmp/demo/failing.test.ts",
+						line: 7,
+						column: 3,
+					},
+					source: ["expect(1).toBe(2);"],
+				},
+			},
+		};
+
+		await Bun.write(
+			join(tmpRoot, ".nooa/replay.json"),
+			JSON.stringify({
+				version: "1.0.0",
+				nodes: [investigationNode],
+				edges: [],
+			}),
+		);
+
+		const result = await run({
+			action: "show",
+			id: investigationNode.id,
+			root: tmpRoot,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.data.node.meta?.investigation?.kind).toBe("test_failure");
+		expect(result.data.node.meta?.investigation?.location).toEqual({
+			file: "/tmp/demo/failing.test.ts",
+			line: 7,
+			column: 3,
+		});
+	});
+
 	test("cli output is human-friendly without --json", async () => {
 		const cliRoot = join(tmpRoot, "cli-output");
 		await rm(cliRoot, { recursive: true, force: true });
@@ -135,5 +192,149 @@ describe("replay.run", () => {
 
 		expect(stdout).toContain("Created node");
 		expect(stdout.trim().startsWith("{")).toBe(false);
+	});
+
+	test("show output renders investigation context for humans", async () => {
+		const cliRoot = join(tmpRoot, "cli-show-investigation");
+		await rm(cliRoot, { recursive: true, force: true });
+		await mkdir(join(cliRoot, ".nooa"), { recursive: true });
+
+		await Bun.write(
+			join(cliRoot, ".nooa/replay.json"),
+			JSON.stringify({
+				version: "1.0.0",
+				nodes: [
+					{
+						id: "node-investigation",
+						label: "US-001 [failed]",
+						type: "step",
+						createdAt: new Date().toISOString(),
+						meta: {
+							summary:
+								"run=ralph-auth story=US-001 iteration=1 status=failed investigation=test_failure location=/tmp/demo/failing.test.ts:7:3",
+							tags: [
+								"ralph",
+								"story:US-001",
+								"status:failed",
+								"investigation:test_failure",
+							],
+							investigation: {
+								kind: "test_failure",
+								reason: "test_failure",
+								message: "expect(received).toBe(expected)",
+								location: {
+									file: "/tmp/demo/failing.test.ts",
+									line: 7,
+									column: 3,
+								},
+								source: ["expect(1).toBe(2);"],
+							},
+						},
+					},
+				],
+				edges: [],
+			}),
+		);
+
+		const repoRoot = process.cwd();
+		const { stdout } = await execa(
+			"bun",
+			[
+				"index.ts",
+				"replay",
+				"show",
+				"node-investigation",
+				"--root",
+				cliRoot,
+			],
+			{
+				cwd: repoRoot,
+			},
+		);
+
+		expect(stdout).toContain("Node node-investigation");
+		expect(stdout).toContain("Investigation: test_failure");
+		expect(stdout).toContain("Location: /tmp/demo/failing.test.ts:7:3");
+		expect(stdout).toContain("Message: expect(received).toBe(expected)");
+		expect(stdout).toContain("Source:");
+	});
+
+	test("show output renders replay relationships for humans", async () => {
+		const cliRoot = join(tmpRoot, "cli-show-relations");
+		await rm(cliRoot, { recursive: true, force: true });
+		await mkdir(join(cliRoot, ".nooa"), { recursive: true });
+
+		await Bun.write(
+			join(cliRoot, ".nooa/replay.json"),
+			JSON.stringify({
+				version: "1.0.0",
+				nodes: [
+					{
+						id: "node-prev",
+						label: "US-001 [reviewing]",
+						type: "step",
+						createdAt: new Date().toISOString(),
+					},
+					{
+						id: "node-failure",
+						label: "US-001 [failed]",
+						type: "step",
+						createdAt: new Date().toISOString(),
+						meta: {
+							investigation: {
+								kind: "test_failure",
+								message: "expect(received).toBe(expected)",
+							},
+						},
+					},
+					{
+						id: "node-retry",
+						label: "US-001 [reviewing retry]",
+						type: "step",
+						createdAt: new Date().toISOString(),
+					},
+					{
+						id: "node-fix",
+						label: "Fix failing expectation",
+						type: "fix",
+						createdAt: new Date().toISOString(),
+						fixOf: "node-failure",
+					},
+					{
+						id: "node-impacted",
+						label: "US-001 [approved]",
+						type: "step",
+						createdAt: new Date().toISOString(),
+					},
+				],
+				edges: [
+					{ from: "node-prev", to: "node-failure", kind: "next" },
+					{ from: "node-failure", to: "node-retry", kind: "next" },
+					{ from: "node-failure", to: "node-retry", kind: "retry" },
+					{ from: "node-fix", to: "node-failure", kind: "fixes" },
+					{ from: "node-fix", to: "node-impacted", kind: "impact" },
+				],
+			}),
+		);
+
+		const repoRoot = process.cwd();
+		const { stdout } = await execa(
+			"bun",
+			["index.ts", "replay", "show", "node-failure", "--root", cliRoot],
+			{
+				cwd: repoRoot,
+			},
+		);
+
+		expect(stdout).toContain("Previous:");
+		expect(stdout).toContain("node-prev US-001 [reviewing]");
+		expect(stdout).toContain("Next:");
+		expect(stdout).toContain("node-retry US-001 [reviewing retry]");
+		expect(stdout).toContain("Retries:");
+		expect(stdout).toContain("node-retry US-001 [reviewing retry]");
+		expect(stdout).toContain("Fixes:");
+		expect(stdout).toContain("node-fix Fix failing expectation");
+		expect(stdout).toContain("Impacts:");
+		expect(stdout).toContain("node-impacted US-001 [approved]");
 	});
 });

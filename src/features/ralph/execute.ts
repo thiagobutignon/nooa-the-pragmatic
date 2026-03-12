@@ -14,6 +14,7 @@ import {
 import {
 	appendRalphProgressEntry,
 	loadRalphProgressEntries,
+	type RalphProgressInvestigation,
 	type RalphProgressEntry,
 } from "./progress";
 import {
@@ -114,6 +115,16 @@ export interface RalphStepAdapters {
 		root: string;
 		files: string[];
 	}) => Promise<{ ok: boolean; reason?: string }>;
+	inspectTestFailure?: (input: {
+		root: string;
+		command: string[];
+	}) => Promise<{
+		mode: "inspect-test-failure";
+		state?: string;
+		source?: string[];
+		stack?: Array<{ file: string; line: number; column?: number }>;
+		exception?: { reason?: string; message?: string };
+	}>;
 	appendProgress: (
 		root: string,
 		entry: RalphProgressEntry,
@@ -382,6 +393,42 @@ const DEFAULT_RALPH_STEP_ADAPTERS: RalphStepAdapters = {
 
 		return { ok: true };
 	},
+	inspectTestFailure: async (input) => {
+		const result = await execa(
+			process.execPath,
+			[
+				"run",
+				"index.ts",
+				"debug",
+				"inspect-test-failure",
+				"--json",
+				"--",
+				...input.command,
+			],
+			{
+				cwd: input.root,
+				reject: false,
+				env: {
+					...process.env,
+					NOOA_DISABLE_REFLECTION: "1",
+				},
+			},
+		);
+
+		if (result.exitCode !== 0) {
+			throw new Error(
+				result.stderr || result.stdout || "inspect-test-failure failed",
+			);
+		}
+
+		return JSON.parse(result.stdout) as {
+			mode: "inspect-test-failure";
+			state?: string;
+			source?: string[];
+			stack?: Array<{ file: string; line: number; column?: number }>;
+			exception?: { reason?: string; message?: string };
+		};
+	},
 	appendProgress: appendRalphProgressEntry,
 };
 
@@ -560,6 +607,74 @@ function countStories(prd: RalphPrd | null) {
 	};
 }
 
+function buildRalphTestFailureNotes(
+	ciReason: string,
+	inspection?: {
+		source?: string[];
+		stack?: Array<{ file: string; line: number; column?: number }>;
+		exception?: { reason?: string; message?: string };
+	},
+): string[] {
+	const notes = ["CI verification failed.", ciReason];
+	if (inspection?.exception?.message) {
+		notes.push(`Test failure: ${inspection.exception.message}`);
+	}
+	const frame = inspection?.stack?.[0];
+	if (frame) {
+		notes.push(
+			`Failure location: ${frame.file}:${frame.line}${frame.column ? `:${frame.column}` : ""}`,
+		);
+	}
+	if (inspection?.source?.length) {
+		notes.push(`Failure source:\n${inspection.source.join("\n")}`);
+	}
+	return notes;
+}
+
+function buildRalphTestFailureInvestigation(inspection?: {
+	source?: string[];
+	stack?: Array<{ file: string; line: number; column?: number }>;
+	exception?: { reason?: string; message?: string };
+}): RalphProgressInvestigation | undefined {
+	if (!inspection) {
+		return undefined;
+	}
+
+	const frame = inspection.stack?.[0];
+	if (!inspection.exception?.message && !frame && !inspection.source?.length) {
+		return undefined;
+	}
+
+	return {
+		kind: "test_failure",
+		reason: inspection.exception?.reason ?? "test_failure",
+		message: inspection.exception?.message,
+		location: frame
+			? {
+					file: frame.file,
+					line: frame.line,
+					column: frame.column,
+				}
+			: undefined,
+		source: inspection.source?.length ? inspection.source : undefined,
+	};
+}
+
+function mergeRalphStoryNotes(existing: string, notes: string[]): string {
+	const normalizedExisting = existing.trim();
+	const normalizedIncoming = notes
+		.map((note) => note.trim())
+		.filter(Boolean)
+		.join("\n");
+	if (!normalizedExisting) {
+		return normalizedIncoming;
+	}
+	if (!normalizedIncoming) {
+		return normalizedExisting;
+	}
+	return `${normalizedExisting}\n\n${normalizedIncoming}`;
+}
+
 export async function initializeRalphRun(
 	input: RalphInitInput,
 ): Promise<RalphInitResult> {
@@ -686,6 +801,9 @@ function buildRalphStoryGoal(story: RalphStory): string {
 		"- Prefer `nooa code write` and `nooa code patch` for file edits.",
 		"- Use repository-relative paths only (never absolute paths, never `.worktrees/...`).",
 	];
+	const knownFailureContext = story.notes.trim()
+		? `\n\nKnown failure context:\n${story.notes}`
+		: "";
 
 	return `Implement story ${story.id}: ${story.title}
 
@@ -695,7 +813,7 @@ Acceptance criteria:
 ${story.acceptanceCriteria.map((item) => `- ${item}`).join("\n")}
 
 Execution constraints:
-${hardConstraints.join("\n")}`;
+${hardConstraints.join("\n")}${knownFailureContext}`;
 }
 
 function buildRalphCorrectionGoal(
@@ -735,6 +853,16 @@ function findReviewCandidate(prd: RalphPrd): RalphStory | null {
 			)
 			.sort((left, right) => left.priority - right.priority)[0] ?? null
 	);
+}
+
+function rankRalphCandidateForExecution(story: RalphStory): number {
+	if (story.state === "failed") {
+		return 0;
+	}
+	if (story.state === undefined || story.state === "pending") {
+		return 1;
+	}
+	return 2;
 }
 
 export async function executeRalphReviewLoop(
@@ -1275,7 +1403,15 @@ export async function executeRalphStep(
 						candidate.state === "pending" ||
 						candidate.state === "failed"),
 			)
-			.sort((left, right) => left.priority - right.priority)[0] ??
+			.sort((left, right) => {
+				const rankDelta =
+					rankRalphCandidateForExecution(left) -
+					rankRalphCandidateForExecution(right);
+				if (rankDelta !== 0) {
+					return rankDelta;
+				}
+				return left.priority - right.priority;
+			})[0] ??
 		null;
 
 	if (!story) {
@@ -1472,7 +1608,50 @@ export async function executeRalphStep(
 
 		const ciResult = await adapters.runCi({ root, files: storyFiles });
 		if (!ciResult.ok) {
-			throw new Error(ciResult.reason || "CI verification failed");
+			const ciReason = ciResult.reason || "CI verification failed";
+			const testFiles = storyFiles.filter((file) =>
+				/\.(test|spec)\.[cm]?[jt]sx?$/.test(file),
+			);
+			let inspection:
+				| {
+						source?: string[];
+						stack?: Array<{ file: string; line: number; column?: number }>;
+						exception?: { message?: string };
+				  }
+				| undefined;
+			if (testFiles.length > 0 && adapters.inspectTestFailure) {
+				try {
+					inspection = await adapters.inspectTestFailure({
+						root,
+						command: ["bun", "test", ...testFiles],
+					});
+				} catch {}
+			}
+			const failureNotes = buildRalphTestFailureNotes(ciReason, inspection);
+			const investigation = buildRalphTestFailureInvestigation(inspection);
+
+			activeStory = {
+				...activeStory,
+				state: "failed",
+				notes: mergeRalphStoryNotes(activeStory.notes, failureNotes),
+			};
+			prd.userStories[storyIndex] = activeStory;
+			state.status = "blocked";
+			await saveRalphPrd(root, prd);
+			await saveRalphState(root, state);
+			await adapters.appendProgress(root, {
+				runId: state.runId,
+				storyId: activeStory.id,
+				iteration: 1,
+				status: "failed",
+				gates: {
+					workflow: true,
+					ci: false,
+				},
+				notes: failureNotes,
+				investigation,
+			});
+			throw new Error(ciReason);
 		}
 
 		activeStory = transitionRalphStoryState(activeStory, "peer_review_1");

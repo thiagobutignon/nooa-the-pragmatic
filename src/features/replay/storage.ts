@@ -11,6 +11,17 @@ export type ReplayNode = {
 		files?: string[];
 		summary?: string;
 		tags?: string[];
+		investigation?: {
+			kind: string;
+			reason?: string;
+			message?: string;
+			location?: {
+				file: string;
+				line: number;
+				column?: number;
+			};
+			source?: string[];
+		};
 	};
 	fixOf?: string;
 };
@@ -18,7 +29,7 @@ export type ReplayNode = {
 export type ReplayEdge = {
 	from: string;
 	to: string;
-	kind: "next" | "impact" | "fixes";
+	kind: "next" | "retry" | "impact" | "fixes";
 };
 
 export type ReplayGraph = {
