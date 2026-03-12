@@ -295,4 +295,43 @@ describe("nooa backlog", () => {
 			"scripts/profile-api.js",
 		]);
 	});
+
+	it("fails import-ralph clearly when Ralph is not initialized", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-backlog-import-missing-"));
+		const inPath = join(root, "backlog.json");
+		await writeFile(
+			inPath,
+			JSON.stringify({
+				project: "NOOA",
+				branchName: "feature/backlog-import",
+				description: "Import story",
+				userStories: [
+					{
+						id: "US-001",
+						title: "Improve API latency",
+						description: "Reduce latency",
+						acceptanceCriteria: ["AC-1"],
+						priority: 1,
+						passes: false,
+						state: "pending",
+					},
+				],
+			}),
+		);
+
+		const res = await execa(
+			bunPath,
+			[binPath, "backlog", "import-ralph", "--in", inPath],
+			{
+				reject: false,
+				env: baseEnv,
+				cwd: root,
+			},
+		);
+
+		expect(res.exitCode).toBe(1);
+		expect(res.stderr).toContain(
+			"Initialize Ralph with `nooa ralph init` before importing a backlog PRD",
+		);
+	});
 });

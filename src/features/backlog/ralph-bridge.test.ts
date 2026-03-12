@@ -65,4 +65,34 @@ describe("backlog ralph bridge", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	it("requires Ralph to be initialized before importing", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-backlog-ralph-init-"));
+		const inPath = join(root, "backlog.json");
+		try {
+			await writeFile(inPath, JSON.stringify(createBacklogPrd(), null, 2));
+
+			await expect(
+				importBacklogIntoRalph({ root, path: inPath }),
+			).rejects.toThrow("Initialize Ralph with `nooa ralph init` before importing a backlog PRD");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects backlog PRDs with non-Ralph story states", async () => {
+		expect(() =>
+			convertBacklogToRalphPrd({
+				...createBacklogPrd(),
+				userStories: [
+					{
+						...createBacklogPrd().userStories[0],
+						state: "review",
+					},
+				],
+			}),
+		).toThrow(
+			"userStories[0].state must be one of: pending, implementing, verifying, peer_review_1, peer_fix_1, peer_review_2, peer_fix_2, peer_review_3, approved, committed, passed, failed, blocked",
+		);
+	});
 });
