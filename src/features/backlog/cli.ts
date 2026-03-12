@@ -12,6 +12,7 @@ import {
 	type BacklogBoardColumnId,
 } from "./board";
 import { generateBacklogFromPrompt } from "./generate";
+import { importBacklogIntoRalph } from "./ralph-bridge";
 import { splitBacklogStories } from "./split";
 import type { BacklogAction, BacklogMode } from "./types";
 import { validateBacklogPrd } from "./validate";
@@ -58,6 +59,7 @@ Subcommands:
   split                 Split large stories into smaller units.
   board                 Render board columns from PRD state.
   move                  Move one story between board columns.
+  import-ralph          Normalize a backlog PRD and import it into .nooa/ralph/.
 
 Flags:
   --json                Output results as JSON.
@@ -78,6 +80,7 @@ Examples:
   nooa backlog split --in prd.json --out prd.split.json --max-ac 2 --json
   nooa backlog board --in prd.json --json
   nooa backlog move --in prd.json --story US-001 --to in_review --out prd.json --json
+  nooa backlog import-ralph --in prd.json --json
 
 Exit Codes:
   0: Success
@@ -313,7 +316,33 @@ export async function run(
 		};
 	}
 
-	if (action !== "split" && action !== "board" && action !== "move") {
+	if (action === "import-ralph") {
+		if (!input.inPath) {
+			return {
+				ok: false,
+				error: sdkError("backlog.missing_input_path", "Input path required."),
+			};
+		}
+		const prd = await importBacklogIntoRalph({
+			root: process.cwd(),
+			path: input.inPath,
+		});
+		return {
+			ok: true,
+			data: {
+				mode: "import-ralph",
+				prd,
+				message: "Imported backlog PRD into Ralph state",
+			},
+		};
+	}
+
+	if (
+		action !== "split" &&
+		action !== "board" &&
+		action !== "move" &&
+		action !== "import-ralph"
+	) {
 		return {
 			ok: false,
 			error: sdkError(

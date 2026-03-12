@@ -23,6 +23,7 @@ describe("nooa backlog", () => {
 		expect(res.stdout).toContain("split");
 		expect(res.stdout).toContain("board");
 		expect(res.stdout).toContain("move");
+		expect(res.stdout).toContain("import-ralph");
 		expect(res.stdout).toContain("profile-command");
 		expect(res.stdout).toContain("max-ac");
 	});
@@ -236,5 +237,62 @@ describe("nooa backlog", () => {
 		expect(res.stderr).toContain(
 			"--to must be one of: todo, in_progress, in_review, done",
 		);
+	});
+
+	it("imports a backlog PRD directly into Ralph state", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-backlog-import-ralph-"));
+		const inPath = join(root, "backlog.json");
+		await writeFile(join(root, ".gitignore"), ".nooa/ralph/\n");
+		await execa(bunPath, [binPath, "ralph", "init"], {
+			reject: false,
+			env: {
+				...baseEnv,
+				NOOA_AI_PROVIDER: "openai",
+				NOOA_AI_MODEL: "gpt-5-codex",
+				NOOA_REVIEW_AI_PROVIDER: "anthropic",
+				NOOA_REVIEW_AI_MODEL: "claude-3.7",
+			},
+			cwd: root,
+		});
+		await writeFile(
+			inPath,
+			JSON.stringify({
+				project: "NOOA",
+				branchName: "feature/backlog-import",
+				description: "Import story",
+				userStories: [
+					{
+						id: "US-001",
+						title: "Improve API latency",
+						description: "Reduce latency",
+						acceptanceCriteria: ["AC-1"],
+						profileCommand: ["node", "scripts/profile-api.js"],
+						priority: 1,
+						passes: false,
+						state: "pending",
+					},
+				],
+			}),
+		);
+
+		const res = await execa(
+			bunPath,
+			[binPath, "backlog", "import-ralph", "--in", inPath, "--json"],
+			{
+				reject: false,
+				env: baseEnv,
+				cwd: root,
+			},
+		);
+
+		expect(res.exitCode).toBe(0);
+		const persisted = JSON.parse(
+			await readFile(join(root, ".nooa", "ralph", "prd.json"), "utf8"),
+		);
+		expect(persisted.userStories[0]?.notes).toBe("");
+		expect(persisted.userStories[0]?.profileCommand).toEqual([
+			"node",
+			"scripts/profile-api.js",
+		]);
 	});
 });

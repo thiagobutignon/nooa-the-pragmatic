@@ -4,6 +4,7 @@ export type BacklogAction =
 	| "split"
 	| "board"
 	| "move"
+	| "import-ralph"
 	| "help";
 
 export type BacklogMode = BacklogAction | "noop";
