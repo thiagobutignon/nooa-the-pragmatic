@@ -5,6 +5,12 @@ import { handleCommandError, renderJson } from "../../core/cli-output";
 import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
+import {
+	isBacklogBoardColumnId,
+	moveBacklogStory,
+	renderBacklogBoard,
+	type BacklogBoardColumnId,
+} from "./board";
 import { generateBacklogFromPrompt } from "./generate";
 import { splitBacklogStories } from "./split";
 import type { BacklogAction, BacklogMode } from "./types";
@@ -19,6 +25,8 @@ export interface BacklogRunInput {
 	profileCommand?: string[];
 	maxAcceptanceCriteria?: number;
 	maxStories?: number;
+	storyId?: string;
+	targetColumn?: BacklogBoardColumnId;
 }
 
 export interface BacklogRunResult {
@@ -28,6 +36,7 @@ export interface BacklogRunResult {
 	prd?: unknown;
 	outPath?: string;
 	errors?: string[];
+	board?: unknown;
 }
 
 export const backlogMeta: AgentDocMeta = {
@@ -58,6 +67,8 @@ Flags:
                         Optional JSON array used to seed story.profileCommand.
   --max-ac <n>          Max acceptance criteria per story when splitting.
   --max-stories <n>     Max stories allowed after splitting.
+  --story <id>          Story ID used by move.
+  --to <column>         Target board column: todo|in_progress|in_review|done.
   -h, --help            Show help message.
 
 Examples:
@@ -65,7 +76,8 @@ Examples:
   nooa backlog generate --help
   nooa backlog generate "Improve latency" --profile-command '["node","scripts/profile-target.js"]'
   nooa backlog split --in prd.json --out prd.split.json --max-ac 2 --json
-  nooa backlog board --help
+  nooa backlog board --in prd.json --json
+  nooa backlog move --in prd.json --story US-001 --to in_review --out prd.json --json
 
 Exit Codes:
   0: Success
@@ -99,6 +111,8 @@ export const backlogSchema = {
 	"profile-command": { type: "string", required: false },
 	"max-ac": { type: "number", required: false },
 	"max-stories": { type: "number", required: false },
+	story: { type: "string", required: false },
+	to: { type: "string", required: false },
 } satisfies SchemaSpec;
 
 export const backlogOutputFields = [
@@ -106,6 +120,7 @@ export const backlogOutputFields = [
 	{ name: "raw", type: "string" },
 	{ name: "message", type: "string" },
 	{ name: "prd", type: "object" },
+	{ name: "board", type: "array" },
 	{ name: "outPath", type: "string" },
 	{ name: "errors", type: "array" },
 ];
@@ -114,6 +129,8 @@ export const backlogErrors = [
 	{ code: "backlog.missing_action", message: "Subcommand required." },
 	{ code: "backlog.missing_prompt", message: "Prompt required for generate." },
 	{ code: "backlog.missing_input_path", message: "Input path required." },
+	{ code: "backlog.missing_story", message: "Story ID required." },
+	{ code: "backlog.missing_target_column", message: "Target column required." },
 	{ code: "backlog.invalid_action", message: "Unknown subcommand." },
 	{ code: "backlog.runtime_error", message: "Unexpected error." },
 ];
@@ -233,6 +250,69 @@ export async function run(
 		};
 	}
 
+	if (action === "board") {
+		if (!input.inPath) {
+			return {
+				ok: false,
+				error: sdkError("backlog.missing_input_path", "Input path required."),
+			};
+		}
+		const payload = JSON.parse(await readFile(input.inPath, "utf8"));
+		return {
+			ok: true,
+			data: {
+				mode: "board",
+				board: renderBacklogBoard(payload),
+				message: "Rendered backlog board",
+			},
+		};
+	}
+
+	if (action === "move") {
+		if (!input.inPath) {
+			return {
+				ok: false,
+				error: sdkError("backlog.missing_input_path", "Input path required."),
+			};
+		}
+		if (!input.storyId) {
+			return {
+				ok: false,
+				error: sdkError("backlog.missing_story", "Story ID required."),
+			};
+		}
+		if (!input.targetColumn) {
+			return {
+				ok: false,
+				error: sdkError(
+					"backlog.missing_target_column",
+					"Target column required.",
+				),
+			};
+		}
+		const payload = JSON.parse(await readFile(input.inPath, "utf8"));
+		const prd = moveBacklogStory(payload, input.storyId, input.targetColumn);
+		if (input.outPath) {
+			await mkdir(dirname(input.outPath), { recursive: true });
+			await writeFile(
+				input.outPath,
+				`${JSON.stringify(prd, null, 2)}\n`,
+				"utf8",
+			);
+		}
+		return {
+			ok: true,
+			data: {
+				mode: "move",
+				prd,
+				outPath: input.outPath,
+				message: input.outPath
+					? `Moved story ${input.storyId} into ${input.targetColumn} and wrote ${input.outPath}`
+					: `Moved story ${input.storyId} into ${input.targetColumn}`,
+			},
+		};
+	}
+
 	if (action !== "split" && action !== "board" && action !== "move") {
 		return {
 			ok: false,
@@ -270,6 +350,8 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			"profile-command": { type: "string" },
 			"max-ac": { type: "string" },
 			"max-stories": { type: "string" },
+			story: { type: "string" },
+			to: { type: "string" },
 		},
 	})
 	.parseInput(async ({ positionals, values }) => {
@@ -287,6 +369,8 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			typeof values["max-stories"] === "string"
 				? values["max-stories"]
 				: undefined;
+		const targetColumnRaw =
+			typeof values.to === "string" ? values.to : undefined;
 		if (profileCommandRaw) {
 			const parsed = JSON.parse(profileCommandRaw) as unknown;
 			if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
@@ -295,6 +379,9 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 				);
 			}
 			profileCommand = parsed;
+		}
+		if (targetColumnRaw && !isBacklogBoardColumnId(targetColumnRaw)) {
+			throw new Error("--to must be one of: todo, in_progress, in_review, done");
 		}
 		return {
 			action,
@@ -309,6 +396,8 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			maxStories: maxStoriesRaw
 				? Number.parseInt(maxStoriesRaw, 10)
 				: undefined,
+			storyId: typeof values.story === "string" ? values.story : undefined,
+			targetColumn: targetColumnRaw,
 		};
 	})
 	.run(run)
@@ -325,6 +414,10 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 		}
 		if (output.mode === "help" && output.raw) {
 			console.log(output.raw);
+			return;
+		}
+		if (output.mode === "board" && output.board) {
+			console.log(JSON.stringify(output.board, null, 2));
 			return;
 		}
 		if (output.message) {
@@ -344,6 +437,8 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			"backlog.missing_action",
 			"backlog.missing_prompt",
 			"backlog.missing_input_path",
+			"backlog.missing_story",
+			"backlog.missing_target_column",
 			"backlog.invalid_action",
 		]);
 	})
