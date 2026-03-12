@@ -6,6 +6,7 @@ import { CommandBuilder, type SchemaSpec } from "../../core/command-builder";
 import type { AgentDocMeta, SdkResult } from "../../core/types";
 import { sdkError } from "../../core/types";
 import { generateBacklogFromPrompt } from "./generate";
+import { splitBacklogStories } from "./split";
 import type { BacklogAction, BacklogMode } from "./types";
 import { validateBacklogPrd } from "./validate";
 
@@ -16,6 +17,8 @@ export interface BacklogRunInput {
 	inPath?: string;
 	outPath?: string;
 	profileCommand?: string[];
+	maxAcceptanceCriteria?: number;
+	maxStories?: number;
 }
 
 export interface BacklogRunResult {
@@ -53,12 +56,15 @@ Flags:
   --out <path>          Persist generated PRD JSON to disk.
   --profile-command <json>
                         Optional JSON array used to seed story.profileCommand.
+  --max-ac <n>          Max acceptance criteria per story when splitting.
+  --max-stories <n>     Max stories allowed after splitting.
   -h, --help            Show help message.
 
 Examples:
   nooa backlog --help
   nooa backlog generate --help
   nooa backlog generate "Improve latency" --profile-command '["node","scripts/profile-target.js"]'
+  nooa backlog split --in prd.json --out prd.split.json --max-ac 2 --json
   nooa backlog board --help
 
 Exit Codes:
@@ -91,6 +97,8 @@ export const backlogSchema = {
 	in: { type: "string", required: false },
 	out: { type: "string", required: false },
 	"profile-command": { type: "string", required: false },
+	"max-ac": { type: "number", required: false },
+	"max-stories": { type: "number", required: false },
 } satisfies SchemaSpec;
 
 export const backlogOutputFields = [
@@ -192,6 +200,39 @@ export async function run(
 		};
 	}
 
+	if (action === "split") {
+		if (!input.inPath) {
+			return {
+				ok: false,
+				error: sdkError("backlog.missing_input_path", "Input path required."),
+			};
+		}
+		const payload = JSON.parse(await readFile(input.inPath, "utf8"));
+		const { prd } = splitBacklogStories(payload, {
+			maxAcceptanceCriteria: input.maxAcceptanceCriteria,
+			maxStories: input.maxStories,
+		});
+		if (input.outPath) {
+			await mkdir(dirname(input.outPath), { recursive: true });
+			await writeFile(
+				input.outPath,
+				`${JSON.stringify(prd, null, 2)}\n`,
+				"utf8",
+			);
+		}
+		return {
+			ok: true,
+			data: {
+				mode: "split",
+				prd,
+				outPath: input.outPath,
+				message: input.outPath
+					? `Split PRD written to ${input.outPath}`
+					: "Split PRD",
+			},
+		};
+	}
+
 	if (action !== "split" && action !== "board" && action !== "move") {
 		return {
 			ok: false,
@@ -227,6 +268,8 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			in: { type: "string" },
 			out: { type: "string" },
 			"profile-command": { type: "string" },
+			"max-ac": { type: "string" },
+			"max-stories": { type: "string" },
 		},
 	})
 	.parseInput(async ({ positionals, values }) => {
@@ -238,6 +281,12 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 				? values["profile-command"]
 				: undefined;
 		let profileCommand: string[] | undefined;
+		const maxAcceptanceCriteriaRaw =
+			typeof values["max-ac"] === "string" ? values["max-ac"] : undefined;
+		const maxStoriesRaw =
+			typeof values["max-stories"] === "string"
+				? values["max-stories"]
+				: undefined;
 		if (profileCommandRaw) {
 			const parsed = JSON.parse(profileCommandRaw) as unknown;
 			if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
@@ -254,6 +303,12 @@ const backlogBuilder = new CommandBuilder<BacklogRunInput, BacklogRunResult>()
 			inPath: typeof values.in === "string" ? values.in : undefined,
 			outPath: typeof values.out === "string" ? values.out : undefined,
 			profileCommand,
+			maxAcceptanceCriteria: maxAcceptanceCriteriaRaw
+				? Number.parseInt(maxAcceptanceCriteriaRaw, 10)
+				: undefined,
+			maxStories: maxStoriesRaw
+				? Number.parseInt(maxStoriesRaw, 10)
+				: undefined,
 		};
 	})
 	.run(run)
