@@ -4,6 +4,28 @@ import { ReplayGraph } from "../replay/graph";
 import { loadReplay, type ReplayNode, saveReplay } from "../replay/storage";
 import type { RalphLearningCandidate } from "./learnings";
 
+export interface RalphProgressInvestigation {
+	kind: "test_failure" | "profile_hotspots";
+	reason?: string;
+	message?: string;
+	location?: {
+		file: string;
+		line: number;
+		column?: number;
+	};
+	source?: string[];
+	runtime?: string;
+	duration_ms?: number;
+	hotspots?: Array<{
+		function: string;
+		url: string;
+		line: number;
+		column?: number;
+		self_ms: number;
+		samples: number;
+	}>;
+}
+
 export interface RalphProgressEntry {
 	timestamp?: string;
 	runId: string;
@@ -20,6 +42,7 @@ export interface RalphProgressEntry {
 	};
 	learnings?: RalphLearningCandidate[];
 	notes?: string[];
+	investigation?: RalphProgressInvestigation;
 }
 
 export function getRalphProgressPath(root: string) {
@@ -41,6 +64,12 @@ function buildReplaySummary(record: RalphProgressEntry) {
 		`iteration=${record.iteration}`,
 		`status=${record.status}`,
 		record.commit ? `commit=${record.commit}` : undefined,
+		record.investigation
+			? `investigation=${record.investigation.kind}`
+			: undefined,
+		record.investigation?.location
+			? `location=${record.investigation.location.file}:${record.investigation.location.line}${record.investigation.location.column ? `:${record.investigation.location.column}` : ""}`
+			: undefined,
 	];
 	return parts.filter(Boolean).join(" ");
 }
@@ -52,7 +81,10 @@ function buildReplayTags(record: RalphProgressEntry) {
 		`story:${record.storyId}`,
 		`status:${record.status}`,
 		`iteration:${record.iteration}`,
-	];
+		record.investigation
+			? `investigation:${record.investigation.kind}`
+			: undefined,
+	].filter(Boolean) as string[];
 }
 
 function findLatestStoryReplayNode(
@@ -70,6 +102,16 @@ function findLatestStoryReplayNode(
 	);
 }
 
+function shouldCreateRalphFixNode(
+	previousNode: ReplayNode | null,
+	record: RalphProgressEntry,
+) {
+	return Boolean(
+		previousNode?.meta?.tags?.includes("status:failed") &&
+			(record.status === "passed" || record.status === "approved"),
+	);
+}
+
 async function appendRalphReplayProgress(
 	root: string,
 	record: RalphProgressEntry,
@@ -80,9 +122,16 @@ async function appendRalphReplayProgress(
 	const node = graph.addNode(buildReplayLabel(record), "step", {
 		summary: buildReplaySummary(record),
 		tags: buildReplayTags(record),
+		investigation: record.investigation,
 	});
 	if (previousNode) {
 		graph.addEdge(previousNode.id, node.id, "next");
+		if (previousNode.meta?.tags?.includes("status:failed")) {
+			graph.addEdge(previousNode.id, node.id, "retry");
+		}
+		if (shouldCreateRalphFixNode(previousNode, record)) {
+			graph.addFix(previousNode.id, `Resolve ${record.storyId} failure`);
+		}
 	}
 	await saveReplay(root, graph.toJSON());
 }

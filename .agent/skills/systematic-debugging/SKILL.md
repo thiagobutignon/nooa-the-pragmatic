@@ -76,6 +76,8 @@ You MUST complete each phase before proceeding to the next.
 4. **Choose the right command evidence**
    - Runtime/state failure → `nooa debug`
    - Failure reproduction at a location or on crash → `nooa debug inspect-at` / `inspect-on-failure`
+   - Test failure investigation → `nooa debug inspect-test-failure -- <command...>`
+   - One-shot runtime evidence without session management → `nooa debug capture -- <command...>`
    - Performance/CPU issue → `nooa profile inspect -- <command...>`
    - Only fall back to ad-hoc logging if the command path cannot observe the issue
 

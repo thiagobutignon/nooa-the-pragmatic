@@ -80,6 +80,7 @@ NOOA already leans toward the right counterweights:
 - worktree isolation
 - documentation as active infrastructure
 - self-evolving, self-describing modules
+- agent-first investigation primitives such as `nooa debug inspect-*` and `nooa profile inspect`
 
 This workflow organizes those pieces into a repeatable sequence so the agent is not improvising process every turn.
 
@@ -116,6 +117,33 @@ These prevent the most common failure modes: guessing, skipping verification, an
 - `.agent/skills/self-evolving-modules`
 - `.agent/skills/refactoring-command-builder`
 - `.agent/skills/agent-cli-first`
+
+---
+
+## Agent-First Investigation
+
+When the task involves debugging, runtime inspection, test failures, or performance analysis, prefer **atomic evidence capture** over long-lived interactive sessions.
+
+Current NOOA primitives:
+
+- `nooa debug inspect-test-failure -- <command...>`
+- `nooa debug inspect-on-failure -- <command...>`
+- `nooa debug inspect-at <file>:<line> -- <command...>`
+- `nooa debug capture -- <command...>`
+- `nooa profile inspect -- <command...>`
+
+These commands are useful because they:
+
+- produce evidence in one shot
+- are easier for agents to use correctly
+- reduce state drift across turns
+- can be attached to `ralph` and `replay` as structured investigation artifacts
+
+Default bias:
+
+- prefer `inspect-*` over `launch/attach/step`
+- prefer `profile inspect` over manual performance guessing
+- prefer replayable evidence over free-form notes when the system supports it
 
 These align implementation with how NOOA is built: CLI-first, command-oriented, and biased toward self-describing modules.
 

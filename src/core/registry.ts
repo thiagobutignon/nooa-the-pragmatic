@@ -1,3 +1,4 @@
+import { constants } from "node:fs";
 import { access, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Command } from "./command";
@@ -36,9 +37,14 @@ export async function loadCommands(
 
 	for (const entry of entries) {
 		if (entry.isDirectory()) {
+			const cliPath = join(featuresDir, entry.name, "cli.ts");
 			try {
-				const cliPath = join(featuresDir, entry.name, "cli.ts");
-				await access(cliPath);
+				await access(cliPath, constants.F_OK);
+			} catch {
+				continue;
+			}
+
+			try {
 				const module = await import(cliPath);
 				if (module.default?.name) {
 					registry.register(module.default);

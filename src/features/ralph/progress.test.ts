@@ -100,4 +100,124 @@ describe("ralph progress artifacts", () => {
 		expect(us002Nodes[0]?.meta?.summary).toContain("blocked");
 		expect(us001Edges).toHaveLength(1);
 	});
+
+	test("stores structured investigation metadata in replay nodes", async () => {
+		const root = await createTempRoot();
+
+		await appendRalphProgressEntry(root, {
+			runId: "ralph-auth",
+			storyId: "US-003",
+			iteration: 1,
+			status: "failed",
+			notes: ["CI verification failed."],
+			investigation: {
+				kind: "test_failure",
+				reason: "test_failure",
+				message: "expect(received).toBe(expected)",
+				location: {
+					file: "/tmp/demo/failing.test.ts",
+					line: 7,
+					column: 3,
+				},
+				source: ["expect(1).toBe(2);"],
+			},
+		});
+
+		const replay = await loadReplay(root);
+		const node = replay.nodes.find((entry) =>
+			entry.meta?.tags?.includes("story:US-003"),
+		);
+
+		expect(node?.meta?.tags).toContain("investigation:test_failure");
+		expect(node?.meta?.summary).toContain("investigation=test_failure");
+		expect(node?.meta?.summary).toContain("location=/tmp/demo/failing.test.ts:7:3");
+		expect(node?.meta?.investigation).toEqual({
+			kind: "test_failure",
+			reason: "test_failure",
+			message: "expect(received).toBe(expected)",
+			location: {
+				file: "/tmp/demo/failing.test.ts",
+				line: 7,
+				column: 3,
+			},
+			source: ["expect(1).toBe(2);"],
+		});
+	});
+
+	test("adds an explicit retry edge after a failed story attempt", async () => {
+		const root = await createTempRoot();
+
+		await appendRalphProgressEntry(root, {
+			runId: "ralph-auth",
+			storyId: "US-004",
+			iteration: 1,
+			status: "failed",
+			notes: ["CI verification failed."],
+		});
+		await appendRalphProgressEntry(root, {
+			runId: "ralph-auth",
+			storyId: "US-004",
+			iteration: 2,
+			status: "reviewing",
+			notes: ["Retry entered review."],
+		});
+
+		const replay = await loadReplay(root);
+		const us004Nodes = replay.nodes.filter((node) =>
+			node.meta?.tags?.includes("story:US-004"),
+		);
+		const retryEdges = replay.edges.filter(
+			(edge) =>
+				edge.kind === "retry" &&
+				us004Nodes.some((node) => node.id === edge.from) &&
+				us004Nodes.some((node) => node.id === edge.to),
+		);
+
+		expect(us004Nodes).toHaveLength(2);
+		expect(retryEdges).toHaveLength(1);
+	});
+
+	test("adds an explicit fix node when a failed story later passes", async () => {
+		const root = await createTempRoot();
+
+		await appendRalphProgressEntry(root, {
+			runId: "ralph-auth",
+			storyId: "US-005",
+			iteration: 1,
+			status: "failed",
+			notes: ["CI verification failed."],
+		});
+		await appendRalphProgressEntry(root, {
+			runId: "ralph-auth",
+			storyId: "US-005",
+			iteration: 2,
+			status: "passed",
+			notes: ["Approved after retry."],
+		});
+
+		const replay = await loadReplay(root);
+		const storyNodes = replay.nodes.filter((node) =>
+			node.meta?.tags?.includes("story:US-005"),
+		);
+		const fixNode = replay.nodes.find(
+			(node) => node.type === "fix" && node.label === "Resolve US-005 failure",
+		);
+		const fixesEdge = replay.edges.find(
+			(edge) =>
+				edge.kind === "fixes" &&
+				edge.from === fixNode?.id &&
+				storyNodes.some((node) => node.id === edge.to),
+		);
+		const impactEdge = replay.edges.find(
+			(edge) =>
+				edge.kind === "impact" &&
+				edge.from === fixNode?.id &&
+				storyNodes.some((node) => node.id === edge.to),
+		);
+
+		expect(storyNodes).toHaveLength(2);
+		expect(fixNode).toBeDefined();
+		expect(fixesEdge).toBeDefined();
+		expect(impactEdge).toBeDefined();
+	});
 });

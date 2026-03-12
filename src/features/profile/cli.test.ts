@@ -45,6 +45,12 @@ describe("profile CLI", () => {
 			runtime?: string;
 			exit_code?: number;
 			profile_path?: string;
+			investigation?: {
+				kind?: string;
+				runtime?: string;
+				duration_ms?: number;
+				hotspots?: Array<{ function?: string; url?: string }>;
+			};
 			hotspots?: Array<{ function?: string; url?: string }>;
 		};
 		expect(payload.command).toBe("profile");
@@ -52,6 +58,10 @@ describe("profile CLI", () => {
 		expect(payload.runtime).toBe("node");
 		expect(payload.exit_code).toBe(0);
 		expect(payload.profile_path).toContain(".cpuprofile");
+		expect(payload.investigation?.kind).toBe("profile_hotspots");
+		expect(payload.investigation?.runtime).toBe("node");
+		expect(payload.investigation?.duration_ms).toBeGreaterThan(0);
+		expect(payload.investigation?.hotspots?.[0]?.url).toContain("cpu-busy.js");
 		expect(payload.hotspots?.[0]?.url).toContain("cpu-busy.js");
 	});
 });

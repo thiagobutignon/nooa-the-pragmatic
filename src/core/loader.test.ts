@@ -55,14 +55,34 @@ describe("Command Loader", () => {
 		expect(registry.get("baz")).toBeUndefined();
 	});
 
-	test("skips directories without cli.ts without logging an error", async () => {
-		await mkdir(join(tmpDir, "no-cli"), { recursive: true });
+	test("ignores feature directories without cli.ts without logging an error", async () => {
+		const staticFeaturePath = join(tmpDir, "demo");
+		await mkdir(staticFeaturePath, { recursive: true });
+		await writeFile(join(staticFeaturePath, "index.html"), "<html></html>");
+
 		const consoleErrorSpy = spyOn(console, "error").mockImplementation(() => {});
-
 		const registry = await loadCommands(tmpDir);
-
-		expect(registry.get("no-cli")).toBeUndefined();
+		expect(registry.get("demo")).toBeUndefined();
 		expect(consoleErrorSpy).not.toHaveBeenCalled();
+		consoleErrorSpy.mockRestore();
+	});
+
+	test("logs real import failures for directories that do contain cli.ts", async () => {
+		await createTempFeature(
+			"broken",
+			`
+            throw new Error("broken cli");
+        `,
+		);
+
+		const consoleErrorSpy = spyOn(console, "error").mockImplementation(() => {});
+		const registry = await loadCommands(tmpDir);
+		expect(registry.get("broken")).toBeUndefined();
+		expect(consoleErrorSpy).toHaveBeenCalled();
+		expect(consoleErrorSpy.mock.calls[0]?.[0]).toBe(
+			"Error loading command from broken:",
+		);
+		expect(String(consoleErrorSpy.mock.calls[0]?.[1])).toContain("broken cli");
 		consoleErrorSpy.mockRestore();
 	});
 

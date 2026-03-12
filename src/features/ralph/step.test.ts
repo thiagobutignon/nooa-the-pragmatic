@@ -165,6 +165,72 @@ describe("ralph step", () => {
 		}
 	});
 
+	test("prioritizes retrying a failed story before taking a new pending story", async () => {
+		const root = await createTempRepo();
+		const calls: string[] = [];
+
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-retry-priority",
+				branchName: "feature/ralph-retry-priority",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [
+					{
+						id: "US-001",
+						title: "Highest priority pending",
+						description: "Fresh story",
+						acceptanceCriteria: ["passes"],
+						priority: 1,
+						passes: false,
+						notes: "",
+						state: "pending",
+					},
+					{
+						id: "US-002",
+						title: "Lower priority failed",
+						description: "Retry me first",
+						acceptanceCriteria: ["passes"],
+						priority: 2,
+						passes: false,
+						notes: "Previous failure context",
+						state: "failed",
+					},
+				],
+			});
+
+			const result = await executeRalphStep(
+				{ root },
+				{
+					setGoal: async (goal) => {
+						calls.push(goal);
+					},
+					captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
+					runWorker: async (input) => {
+						calls.push(`worker:${input.story.id}`);
+						return { ok: true, finalAnswer: "implemented" };
+					},
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			expect(result.storyId).toBe("US-002");
+			expect(calls[0]).toContain("Implement story US-002");
+			expect(calls[1]).toBe("worker:US-002");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("resumes a story already in verifying without re-running implementation", async () => {
 		const root = await createTempRepo();
 		const calls: string[] = [];
@@ -456,6 +522,155 @@ describe("ralph step", () => {
 					},
 				),
 			).rejects.toThrow("ci checks failed");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("records inspect-test-failure evidence when CI rejects changed test files", async () => {
+		const root = await createTempRepo();
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-ci-inspect-fail",
+				branchName: "feature/ralph-ci-inspect-fail",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, createPrd());
+
+			await expect(
+				executeRalphStep(
+					{ root },
+					{
+						setGoal: async () => {},
+						captureWorkspaceFiles: captureSequence([], ["demo/failing.test.ts"]),
+						runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+						runWorkflow: async () => ({ ok: true }),
+						runCi: async () => ({
+							ok: false,
+							reason: "ci checks failed",
+						}),
+						inspectTestFailure: async () => ({
+							mode: "inspect-test-failure",
+							state: "failed",
+							stack: [
+								{
+									ref: "@f0",
+									name: "(test failure)",
+									file: "/tmp/demo/failing.test.ts",
+									line: 7,
+									column: 3,
+								},
+							],
+							exception: {
+								reason: "test_failure",
+								message: "error: expect(received).toBe(expected)",
+							},
+							source: ["test('fails', () => {", "\texpect(1).toBe(2);", "});"],
+						}),
+						appendProgress: appendRalphProgressEntry,
+					},
+				),
+			).rejects.toThrow("ci checks failed");
+
+			const state = await loadRalphState(root);
+			const prd = JSON.parse(
+				await readFile(join(root, ".nooa", "ralph", "prd.json"), "utf-8"),
+			) as RalphPrd;
+			const progress = await loadRalphProgressEntries(root);
+			const activeStory = prd.userStories.find((story) => story.id === "US-001");
+			const failedEntry = progress.at(-1);
+
+			expect(state?.status).toBe("blocked");
+			expect(activeStory?.state).toBe("failed");
+			expect(activeStory?.notes).toContain(
+				"Test failure: error: expect(received).toBe(expected)",
+			);
+			expect(activeStory?.notes).toContain(
+				"Failure location: /tmp/demo/failing.test.ts:7:3",
+			);
+			expect(failedEntry?.status).toBe("failed");
+			expect(failedEntry?.notes).toContain("CI verification failed.");
+			expect(failedEntry?.notes).toContain("ci checks failed");
+			expect(failedEntry?.notes).toContain(
+				"Test failure: error: expect(received).toBe(expected)",
+			);
+			expect(failedEntry?.notes).toContain(
+				"Failure location: /tmp/demo/failing.test.ts:7:3",
+			);
+			expect(failedEntry?.investigation).toEqual({
+				kind: "test_failure",
+				reason: "test_failure",
+				message: "error: expect(received).toBe(expected)",
+				location: {
+					file: "/tmp/demo/failing.test.ts",
+					line: 7,
+					column: 3,
+				},
+				source: ["test('fails', () => {", "\texpect(1).toBe(2);", "});"],
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("includes failed-story investigation notes in the next worker goal", async () => {
+		const root = await createTempRepo();
+		const goals: string[] = [];
+		try {
+			await initializeRalphRun({
+				root,
+				runId: "ralph-retry-with-notes",
+				branchName: "feature/ralph-retry-with-notes",
+				workerProvider: "openai",
+				workerModel: "gpt-5-codex",
+				reviewerProvider: "anthropic",
+				reviewerModel: "claude-3.7",
+			});
+			await saveRalphPrd(root, {
+				...createPrd(),
+				userStories: [
+					{
+						id: "US-001",
+						title: "Highest priority",
+						description: "First story",
+						acceptanceCriteria: ["passes"],
+						priority: 1,
+						passes: false,
+						notes: [
+							"CI verification failed.",
+							"Test failure: error: expect(received).toBe(expected)",
+							"Failure location: /tmp/demo/failing.test.ts:7:3",
+						].join("\n"),
+						state: "failed",
+					},
+				],
+			});
+
+			await executeRalphStep(
+				{ root },
+				{
+					setGoal: async (goal) => {
+						goals.push(goal);
+					},
+					captureWorkspaceFiles: captureSequence([], ["demo/index.html"]),
+					runWorker: async () => ({ ok: true, finalAnswer: "implemented" }),
+					runWorkflow: async () => ({ ok: true }),
+					runCi: async () => ({ ok: true }),
+					appendProgress: appendRalphProgressEntry,
+				},
+			);
+
+			expect(goals[0]).toContain("Known failure context:");
+			expect(goals[0]).toContain(
+				"Test failure: error: expect(received).toBe(expected)",
+			);
+			expect(goals[0]).toContain(
+				"Failure location: /tmp/demo/failing.test.ts:7:3",
+			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
