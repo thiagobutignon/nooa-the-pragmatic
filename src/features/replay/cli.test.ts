@@ -329,6 +329,51 @@ describe("replay.run", () => {
 		expect(stdout).toContain("- busySpin (8ms, 2 samples) /tmp/cpu-busy.js:1");
 	});
 
+	test("show output renders execution evidence links for humans", async () => {
+		const cliRoot = join(tmpRoot, "cli-show-execution-links");
+		await rm(cliRoot, { recursive: true, force: true });
+		await mkdir(join(cliRoot, ".nooa"), { recursive: true });
+
+		await Bun.write(
+			join(cliRoot, ".nooa/replay.json"),
+			JSON.stringify({
+				version: "1.0.0",
+				nodes: [
+					{
+						id: "node-links",
+						label: "US-020 [investigating]",
+						type: "step",
+						createdAt: new Date().toISOString(),
+						meta: {
+							investigation: {
+								kind: "command_trace",
+								message: "Command failed during dogfooding.",
+								traceId: "trace-123",
+								recordId: "record-456",
+								benchId: "bench-789",
+							},
+						},
+					},
+				],
+				edges: [],
+			}),
+		);
+
+		const repoRoot = process.cwd();
+		const { stdout } = await execa(
+			"bun",
+			["index.ts", "replay", "show", "node-links", "--root", cliRoot],
+			{
+				cwd: repoRoot,
+			},
+		);
+
+		expect(stdout).toContain("Investigation: command_trace");
+		expect(stdout).toContain("Trace: trace-123");
+		expect(stdout).toContain("Record: record-456");
+		expect(stdout).toContain("Bench: bench-789");
+	});
+
 	test("show output renders replay relationships for humans", async () => {
 		const cliRoot = join(tmpRoot, "cli-show-relations");
 		await rm(cliRoot, { recursive: true, force: true });
