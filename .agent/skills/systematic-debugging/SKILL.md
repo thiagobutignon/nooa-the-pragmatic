@@ -31,6 +31,10 @@ Use for ANY technical issue:
 - Build failures
 - Integration issues
 
+Inside NOOA, default to **debug-first** and **profile-first** evidence:
+- behavior/state bug → use `nooa debug` before adding logs
+- CPU/performance issue → use `nooa profile` before guessing
+
 **Use this ESPECIALLY when:**
 - Under time pressure (emergencies make guessing tempting)
 - "Just one quick fix" seems obvious
@@ -69,16 +73,13 @@ You MUST complete each phase before proceeding to the next.
    - New dependencies, config changes
    - Environmental differences
 
-4. **Prefer Atomic Investigation Primitives Before Guessing**
-
-   **WHEN working inside NOOA, prefer evidence capture commands over manual speculation:**
-   - `nooa debug inspect-test-failure -- <test command...>`
-   - `nooa debug inspect-on-failure -- <runtime command...>`
-   - `nooa debug inspect-at <file>:<line> -- <runtime command...>`
-   - `nooa debug capture -- <runtime command...>`
-   - `nooa profile inspect -- <runtime command...>` for CPU/perf issues
-
-   **Why:** These commands capture state, stack, source, exception, or hotspots in a single atomic run. They are usually better than trying to keep an interactive session alive across turns.
+4. **Choose the right command evidence**
+   - Runtime/state failure → `nooa debug`
+   - Failure reproduction at a location or on crash → `nooa debug inspect-at` / `inspect-on-failure`
+   - Test failure investigation → `nooa debug inspect-test-failure -- <command...>`
+   - One-shot runtime evidence without session management → `nooa debug capture -- <command...>`
+   - Performance/CPU issue → `nooa profile inspect -- <command...>`
+   - Only fall back to ad-hoc logging if the command path cannot observe the issue
 
 5. **Gather Evidence in Multi-Component Systems**
 
@@ -229,6 +230,9 @@ If you catch yourself thinking:
 - "Quick fix for now, investigate later"
 - "Just try changing X and see if it works"
 - "Add multiple changes, run tests"
+- "I'll sprinkle console.log first and clean it up later"
+- "I can wait for the UI/API to reproduce it"
+- "Performance feels bad, I'll optimize blind"
 - "Skip the test, I'll manually verify"
 - "It's probably X, let me fix that"
 - "I don't fully understand but this might work"

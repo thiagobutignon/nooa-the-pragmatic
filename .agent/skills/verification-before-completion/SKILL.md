@@ -45,6 +45,8 @@ Skip any step = lying, not verifying
 | Linter clean | Linter output: 0 errors | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
+| Bug is understood | `nooa debug` or equivalent evidence when relevant | "I read the code" |
+| Performance improved | `nooa profile` or equivalent evidence when relevant | "Feels faster" |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
@@ -97,6 +99,13 @@ Skip any step = lying, not verifying
 ```
 ✅ Re-read plan → Create checklist → Verify each → Report gaps or completion
 ❌ "Tests pass, phase complete"
+```
+
+**Debug/Profile evidence:**
+```
+✅ Run `nooa debug` for runtime failures and cite the captured state
+✅ Run `nooa profile` for hotspot/performance claims and cite the summary
+❌ "I know where it fails" / "This should be faster now"
 ```
 
 **Agent delegation:**

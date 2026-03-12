@@ -9,6 +9,10 @@ description: Use when starting, adapting, or reviewing feature, refactor, or bug
 
 This skill is the local entry point for NOOA's canonical AI-assisted development process.
 
+The default implementation order in NOOA is:
+
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
+
 Use it when you need the project's full workflow, not just one isolated tactic. The authoritative long-form reference is:
 
 - `docs/reference/ai-assisted-development-workflow.md`
@@ -37,6 +41,7 @@ Typical pairings:
 - `using-git-worktrees` for isolated work
 - `test-driven-development` for red-green discipline
 - `systematic-debugging` for bugs and failing tests
+- `profile` command when the question is CPU cost, latency, or hotspot ranking
 - `agent-cli-first` and `dogfooding` for runnable proof
 - `self-evolving-modules` for NOOA command work
 - `verification-before-completion` before any success claim
@@ -44,9 +49,11 @@ Typical pairings:
 ## Local Rules
 
 1. Start from workspace context and local skills.
-2. Prefer direct execution over theoretical correctness.
+2. Prefer direct command execution over theoretical correctness.
 3. Prefer repository commands and Bun checks over generic advice.
-4. Treat old `superpowers:*` references as historical labels when a local skill exists with the same intent.
+4. Prefer `nooa debug` before ad-hoc print debugging for runtime bugs.
+5. Prefer `nooa profile` before blind performance tuning.
+6. Treat old `superpowers:*` references as historical labels when a local skill exists with the same intent.
 
 ## Reference
 
@@ -61,5 +68,6 @@ That document explains:
 - worktree usage
 - TDD expectations
 - CLI-first verification
+- debug-first and profile-first investigation
 - review and post-mortem rules
 - how the workflow maps to local NOOA skills

@@ -28,12 +28,23 @@ Feature modules are **Self-Describing**. They define their own schema, which aut
 
 **Rule**: Code is the Single Source of Truth. Documentation is a derived artifact.
 
+## Development Order
+
+NOOA should evolve in this order:
+
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
+
+The command surface is the primary product contract. Runtime investigation should be possible from commands before behavior is hidden behind adapters or visual layers.
+
 ## 🚀 Commands
 
 | Command | Purpose |
 |---------|---------|
+| `act` | Run the autonomous agent orchestrator over configured gates and workflows. |
+| `agent` | Run an interactive agentic loop for a prompt. |
 | `ai` | Query the AI stack (completion, refactor, fix, review flows). |
 | `ask` | Semantic search for code or memory entries. |
+| `backlog` | Generate and operate backlog PRDs and kanban state. |
 | `check` | Audit workspace against project policies (Zero-Preguiça). |
 | `ci` | Run the local CI loop (`test`, `linter`, `check`). |
 | `code` | Write/refactor/format files with AI helpers. |
@@ -44,6 +55,8 @@ Feature modules are **Self-Describing**. They define their own schema, which aut
 | `embed` | Generate embeddings and record telemetry. |
 | `eval` | Compare/evaluate prompt outputs (`report`, `history`, `compare`). |
 | `fix` | Drive autonomous fix loop (with telemetry, JSON output). |
+| `gate` | Verify project state against defined quality gates. |
+| `gateway` | Run the gateway channel orchestrator. |
 | `goal` | Create and track agent goals + status. |
 | `guardrail` | Audit code against project policies (Anarchy/Zero-Preguiça). |
 | `ignore` | Manage `.nooa-ignore` patterns and run match tests. |
@@ -52,7 +65,9 @@ Feature modules are **Self-Describing**. They define their own schema, which aut
 | `mcp` | Manage MCP servers (`install`, `configure`, `alias`, `call`, `health`, etc.). |
 | `memory` | Add, read, and summarize persistent memory entries. |
 | `message` | Send human-style messages via agent channels. |
+| `papers` | Fetch the latest AI research papers from arXiv. |
 | `pr` | Manage GitHub pull requests (create, merge, close). |
+| `profile` | Capture agent-first CPU hotspot summaries for commands. |
 | `prompt` | Create/edit/publish prompt templates with changelog. |
 | `push` | Push worktree changes to remote with safety checks. |
 | `ralph` | Run backlog loop (`init`, `import-prd`, `step`, `review`, `approve`, `run`). |
@@ -62,6 +77,8 @@ Feature modules are **Self-Describing**. They define their own schema, which aut
 | `scaffold` | Generate consistent project scaffolding with AI notes. |
 | `search` | Search files and contents (rg/native engines). |
 | `skills` | Manage Codex skills enabling/disabling. |
+| `tui` | Launch terminal user interfaces. |
+| `workflow` | Run a verification workflow sequence. |
 | `worktree` | Handle isolated worktrees (create, list, prune, lock). |
 
 ## 📖 Documentation

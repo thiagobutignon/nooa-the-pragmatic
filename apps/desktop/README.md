@@ -43,3 +43,47 @@ bun run desktop:build
 - The Tauri backend spawns `bun src/runtime/desktop/bridge.ts`.
 - The bridge persists chat state under `<workspace>/.nooa/desktop/`.
 - For real model responses, configure the same NOOA provider environment variables you already use in the repo.
+
+## Future debug integration
+
+The next major capability for the desktop app should be `nooa debug`.
+
+The useful model, based on the `feat/debug-that-commands` worktree and a local
+trial with `debug-that`, is:
+
+- short-lived CLI commands over a persistent debug session
+- compact state snapshots with source, locals, stack, and breakpoint refs
+- desktop rendering that treats debugger output as first-class timeline events
+
+Recommended desktop-facing debug actions:
+
+- `launch`
+- `attach`
+- `status`
+- `stop`
+- `break`
+- `break-ls`
+- `break-rm`
+- `continue`
+- `step`
+- `state`
+- `vars`
+- `stack`
+- `eval`
+
+Recommended desktop event cards for a future integration:
+
+- `debug_session`
+- `debug_state`
+- `debug_breakpoint`
+- `debug_stack`
+- `debug_eval`
+
+Operational note:
+
+- debugger sessions are most useful when they target the real failing process
+  directly
+- if a test spawns a subprocess that contains the bug, a debugger attached to
+  the parent test process will usually not see the child runtime state
+- in those cases, prefer launching the target script or bridge process directly
+  under `nooa debug` instead of only debugging the wrapper test

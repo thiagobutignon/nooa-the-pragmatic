@@ -14,6 +14,7 @@ For Claude implementing CLI tools, this means:
 - Checking exit codes and output formats
 - Running the full test suite
 - Testing edge cases and error conditions
+- Exercising debug/profile paths when the feature can fail or get slow
 
 **CRITICAL: Dogfooding is REQUIRED before completing any CLI-related task.**
 
@@ -30,6 +31,7 @@ For Claude implementing CLI tools, this means:
 - After fixing bugs in command handling.
 - After updating dependencies that affect CLI behavior.
 - When implementing features that interact with external tools (git, etc).
+- When adding or changing `nooa debug` / `nooa profile` paths.
 
 ## Core Pattern
 
@@ -99,6 +101,19 @@ bun test
 # If tests fail, fix them BEFORE completing the task
 ```
 
+### 6. Investigation Path Check
+```bash
+# If the feature can fail at runtime
+bun run index.ts debug --help
+
+# If the feature has meaningful CPU/performance behavior
+bun run index.ts profile --help
+```
+
+Verify:
+- failure investigation is runnable by command
+- hotspot/performance investigation is runnable by command when relevant
+
 ## Why it Matters
 Without dogfooding, you might:
 - Leave old commands in the help text (drift).
@@ -108,6 +123,7 @@ Without dogfooding, you might:
 - Create help text that doesn't match actual behavior.
 - Introduce regressions in existing commands.
 - Break command chaining or piping behavior.
+- Ship features that only humans can debug through UI or manual logging.
 
 **Real users will immediately notice these issues.** Dogfooding catches them before shipping.
 
@@ -125,6 +141,8 @@ Before marking a CLI task as complete, verify:
 - [ ] Full test suite passes (`bun test`)
 - [ ] No console errors or unhandled exceptions
 - [ ] Command works with different shell environments (if applicable)
+- [ ] Debug path exists and is usable when the feature can fail at runtime
+- [ ] Profile path exists and is usable when performance investigation matters
 
 ## Common Rationalizations
 
@@ -198,6 +216,7 @@ Dogfooding complements:
 - **executing-plans**: Run dogfooding checks after each task completion
 - **TDD workflows**: Execute real commands after tests pass
 - **Documentation**: Verify examples in docs actually work
+- **systematic-debugging**: Prefer command evidence over guesswork
 
 ## Success Criteria
 

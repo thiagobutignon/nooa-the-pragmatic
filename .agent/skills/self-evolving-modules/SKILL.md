@@ -11,6 +11,10 @@ A **self-evolving module** defines a command's specification (inputs, outputs, e
 
 **Core Principle:** Define once in code/schema, generate everything else (CLI help, Agent Tool Specs, SDK types, Documentation) automatically. This guarantees zero drift between what the code *does* and what the documentation *says*.
 
+For NOOA runtime-facing work, modules should support this order:
+
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
+
 ## Quick Start (TL;DR)
 
 **Creating a new command in 60 seconds:**
@@ -39,6 +43,7 @@ Before implementing or modifying any module, **YOU MUST READ** the following ref
 - Creating **ANY** new CLI command in NOOA.
 - Refactoring legacy commands.
 - When you need a feature accessible via CLI, SDK, and AI Agents simultaneously.
+- When a feature needs stable outputs that can be debugged and profiled before adapter layers are added.
 
 **Do NOT use for:**
 - Internal helper functions (unless they need to be exposed as tools).

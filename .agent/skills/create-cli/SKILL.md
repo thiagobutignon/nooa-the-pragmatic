@@ -12,6 +12,10 @@ description: >
 
 Design CLI surface area (syntax + behavior), human-first, script-friendly.
 
+In NOOA, design commands to fit this order:
+
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
+
 ## Do This First
 
 - Read `agent-scripts/skills/create-cli/references/cli-guidelines.md` and apply it as the default rubric.
@@ -29,6 +33,7 @@ Ask, then proceed with best-guess defaults if user is unsure:
 - Interactivity: prompts allowed? need `--no-input`? confirmations for destructive ops?
 - Config model: flags/env/config-file; precedence; XDG vs repo-local.
 - Platform/runtime constraints: macOS/Linux/Windows; single binary vs runtime.
+- Investigation path: how an agent will debug failures and profile hotspots without going through API, desktop, or UI.
 
 ## Deliverables (what to output)
 
@@ -43,6 +48,7 @@ When designing a CLI, produce a compact spec the user can implement:
 - Config/env rules + precedence (flags > env > project config > user config > system).
 - Shell completion story (if relevant): install/discoverability; generation command or bundled scripts.
 - 5–10 example invocations (common flows; include piped/stdin examples).
+- Debug/profile hooks when the command can fail or become a bottleneck.
 
 ## Default Conventions (unless user says otherwise)
 

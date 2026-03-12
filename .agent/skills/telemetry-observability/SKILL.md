@@ -10,6 +10,10 @@ Observability is not optional for a programming agent. If you cannot trace opera
 
 **Core principle:** Logs must be structured and **telemetry must be persisted**. Console noise is not observability.
 
+In NOOA, observability should support this ladder:
+
+`CLI First -> Agent First -> TDD First -> Debug First -> Profile First -> Dogfooding First -> API/MCP -> Desktop -> UI/TUI`
+
 ## When to Use
 Use this skill when:
 - debugging is guesswork (no trace IDs or structured logs)
@@ -17,6 +21,7 @@ Use this skill when:
 - MTTR, success rate, or cost per feature is not measurable
 - stdout is mixed with diagnostics
 - there is no queryable telemetry store
+- debug/profile evidence cannot be correlated to command executions
 
 Do **not** use this skill for purely visual UI work with no meaningful command execution.
 
@@ -36,6 +41,11 @@ Do **not** use this skill for purely visual UI work with no meaningful command e
 
 **4) EventBus payloads are rich**
 - events must include trace_id, timestamp, success, duration_ms, and key parameters
+
+**5) Debug/profile evidence is correlatable**
+- `nooa debug` sessions should be traceable back to command executions
+- `nooa profile` output should preserve runtime, duration, exit code, and profile path
+- investigation output must join cleanly with telemetry, not remain console-only noise
 
 ## Core Pattern (Before → After)
 
