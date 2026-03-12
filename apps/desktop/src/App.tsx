@@ -405,14 +405,21 @@ function App() {
 		setQueuedMessages([]);
 	}
 
-	function createFreshWorkspaceSession(path: string) {
+	function createFreshWorkspaceSession(
+		path: string,
+		options?: {
+			clearConversations?: boolean;
+		},
+	) {
 		setWorkspacePath(path);
 		setSessionId(crypto.randomUUID());
 		setPendingApproval(null);
 		setPendingActionId(null);
 		approvalLockRef.current = null;
 		setQueuedMessages([]);
-		setConversations([]);
+		if (options?.clearConversations ?? true) {
+			setConversations([]);
+		}
 		setEvents([workspaceIntroEvent(path)]);
 	}
 
@@ -547,7 +554,7 @@ function App() {
 			applySessionSnapshot(response.session);
 			return;
 		}
-		createFreshWorkspaceSession(path);
+		createFreshWorkspaceSession(path, { clearConversations: false });
 	}
 
 	async function openConversation(targetSessionId: string) {
@@ -717,6 +724,16 @@ function App() {
 		setRecentWorkspaces((current) =>
 			current.filter((entry) => entry.path !== path),
 		);
+		if (path === workspacePath) {
+			setWorkspacePath("");
+			setSessionId(crypto.randomUUID());
+			setPendingApproval(null);
+			setPendingActionId(null);
+			approvalLockRef.current = null;
+			setQueuedMessages([]);
+			setConversations([]);
+			setEvents([defaultIntroEvent()]);
+		}
 	}
 
 	return (
