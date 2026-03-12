@@ -15,9 +15,45 @@ export function getRalphPrdPath(root: string) {
 	return join(root, ".nooa", "ralph", "prd.json");
 }
 
+function validateRalphProfileCommand(
+	profileCommand: unknown,
+	storyId: string,
+): asserts profileCommand is string[] | undefined {
+	if (profileCommand === undefined) {
+		return;
+	}
+	if (
+		!Array.isArray(profileCommand) ||
+		profileCommand.length === 0 ||
+		profileCommand.some(
+			(segment) => typeof segment !== "string" || segment.trim().length === 0,
+		)
+	) {
+		throw new Error(
+			`Invalid Ralph PRD: story ${storyId} must use profileCommand as a non-empty string array`,
+		);
+	}
+}
+
+export function validateRalphPrd(prd: RalphPrd): RalphPrd {
+	if (!Array.isArray(prd.userStories)) {
+		throw new Error("Invalid Ralph PRD: userStories must be an array");
+	}
+
+	for (const story of prd.userStories) {
+		validateRalphProfileCommand(story.profileCommand, story.id);
+	}
+
+	return prd;
+}
+
+export function parseRalphPrd(raw: string): RalphPrd {
+	return validateRalphPrd(JSON.parse(raw) as RalphPrd);
+}
+
 export async function loadRalphPrd(root: string): Promise<RalphPrd> {
 	const raw = await readFile(getRalphPrdPath(root), "utf-8");
-	return JSON.parse(raw) as RalphPrd;
+	return parseRalphPrd(raw);
 }
 
 export async function saveRalphPrd(root: string, prd: RalphPrd): Promise<void> {

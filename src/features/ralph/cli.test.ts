@@ -50,6 +50,7 @@ describe("nooa ralph", () => {
 		expect(res.stdout).toContain("approve");
 		expect(res.stdout).toContain("promote-learning");
 		expect(res.stdout).toContain("run");
+		expect(res.stdout).toContain("profileCommand");
 	});
 
 	it("initializes ralph state from the CLI", async () => {

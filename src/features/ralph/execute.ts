@@ -7,6 +7,7 @@ import { setGoal } from "../goal/execute";
 import { buildRalphLearningCandidate } from "./learnings";
 import {
 	loadRalphPrd,
+	parseRalphPrd,
 	type RalphPrd,
 	type RalphStory,
 	saveRalphPrd,
@@ -799,7 +800,7 @@ export async function importRalphPrdFile(input: {
 }): Promise<RalphImportPrdResult> {
 	const root = input.root ?? process.cwd();
 	const raw = await readFile(input.path, "utf-8");
-	const prd = JSON.parse(raw) as RalphPrd;
+	const prd = parseRalphPrd(raw);
 	await saveRalphPrd(root, prd);
 	return {
 		mode: "import-prd",

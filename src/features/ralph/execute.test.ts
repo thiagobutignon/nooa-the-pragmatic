@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { execa } from "execa";
 import {
 	getRalphStatus,
+	importRalphPrdFile,
 	initializeRalphRun,
 	type RalphStatusResult,
 } from "./execute";
@@ -113,6 +114,42 @@ describe("ralph execute", () => {
 					strictReviewerIdentity: true,
 				}),
 			).rejects.toThrow("different provider/model identities in strict mode");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	it("rejects PRD imports with an invalid profileCommand contract", async () => {
+		const root = await createTempRepo(".nooa/ralph/\n");
+		const invalidPrdPath = join(root, "invalid-prd.json");
+		try {
+			await writeFile(
+				invalidPrdPath,
+				JSON.stringify({
+					project: "NOOA",
+					branchName: "feature/invalid-profile-command",
+					description: "Invalid PRD",
+					userStories: [
+						{
+							id: "US-001",
+							title: "Profile me",
+							description: "Performance story",
+							acceptanceCriteria: ["faster"],
+							profileCommand: "node scripts/profile-target.js",
+							priority: 1,
+							passes: false,
+							notes: "",
+							state: "pending",
+						},
+					],
+				}),
+			);
+
+			await expect(
+				importRalphPrdFile({ root, path: invalidPrdPath }),
+			).rejects.toThrow(
+				"Invalid Ralph PRD: story US-001 must use profileCommand as a non-empty string array",
+			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
