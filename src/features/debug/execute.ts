@@ -6,6 +6,7 @@ import { sdkError } from "../../core/types";
 import { createNodeDebugAdapter } from "./adapters/node";
 import type {
 	DebugAdapter,
+	DebugConsoleEntry,
 	DebugFrameSnapshot,
 	DebugStateSnapshot,
 	DebugValueSnapshot,
@@ -18,6 +19,8 @@ import {
 	saveDebugSession,
 } from "./session/store";
 import type { DebugBreakpointRef, DebugRuntime } from "./session/types";
+import type { DebugExceptionPauseMode } from "./session/types";
+import type { DebugSessionRecord } from "./session/store";
 
 export interface RunDebugInput {
 	action?: string;
@@ -35,6 +38,7 @@ export interface RunDebugResult {
 	runtime?: string;
 	state?: string;
 	source?: string[];
+	console?: DebugConsoleEntry[];
 	vars?: DebugValueSnapshot[];
 	stack?: DebugFrameSnapshot[];
 	breakpoints?: DebugBreakpointRef[];
@@ -43,6 +47,7 @@ export interface RunDebugResult {
 		message?: string;
 	};
 	result?: { ref: string; value: string };
+	scripts?: Array<{ id?: string; url: string }>;
 	target?: {
 		command: string[];
 		pid?: number;
@@ -93,6 +98,10 @@ async function buildStoredState(
 		state: session.state,
 		target: session.target,
 		source,
+		console: session.console,
+		raw: session.exceptionPauseMode
+			? `Exception pause mode: ${session.exceptionPauseMode}`
+			: undefined,
 		stack,
 		vars: [],
 	};
@@ -102,13 +111,16 @@ async function hydrateAdapterFromSession(
 	adapter: DebugAdapter,
 	session: NonNullable<Awaited<ReturnType<typeof loadDebugSession>>>,
 ): Promise<void> {
-	if (!session.target?.wsUrl) {
+	const attachTarget =
+		session.target?.wsUrl ??
+		(session.target?.pid ? String(session.target.pid) : null);
+	if (!attachTarget) {
 		return;
 	}
 
 	try {
 		await adapter.attach({
-			target: session.target.wsUrl,
+			target: attachTarget,
 			command: session.target.command,
 			state: session.state,
 		});
@@ -131,11 +143,13 @@ function publicBreakpoints(
 		})),
 	);
 
-	return breakpoints.map(({ ref, file, line, column }, index) => ({
+	return breakpoints.map(({ ref, file, line, column, kind, message }, index) => ({
 		ref: ref.startsWith("BP#") ? ref : generatedRefs[index]?.ref ?? `BP#${index + 1}`,
 		file,
 		line,
 		column,
+		kind,
+		message,
 	}));
 }
 
@@ -145,10 +159,87 @@ function firstUsefulSource(
 	return candidates.find((candidate) => Array.isArray(candidate) && candidate.length > 0);
 }
 
+function withSnapshotRefs(
+	session: DebugSessionRecord,
+	snapshot: Pick<DebugStateSnapshot, "stack" | "vars"> | null | undefined,
+): DebugSessionRecord {
+	if (!snapshot) {
+		return session;
+	}
+
+	return {
+		...session,
+		refs: {
+			...session.refs,
+			frames:
+				snapshot.stack?.map((frame) => ({
+					ref: frame.ref,
+					id: frame.id,
+					name: frame.name,
+				})) ?? session.refs.frames,
+			values:
+				snapshot.vars?.map((value) => ({
+					ref: value.ref,
+					id: value.id,
+					name: value.name,
+				})) ?? session.refs.values,
+		},
+	};
+}
+
+function withSessionSnapshot(
+	session: DebugSessionRecord,
+	snapshot: DebugStateSnapshot | null | undefined,
+): DebugSessionRecord {
+	if (!snapshot) {
+		return session;
+	}
+
+	return withSnapshotRefs(
+		{
+			...session,
+			state: snapshot.state,
+			location: snapshot.location ?? session.location,
+			exception: snapshot.exception ?? session.exception,
+			console: snapshot.console ?? session.console,
+		},
+		snapshot,
+	);
+}
+
+function withResultRef(
+	session: DebugSessionRecord,
+	result: { ref: string; id?: string },
+	name?: string,
+): DebugSessionRecord {
+	const nextValues = session.refs.values.filter((value) => value.ref !== result.ref);
+	nextValues.unshift({
+		ref: result.ref,
+		id: result.id,
+		name,
+	});
+	return {
+		...session,
+		refs: {
+			...session.refs,
+			values: nextValues,
+		},
+	};
+}
+
 function detectRuntime(command: string[] | undefined): DebugRuntime | null {
 	const bin = command?.[0];
 	if (bin === "node") return "node";
 	if (bin === "bun") return "bun";
+	return null;
+}
+
+function parseExceptionPauseMode(
+	target: string | undefined,
+): DebugExceptionPauseMode | null {
+	if (target === "none" || target === "uncaught" || target === "all") {
+		return target;
+	}
 	return null;
 }
 
@@ -299,6 +390,8 @@ export async function runDebug(
 					state: snapshot.state,
 					target: snapshot.target,
 					location: snapshot.location,
+					exception: snapshot.exception,
+					console: snapshot.console,
 				});
 				return {
 					ok: true,
@@ -358,6 +451,7 @@ export async function runDebug(
 						runtime,
 						state: state.state,
 						source: state.source,
+						console: state.console,
 						vars: state.vars,
 						stack: state.stack,
 						breakpoints: publicBreakpoints(state.breakpoints),
@@ -403,6 +497,7 @@ export async function runDebug(
 						runtime,
 						state: state.state,
 						source: state.source,
+						console: state.console,
 						vars: state.vars,
 						stack: state.stack,
 						breakpoints: publicBreakpoints(state.breakpoints),
@@ -448,6 +543,7 @@ export async function runDebug(
 						runtime,
 						state: state.state,
 						source: state.source,
+						console: state.console,
 						vars: state.vars,
 						stack: state.stack,
 						breakpoints: publicBreakpoints(state.breakpoints),
@@ -584,14 +680,16 @@ export async function runDebug(
 
 			const stored = await buildStoredState(root, session);
 			if (hasUsefulAdapterState && snapshot) {
+				const updatedSession = withSnapshotRefs(session, snapshot);
+				await saveDebugSession(root, updatedSession);
 				return {
 					ok: true,
 					data: {
 						mode: input.action,
-						session: session.name,
+						session: updatedSession.name,
 						runtime: snapshot.runtime,
 						state: snapshot.state,
-						target: session.target ?? snapshot.target,
+						target: updatedSession.target ?? snapshot.target,
 						source:
 							input.action === "vars" || input.action === "stack"
 								? undefined
@@ -607,7 +705,7 @@ export async function runDebug(
 						breakpoints:
 							input.action === "vars"
 								? undefined
-								: publicBreakpoints(snapshot.breakpoints ?? session.breakpoints),
+								: publicBreakpoints(snapshot.breakpoints ?? updatedSession.breakpoints),
 					},
 				};
 			}
@@ -631,7 +729,87 @@ export async function runDebug(
 			};
 		}
 
-		case "break": {
+		case "break":
+		case "logpoint": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			const parsed = parseBreakpointTarget(input.target);
+			if (!parsed) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.invalid_breakpoint",
+						"Invalid breakpoint target.",
+					),
+				};
+			}
+			if (input.action === "logpoint" && !input.expression) {
+				return {
+					ok: false,
+					error: sdkError("debug.invalid_input", "Logpoint message is required."),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			let runtimeBreakpoint: DebugBreakpointRef | null = null;
+			try {
+				runtimeBreakpoint = await adapter.setBreakpoint({
+					...parsed,
+					message: input.action === "logpoint" ? input.expression : undefined,
+				});
+			} catch {}
+
+			const breakpoints = assignBreakpointRefs([
+				...session.breakpoints.map(({ file, line, column, remoteId, kind, message }) => ({
+					file,
+					line,
+					column,
+					remoteId,
+					kind,
+					message,
+				})),
+				{
+					...parsed,
+					remoteId: runtimeBreakpoint?.remoteId,
+					kind: input.action === "logpoint" ? "logpoint" : "breakpoint",
+					message: input.action === "logpoint" ? input.expression : undefined,
+				},
+			]);
+
+			await saveDebugSession(root, {
+				...session,
+				breakpoints,
+				refs: {
+					...session.refs,
+					breakpoints,
+				},
+			});
+
+			return {
+				ok: true,
+				data: {
+					mode: input.action,
+					session: session.name,
+					runtime: session.runtime,
+					state: session.state,
+					target: session.target,
+					breakpoints: publicBreakpoints(breakpoints),
+					raw:
+						input.action === "logpoint"
+							? `Set logpoint ${breakpoints.at(-1)?.ref ?? "BP#?"} at ${parsed.file}:${parsed.line}`
+							: undefined,
+				},
+			};
+		}
+
+		case "run-to": {
 			const session = await loadDebugSession(root, sessionName);
 			if (!session) {
 				return {
@@ -653,44 +831,37 @@ export async function runDebug(
 
 			const adapter = adapterFactory(session.runtime);
 			await hydrateAdapterFromSession(adapter, session);
-			let runtimeBreakpoint: DebugBreakpointRef | null = null;
 			try {
-				runtimeBreakpoint = await adapter.setBreakpoint(parsed);
-			} catch {}
+				const snapshot = await adapter.runTo(parsed);
+			const updatedSession = withSnapshotRefs(
+				withSessionSnapshot(session, snapshot),
+				snapshot,
+			);
+				await saveDebugSession(root, updatedSession);
 
-			const breakpoints = assignBreakpointRefs([
-				...session.breakpoints.map(({ file, line, column, remoteId }) => ({
-					file,
-					line,
-					column,
-					remoteId,
-				})),
-				{
-					...parsed,
-					remoteId: runtimeBreakpoint?.remoteId,
-				},
-			]);
-
-			await saveDebugSession(root, {
-				...session,
-				breakpoints,
-				refs: {
-					...session.refs,
-					breakpoints,
-				},
-			});
-
-			return {
-				ok: true,
-				data: {
-					mode: "break",
-					session: session.name,
-					runtime: session.runtime,
-					state: session.state,
-					target: session.target,
-					breakpoints: publicBreakpoints(breakpoints),
-				},
-			};
+				return {
+					ok: true,
+					data: {
+						mode: "run-to",
+						session: updatedSession.name,
+						runtime: updatedSession.runtime,
+						state: snapshot.state,
+						target: updatedSession.target,
+						source: snapshot.source,
+						console: snapshot.console,
+						vars: snapshot.vars,
+						stack: snapshot.stack,
+					},
+				};
+			} catch (error) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.runtime_error",
+						error instanceof Error ? error.message : String(error),
+					),
+				};
+			}
 		}
 
 		case "break-ls": {
@@ -710,6 +881,123 @@ export async function runDebug(
 					state: session.state,
 					target: session.target,
 					breakpoints: publicBreakpoints(session.breakpoints),
+				},
+			};
+		}
+
+		case "break-toggle": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			const parsed = parseBreakpointTarget(input.target);
+			if (!parsed) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.invalid_breakpoint",
+						"Invalid breakpoint target.",
+					),
+				};
+			}
+
+			const existing = session.breakpoints.find(
+				(bp) =>
+					bp.file === parsed.file &&
+					bp.line === parsed.line &&
+					(bp.column ?? undefined) === parsed.column,
+			);
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+
+			if (existing) {
+				try {
+					if (existing.remoteId) {
+						await adapter.removeBreakpoint(existing.remoteId);
+					}
+				} catch {}
+
+				const remaining = assignBreakpointRefs(
+					session.breakpoints
+						.filter((bp) => bp.ref !== existing.ref)
+						.map(({ file, line, column, remoteId, kind, message }) => ({
+							file,
+							line,
+							column,
+							remoteId,
+							kind,
+							message,
+						})),
+				);
+
+				await saveDebugSession(root, {
+					...session,
+					breakpoints: remaining,
+					refs: {
+						...session.refs,
+						breakpoints: remaining,
+					},
+				});
+
+				return {
+					ok: true,
+					data: {
+						mode: "break-toggle",
+						session: session.name,
+						runtime: session.runtime,
+						state: session.state,
+						target: session.target,
+						breakpoints: publicBreakpoints(remaining),
+						raw: `${existing.ref} removed from ${parsed.file}:${parsed.line}`,
+					},
+				};
+			}
+
+			let runtimeBreakpoint: DebugBreakpointRef | null = null;
+			try {
+				runtimeBreakpoint = await adapter.setBreakpoint(parsed);
+			} catch {}
+
+			const breakpoints = assignBreakpointRefs([
+				...session.breakpoints.map(({ file, line, column, remoteId, kind, message }) => ({
+					file,
+					line,
+					column,
+					remoteId,
+					kind,
+					message,
+				})),
+				{
+					...parsed,
+					remoteId: runtimeBreakpoint?.remoteId,
+					kind: "breakpoint",
+				},
+			]);
+
+			await saveDebugSession(root, {
+				...session,
+				breakpoints,
+				refs: {
+					...session.refs,
+					breakpoints,
+				},
+			});
+
+			return {
+				ok: true,
+				data: {
+					mode: "break-toggle",
+					session: session.name,
+					runtime: session.runtime,
+					state: session.state,
+					target: session.target,
+					breakpoints: publicBreakpoints(breakpoints),
+					raw: `${breakpoints.at(-1)?.ref ?? "BP#?"} set at ${parsed.file}:${parsed.line}`,
 				},
 			};
 		}
@@ -807,21 +1095,29 @@ export async function runDebug(
 			} catch {}
 
 			const nextState = snapshot?.state ?? "running";
-			await saveDebugSession(root, {
-				...session,
-				state: nextState,
-				location: snapshot?.location,
-			});
+			const updatedSession = withSnapshotRefs(
+				withSessionSnapshot(
+					{
+						...session,
+						state: nextState,
+						location: snapshot?.location,
+					},
+					snapshot,
+				),
+				snapshot,
+			);
+			await saveDebugSession(root, updatedSession);
 
 			return {
 				ok: true,
 				data: {
 					mode: "continue",
-					session: session.name,
-					runtime: session.runtime,
+					session: updatedSession.name,
+					runtime: updatedSession.runtime,
 					state: nextState,
-					target: session.target,
+					target: updatedSession.target,
 					source: snapshot?.source,
+					console: snapshot?.console,
 					vars: snapshot?.vars,
 					stack: snapshot?.stack,
 				},
@@ -847,23 +1143,303 @@ export async function runDebug(
 			} catch {}
 
 			const nextState = snapshot?.state ?? session.state;
-			await saveDebugSession(root, {
-				...session,
-				state: nextState,
-				location: snapshot?.location ?? session.location,
-			});
+			const updatedSession = withSnapshotRefs(
+				withSessionSnapshot(
+					{
+						...session,
+						state: nextState,
+						location: snapshot?.location ?? session.location,
+					},
+					snapshot,
+				),
+				snapshot,
+			);
+			await saveDebugSession(root, updatedSession);
 
 			return {
 				ok: true,
 				data: {
 					mode: "step",
-					session: session.name,
-					runtime: session.runtime,
+					session: updatedSession.name,
+					runtime: updatedSession.runtime,
 					state: nextState,
-					target: session.target,
+					target: updatedSession.target,
 					source: snapshot?.source,
+					console: snapshot?.console,
 					vars: snapshot?.vars,
 					stack: snapshot?.stack,
+				},
+			};
+		}
+
+		case "pause": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			let snapshot: DebugStateSnapshot | null = null;
+			try {
+				snapshot = await adapter.pause();
+			} catch {}
+
+			const nextState = snapshot?.state ?? session.state;
+			const updatedSession = withSnapshotRefs(
+				withSessionSnapshot(
+					{
+						...session,
+						state: nextState,
+						location: snapshot?.location ?? session.location,
+					},
+					snapshot,
+				),
+				snapshot,
+			);
+			await saveDebugSession(root, updatedSession);
+
+			return {
+				ok: true,
+				data: {
+					mode: "pause",
+					session: updatedSession.name,
+					runtime: updatedSession.runtime,
+					state: nextState,
+					target: updatedSession.target,
+					source: snapshot?.source,
+					console: snapshot?.console,
+					vars: snapshot?.vars,
+					stack: snapshot?.stack,
+				},
+			};
+		}
+
+		case "source": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			let snapshot: DebugStateSnapshot | null = null;
+			try {
+				snapshot = await adapter.buildState();
+			} catch {}
+
+			const stored = await buildStoredState(root, session);
+			if (input.target) {
+				const parsed = parseBreakpointTarget(input.target);
+				const frameRef = session.refs.frames.find((frame) => frame.ref === input.target);
+				const sourceTarget =
+					parsed ??
+					(frameRef && session.location
+						? {
+								file: session.location.file,
+								line: session.location.line,
+								column: session.location.column,
+							}
+						: null);
+				if (sourceTarget) {
+					const targeted = await readFailureSource(
+						sourceTarget.file,
+						sourceTarget.line,
+					);
+					return {
+						ok: true,
+						data: {
+							mode: "source",
+							session: session.name,
+							runtime: session.runtime,
+							state: session.state,
+							target: session.target,
+							source: targeted ?? firstUsefulSource(snapshot?.source, stored.source),
+							stack: snapshot?.stack ?? stored.stack,
+						},
+					};
+				}
+			}
+			if (snapshot) {
+				const updatedSession = withSessionSnapshot(session, snapshot);
+				await saveDebugSession(root, updatedSession);
+				return {
+					ok: true,
+					data: {
+						mode: "source",
+						session: updatedSession.name,
+						runtime: updatedSession.runtime,
+						state: snapshot.state,
+						target: updatedSession.target,
+						source: firstUsefulSource(snapshot.source, stored.source),
+						console: snapshot.console ?? stored.console,
+						stack: snapshot.stack,
+					},
+				};
+			}
+
+			return {
+				ok: true,
+				data: {
+					mode: "source",
+					session: stored.session,
+					runtime: stored.runtime,
+					state: stored.state,
+					target: stored.target,
+					source: stored.source,
+					console: stored.console,
+					stack: stored.stack,
+				},
+			};
+		}
+
+		case "scripts": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			let scripts = session.scripts ?? [];
+			try {
+				const liveScripts = await adapter.getScripts();
+				if (liveScripts.length > 0) {
+					scripts = liveScripts;
+					await saveDebugSession(root, {
+						...session,
+						scripts: liveScripts,
+					});
+				}
+			} catch {}
+
+			return {
+				ok: true,
+				data: {
+					mode: "scripts",
+					session: session.name,
+					runtime: session.runtime,
+					state: session.state,
+					target: session.target,
+					scripts,
+				},
+			};
+		}
+
+		case "console": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			let consoleEntries = session.console ?? [];
+			try {
+				const liveConsole = await adapter.getConsole();
+				if (liveConsole.length > 0) {
+					consoleEntries = liveConsole;
+					await saveDebugSession(root, {
+						...session,
+						console: liveConsole,
+					});
+				}
+			} catch {}
+
+			return {
+				ok: true,
+				data: {
+					mode: "console",
+					session: session.name,
+					runtime: session.runtime,
+					state: session.state,
+					target: session.target,
+					console: consoleEntries,
+				},
+			};
+		}
+
+		case "catch": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			const mode = parseExceptionPauseMode(input.target);
+			if (!mode) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.invalid_input",
+						"Exception pause mode must be one of: none, uncaught, all.",
+					),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			try {
+				await adapter.setExceptionPauseMode(mode);
+			} catch {}
+
+			await saveDebugSession(root, {
+				...session,
+				exceptionPauseMode: mode,
+			});
+
+			return {
+				ok: true,
+				data: {
+					mode: "catch",
+					session: session.name,
+					runtime: session.runtime,
+					state: session.state,
+					target: session.target,
+					raw: `Exception pause mode set to ${mode}`,
+				},
+			};
+		}
+
+		case "exceptions": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+
+			return {
+				ok: true,
+				data: {
+					mode: "exceptions",
+					session: session.name,
+					runtime: session.runtime,
+					state: session.state,
+					target: session.target,
+					exception: session.exception,
+					raw: session.exception
+						? `${session.exception.reason}: ${session.exception.message ?? ""}`.trim()
+						: `No exception captured in the current session${
+								session.exceptionPauseMode
+									? ` (catch=${session.exceptionPauseMode})`
+									: ""
+							}`,
 				},
 			};
 		}
@@ -887,15 +1463,98 @@ export async function runDebug(
 			await hydrateAdapterFromSession(adapter, session);
 			try {
 				const result = await adapter.evaluate({ expression: input.expression });
+				const updatedSession = withResultRef(session, result, input.expression);
+				await saveDebugSession(root, updatedSession);
 				return {
 					ok: true,
 					data: {
 						mode: "eval",
-						session: session.name,
-						runtime: session.runtime,
-						state: session.state,
-						target: session.target,
+						session: updatedSession.name,
+						runtime: updatedSession.runtime,
+						state: updatedSession.state,
+						target: updatedSession.target,
 						result,
+					},
+				};
+			} catch (error) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.runtime_error",
+						error instanceof Error ? error.message : String(error),
+					),
+				};
+			}
+		}
+
+		case "props": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+			if (!input.target) {
+				return {
+					ok: false,
+					error: sdkError("debug.invalid_input", "Value ref is required."),
+				};
+			}
+
+			const valueRef = session.refs.values.find((value) => value.ref === input.target);
+			if (!valueRef?.id) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.invalid_input",
+						"Unknown or non-expandable value ref.",
+					),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			try {
+				let vars: DebugValueSnapshot[] = [];
+				let refreshedId = valueRef.id;
+				try {
+					vars = await adapter.getProperties(valueRef.id);
+				} catch {
+					if (!valueRef.name) {
+						throw new Error("Unknown or non-expandable value ref.");
+					}
+
+					vars = await adapter.getPropertiesFromExpression(valueRef.name);
+					if (vars.length === 0) {
+						throw new Error("Unknown or non-expandable value ref.");
+					}
+					refreshedId = undefined;
+				}
+				const updatedSession = withSnapshotRefs(
+					{
+						...session,
+						refs: {
+							...session.refs,
+							values: session.refs.values.map((value) =>
+								value.ref === valueRef.ref
+									? { ...value, id: refreshedId ?? value.id }
+									: value,
+							),
+						},
+					},
+					{ vars },
+				);
+				await saveDebugSession(root, updatedSession);
+				return {
+					ok: true,
+					data: {
+						mode: "props",
+						session: updatedSession.name,
+						runtime: updatedSession.runtime,
+						state: updatedSession.state,
+						target: updatedSession.target,
+						vars,
 					},
 				};
 			} catch (error) {

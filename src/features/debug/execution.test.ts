@@ -66,4 +66,75 @@ describe("debug execution control", () => {
 
 		await cleanupRoots();
 	});
+
+	test("step into keeps the fake session paused and enters the next frame", async () => {
+		const root = await makeRoot();
+		const adapter = createFakeDebugAdapter("node");
+
+		await runDebug(
+			{ action: "launch", command: ["node", "app.js"], brk: true, cwd: root },
+			() => adapter,
+		);
+
+		const result = await runDebug(
+			{ action: "step", target: "into", cwd: root },
+			() => adapter,
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.state).toBe("paused");
+			expect(result.data.stack?.[0]?.line).toBe(2);
+		}
+
+		await cleanupRoots();
+	});
+
+	test("step out keeps the fake session paused and exits the current frame", async () => {
+		const root = await makeRoot();
+		const adapter = createFakeDebugAdapter("node");
+
+		await runDebug(
+			{ action: "launch", command: ["node", "app.js"], brk: true, cwd: root },
+			() => adapter,
+		);
+
+		const result = await runDebug(
+			{ action: "step", target: "out", cwd: root },
+			() => adapter,
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.state).toBe("paused");
+			expect(result.data.stack?.[0]?.line).toBe(4);
+		}
+
+		await cleanupRoots();
+	});
+
+	test("run-to pauses a fake session at the requested location", async () => {
+		const root = await makeRoot();
+		const adapter = createFakeDebugAdapter("node");
+
+		await runDebug(
+			{ action: "launch", command: ["node", "app.js"], brk: true, cwd: root },
+			() => adapter,
+		);
+
+		const result = await runDebug(
+			{ action: "run-to", target: "src/app.ts:42", cwd: root },
+			() => adapter,
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("run-to");
+			expect(result.data.state).toBe("paused");
+			expect(result.data.stack?.[0]?.file).toBe("src/app.ts");
+			expect(result.data.stack?.[0]?.line).toBe(42);
+		}
+
+		await cleanupRoots();
+	});
 });

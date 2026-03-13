@@ -1,6 +1,7 @@
 import type { DebugSessionState, DebugTarget } from "../session/types";
 import type {
 	DebugBreakpointRef,
+	DebugExceptionPauseMode,
 	DebugRuntime,
 } from "../session/types";
 
@@ -19,6 +20,7 @@ export type DebugBreakpointInput = {
 	file: string;
 	line: number;
 	column?: number;
+	message?: string;
 };
 
 export type DebugInspectAtInput = {
@@ -44,6 +46,7 @@ export type DebugValueSnapshot = {
 	name: string;
 	value: string;
 	scope?: string;
+	id?: string;
 };
 
 export type DebugFrameSnapshot = {
@@ -52,11 +55,22 @@ export type DebugFrameSnapshot = {
 	file: string;
 	line: number;
 	column?: number;
+	id?: string;
 };
 
 export type DebugExceptionSnapshot = {
 	reason: string;
 	message?: string;
+};
+
+export type DebugConsoleEntry = {
+	level: string;
+	text: string;
+};
+
+export type DebugScriptEntry = {
+	id?: string;
+	url: string;
 };
 
 export type DebugStateSnapshot = {
@@ -73,11 +87,14 @@ export type DebugStateSnapshot = {
 	stack?: DebugFrameSnapshot[];
 	breakpoints?: DebugBreakpointRef[];
 	exception?: DebugExceptionSnapshot;
+	console?: DebugConsoleEntry[];
+	scripts?: DebugScriptEntry[];
 };
 
 export type DebugEvalResult = {
 	ref: string;
 	value: string;
+	id?: string;
 };
 
 export interface DebugAdapter {
@@ -88,12 +105,19 @@ export interface DebugAdapter {
 	capture(input: DebugCaptureInput): Promise<DebugStateSnapshot>;
 	inspectAt(input: DebugInspectAtInput): Promise<DebugStateSnapshot>;
 	inspectOnFailure(input: DebugInspectOnFailureInput): Promise<DebugStateSnapshot>;
+	runTo(input: DebugBreakpointInput): Promise<DebugStateSnapshot>;
 	setBreakpoint(input: DebugBreakpointInput): Promise<DebugBreakpointRef>;
 	listBreakpoints(): Promise<DebugBreakpointRef[]>;
 	removeBreakpoint(ref: string): Promise<void>;
 	continue(): Promise<DebugStateSnapshot>;
 	step(mode: "over" | "into" | "out"): Promise<DebugStateSnapshot>;
+	pause(): Promise<DebugStateSnapshot>;
 	buildState(): Promise<DebugStateSnapshot>;
+	getProperties(objectId: string): Promise<DebugValueSnapshot[]>;
+	getPropertiesFromExpression(expression: string): Promise<DebugValueSnapshot[]>;
+	getConsole(): Promise<DebugConsoleEntry[]>;
+	getScripts(): Promise<DebugScriptEntry[]>;
+	setExceptionPauseMode(mode: DebugExceptionPauseMode): Promise<void>;
 	getVars(): Promise<DebugValueSnapshot[]>;
 	evaluate(input: DebugEvalInput): Promise<DebugEvalResult>;
 }
