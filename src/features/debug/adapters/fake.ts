@@ -30,6 +30,7 @@ class FakeDebugAdapter implements DebugAdapter {
 	private breakpointCounter = 0;
 	private valueCounter = 0;
 	private exceptionPauseMode: DebugExceptionPauseMode = "none";
+	private assignedValues = new Map<string, string>();
 	private state: FakeState;
 
 	constructor(runtime: DebugRuntime) {
@@ -50,6 +51,7 @@ class FakeDebugAdapter implements DebugAdapter {
 				: undefined,
 		};
 		this.valueCounter = 0;
+		this.assignedValues.clear();
 		return this.buildState();
 	}
 
@@ -76,6 +78,7 @@ class FakeDebugAdapter implements DebugAdapter {
 			state: "idle",
 			breakpoints: [],
 		};
+		this.assignedValues.clear();
 	}
 
 	async capture(input: DebugInspectOnFailureInput): Promise<DebugStateSnapshot> {
@@ -283,10 +286,26 @@ class FakeDebugAdapter implements DebugAdapter {
 	}
 
 	async evaluate(input: DebugEvalInput): Promise<DebugEvalResult> {
+		const assigned = this.assignedValues.get(input.expression);
+		if (assigned !== undefined) {
+			return {
+				ref: `@v${++this.valueCounter + 2}`,
+				value: assigned,
+			};
+		}
+
 		return {
 			ref: `@v${++this.valueCounter + 2}`,
 			value: input.expression === "bar" ? "{ nested: true }" : `"fake:${input.expression}"`,
 			id: input.expression === "bar" ? "obj:bar" : undefined,
+		};
+	}
+
+	async setValue(input: { target: string; value: string }): Promise<DebugEvalResult> {
+		this.assignedValues.set(input.target, input.value);
+		return {
+			ref: `@v${++this.valueCounter + 2}`,
+			value: input.value,
 		};
 	}
 

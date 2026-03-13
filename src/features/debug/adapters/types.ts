@@ -41,6 +41,12 @@ export type DebugEvalInput = {
 	frame?: string;
 };
 
+export type DebugSetInput = {
+	target: string;
+	value: string;
+	frame?: string;
+};
+
 export type DebugValueSnapshot = {
 	ref: string;
 	name: string;
@@ -120,4 +126,5 @@ export interface DebugAdapter {
 	setExceptionPauseMode(mode: DebugExceptionPauseMode): Promise<void>;
 	getVars(): Promise<DebugValueSnapshot[]>;
 	evaluate(input: DebugEvalInput): Promise<DebugEvalResult>;
+	setValue(input: DebugSetInput): Promise<DebugEvalResult>;
 }

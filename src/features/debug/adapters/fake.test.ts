@@ -133,6 +133,21 @@ describe("fake debug adapter", () => {
 		expect(result.value).toBe("{ nested: true }");
 	});
 
+	test("setValue updates a tracked expression and returns the new value", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: true });
+
+		const result = await adapter.setValue({
+			target: "bar.count",
+			value: "7",
+		});
+
+		expect(result.value).toBe("7");
+
+		const next = await adapter.evaluate({ expression: "bar.count" });
+		expect(next.value).toBe("7");
+	});
+
 	test("stop resets the adapter to idle", async () => {
 		const adapter = createFakeDebugAdapter("node");
 		await adapter.launch({ command: ["node", "app.js"], brk: true });

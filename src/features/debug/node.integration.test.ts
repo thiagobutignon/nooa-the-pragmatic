@@ -992,4 +992,64 @@ describe("nooa debug node integration", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+
+	test("set updates a real paused expression in a node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(bunPath, [binPath, "debug", "launch", "node", propsFixturePath], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+
+			const pause = await execa(bunPath, [binPath, "debug", "pause", "--json"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+			expect(pause.exitCode).toBe(0);
+
+			const setResult = await execa(
+				bunPath,
+				[binPath, "debug", "set", "globalThis.payload.count", "7", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(setResult.exitCode).toBe(0);
+			const setParsed = JSON.parse(setResult.stdout) as {
+				mode?: string;
+				result?: { value?: string };
+			};
+			expect(setParsed.mode).toBe("set");
+			expect(setParsed.result?.value).toBe("7");
+
+			const evalResult = await execa(
+				bunPath,
+				[binPath, "debug", "eval", "globalThis.payload.count", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(evalResult.exitCode).toBe(0);
+			const evalParsed = JSON.parse(evalResult.stdout) as {
+				result?: { value?: string };
+			};
+			expect(evalParsed.result?.value).toBe("7");
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 });

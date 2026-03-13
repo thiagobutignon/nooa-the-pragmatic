@@ -14,6 +14,7 @@ import type {
 	DebugEvalResult,
 	DebugInspectAtInput,
 	DebugInspectOnFailureInput,
+	DebugSetInput,
 	DebugStateSnapshot,
 	DebugValueSnapshot,
 } from "./types";
@@ -1218,6 +1219,56 @@ export class NodeDebugAdapter implements DebugAdapter {
 			})) as {
 				result?: { value?: unknown; description?: string; objectId?: string };
 			};
+
+			return {
+				ref: "@v1",
+				id: result.result?.objectId,
+				value:
+					result.result?.description ??
+					(typeof result.result?.value === "string"
+						? JSON.stringify(result.result.value)
+						: String(result.result?.value)),
+			};
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async setValue(input: DebugSetInput): Promise<DebugEvalResult> {
+		if (!this.snapshot.target?.wsUrl) {
+			throw new Error("No active debug target");
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Runtime.enable");
+			const paused = (await this.waitForPausedState(client)) as
+				| {
+						callFrames?: Array<{
+							callFrameId?: string;
+						}>;
+					}
+				| null;
+
+			const assignmentExpression = `${input.target} = (${input.value})`;
+			const callFrameId = paused?.callFrames?.[0]?.callFrameId;
+			const result = callFrameId
+				? ((await client.send("Debugger.evaluateOnCallFrame", {
+						callFrameId,
+						expression: assignmentExpression,
+						returnByValue: false,
+						generatePreview: true,
+					})) as {
+						result?: { value?: unknown; description?: string; objectId?: string };
+					})
+				: ((await client.send("Runtime.evaluate", {
+						expression: assignmentExpression,
+						returnByValue: false,
+						generatePreview: true,
+					})) as {
+						result?: { value?: unknown; description?: string; objectId?: string };
+					});
 
 			return {
 				ref: "@v1",

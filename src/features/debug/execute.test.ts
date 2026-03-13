@@ -467,4 +467,37 @@ describe("debug execute", () => {
 
 		await cleanupRoots();
 	});
+
+	test("set updates a paused expression and returns the new value", async () => {
+		const root = await makeRoot();
+		const adapter = createFakeDebugAdapter("node");
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => adapter,
+		);
+
+		const result = await runDebug(
+			{
+				action: "set",
+				target: "bar.count",
+				expression: "7",
+				cwd: root,
+			},
+			() => adapter,
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("set");
+			expect(result.data.result?.value).toBe("7");
+		}
+
+		await cleanupRoots();
+	});
 });

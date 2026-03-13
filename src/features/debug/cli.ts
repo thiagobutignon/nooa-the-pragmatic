@@ -33,6 +33,7 @@ export type DebugAction =
 	| "props"
 	| "stack"
 	| "eval"
+	| "set"
 	| "help";
 
 export const debugMeta: AgentDocMeta = {
@@ -79,6 +80,7 @@ Interactive session commands (experimental):
   props <@ref>                  Expand an object value ref
   stack                         Show call stack
   eval <expression>             Evaluate an expression in the paused frame
+  set <target> <value>          Assign a value in the paused frame or runtime
 
 Flags:
   --json                        Output JSON
@@ -115,6 +117,7 @@ SDK Usage:
   await debug.run({ action: "console" });
   await debug.run({ action: "exceptions" });
   await debug.run({ action: "props", target: "@v2" });
+  await debug.run({ action: "set", target: "globalThis.payload.count", expression: "7" });
   await debug.run({ action: "help" });
 `;
 
@@ -180,6 +183,10 @@ export const debugExamples = [
 	{
 		input: "nooa debug state",
 		output: "Show the current paused source, locals, and stack.",
+	},
+	{
+		input: 'nooa debug set globalThis.payload.count 7',
+		output: "Assign a new runtime value in the current paused context.",
 	},
 ];
 
@@ -293,7 +300,8 @@ const debugBuilder = new CommandBuilder<DebugRunInput, DebugRunResult>()
 			action === "inspect-at" ||
 			action === "props" ||
 			action === "step" ||
-			action === "catch"
+			action === "catch" ||
+			action === "set"
 				? positionals[2]
 				: undefined;
 		const expression =
@@ -301,6 +309,8 @@ const debugBuilder = new CommandBuilder<DebugRunInput, DebugRunResult>()
 				? positionals.slice(2).join(" ")
 				: action === "logpoint"
 					? positionals.slice(3).join(" ")
+					: action === "set"
+						? positionals.slice(3).join(" ")
 					: undefined;
 
 		return {
@@ -382,6 +392,11 @@ const debugBuilder = new CommandBuilder<DebugRunInput, DebugRunResult>()
 
 		if (output.mode === "eval" && output.result) {
 			console.log(`${output.result.ref}  ${output.result.value}`);
+			return;
+		}
+
+		if (output.mode === "set" && output.result) {
+			console.log(`${output.target ? `${output.target.command.at(-1) ?? "set"} ` : ""}${output.result.ref}  ${output.result.value}`);
 			return;
 		}
 

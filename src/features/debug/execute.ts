@@ -1487,6 +1487,55 @@ export async function runDebug(
 			}
 		}
 
+		case "set": {
+			const session = await loadDebugSession(root, sessionName);
+			if (!session) {
+				return {
+					ok: false,
+					error: sdkError("debug.no_active_session", "No active debug session."),
+				};
+			}
+			if (!input.target || !input.expression) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.invalid_input",
+						"Set requires both a target and a value expression.",
+					),
+				};
+			}
+
+			const adapter = adapterFactory(session.runtime);
+			await hydrateAdapterFromSession(adapter, session);
+			try {
+				const result = await adapter.setValue({
+					target: input.target,
+					value: input.expression,
+				});
+				const updatedSession = withResultRef(session, result, input.target);
+				await saveDebugSession(root, updatedSession);
+				return {
+					ok: true,
+					data: {
+						mode: "set",
+						session: updatedSession.name,
+						runtime: updatedSession.runtime,
+						state: updatedSession.state,
+						target: updatedSession.target,
+						result,
+					},
+				};
+			} catch (error) {
+				return {
+					ok: false,
+					error: sdkError(
+						"debug.runtime_error",
+						error instanceof Error ? error.message : String(error),
+					),
+				};
+			}
+		}
+
 		case "props": {
 			const session = await loadDebugSession(root, sessionName);
 			if (!session) {
