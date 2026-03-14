@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type {
@@ -219,5 +219,49 @@ describe("desktop bridge conversation management", () => {
 
 		expect(bootstrap.session?.sessionId).toBe(session.sessionId);
 		expect(bootstrap.session?.workspacePath).toBe(workspaceWithConversation);
+	});
+
+	test("open_session rejects session ids that escape the desktop state directory", async () => {
+		const workspace = await createWorkspace();
+		const outsidePath = join(workspace, "outside.json");
+		await writeFile(
+			outsidePath,
+			JSON.stringify({
+				sessionId: "outside",
+				workspacePath: workspace,
+				mode: "ask_first",
+				history: [],
+				events: [],
+				pendingApproval: null,
+			}),
+		);
+
+		const proc = Bun.spawn(["bun", bridgePath], {
+			cwd: repoRoot,
+			stdin: "pipe",
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+
+		proc.stdin.write(
+			`${JSON.stringify({
+				type: "open_session",
+				workspacePath: workspace,
+				sessionId: "../outside",
+				mode: "ask_first",
+			})}\n`,
+		);
+		proc.stdin.end();
+
+		const [stdout, stderr, exitCode] = await Promise.all([
+			new Response(proc.stdout).text(),
+			new Response(proc.stderr).text(),
+			proc.exited,
+		]);
+
+		expect(exitCode).toBe(1);
+		expect(stdout.trim()).toBe("");
+		expect(stderr).toContain("outside the desktop session directory");
+		expect(await readFile(outsidePath, "utf8")).toContain('"sessionId":"outside"');
 	});
 });

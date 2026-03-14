@@ -83,6 +83,13 @@ function createAiEngine(): AiEngine {
 }
 
 function getStatePath(workspacePath: string, sessionId: string): string {
+	if (
+		sessionId.includes("/") ||
+		sessionId.includes("\\") ||
+		sessionId.includes("..")
+	) {
+		throw new Error("Session id points outside the desktop session directory.");
+	}
 	return resolve(workspacePath, ".nooa", "desktop", `${sessionId}.json`);
 }
 
