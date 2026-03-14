@@ -10,6 +10,7 @@ describe("nooa embed cli direct", () => {
 	let testDir: string;
 	let bus: EventBus;
 	let trackSpy: unknown;
+	let originalExitCode: number | undefined;
 
 	beforeEach(async () => {
 		testDir = join(
@@ -18,6 +19,8 @@ describe("nooa embed cli direct", () => {
 		);
 		await mkdir(testDir, { recursive: true });
 		bus = new EventBus();
+		originalExitCode = process.exitCode;
+		process.exitCode = 0;
 		// Mock telemetry to avoid DB issues and ensures coverage of the call itself
 		trackSpy = spyOn(telemetry, "track").mockReturnValue(1 as unknown);
 		process.env.NOOA_EMBED_PROVIDER = "mock";
@@ -25,6 +28,7 @@ describe("nooa embed cli direct", () => {
 
 	afterEach(async () => {
 		trackSpy.mockRestore();
+		process.exitCode = originalExitCode ?? 0;
 		await rm(testDir, { recursive: true, force: true });
 	});
 

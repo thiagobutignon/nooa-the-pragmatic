@@ -67,9 +67,7 @@ async function resolveFeaturesDir(): Promise<string> {
 		try {
 			await access(candidate, constants.F_OK);
 			return candidate;
-		} catch {
-			continue;
-		}
+		} catch {}
 	}
 
 	return candidates[0];

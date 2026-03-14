@@ -309,5 +309,5 @@ export class CronDaemon {
 }
 
 function quoteForShell(value: string): string {
-	return `'${value.replaceAll("'", `'\"'\"'`)}'`;
+	return `'${value.replaceAll("'", `'"'"'`)}'`;
 }

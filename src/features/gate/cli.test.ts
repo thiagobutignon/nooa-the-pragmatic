@@ -12,13 +12,13 @@ describe("Gate CLI", () => {
 		consoleLogSpy = spyOn(console, "log").mockImplementation(() => {});
 		consoleErrorSpy = spyOn(console, "error").mockImplementation(() => {});
 		exitCode = process.exitCode;
-		process.exitCode = undefined;
+		process.exitCode = 0;
 	});
 
 	afterEach(() => {
 		consoleLogSpy.mockRestore();
 		consoleErrorSpy.mockRestore();
-		process.exitCode = exitCode;
+		process.exitCode = exitCode ?? 0;
 	});
 
 	describe("run() handler", () => {
