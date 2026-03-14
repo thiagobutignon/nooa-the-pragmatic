@@ -29,7 +29,17 @@ describe("debug feature", () => {
 		expect(debugHelp).toContain("Interactive session commands (experimental)");
 		expect(debugHelp).toContain("launch");
 		expect(debugHelp).toContain("break");
+		expect(debugHelp).toContain("break-toggle");
+		expect(debugHelp).toContain("run-to");
+		expect(debugHelp).toContain("pause");
+		expect(debugHelp).toContain("logpoint");
 		expect(debugHelp).toContain("state");
+		expect(debugHelp).toContain("source");
+		expect(debugHelp).toContain("scripts");
+		expect(debugHelp).toContain("console");
+		expect(debugHelp).toContain("catch");
+		expect(debugHelp).toContain("exceptions");
+		expect(debugHelp).toContain("props");
 		expect(debugHelp).toContain("eval");
 	});
 

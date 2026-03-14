@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DebugCdpClient } from "../cdp/client";
 import type { DebugBreakpointRef, DebugRuntime } from "../session/types";
+import type { DebugExceptionPauseMode } from "../session/types";
 import type {
 	DebugAdapter,
 	DebugAttachInput,
@@ -13,6 +14,7 @@ import type {
 	DebugEvalResult,
 	DebugInspectAtInput,
 	DebugInspectOnFailureInput,
+	DebugSetInput,
 	DebugStateSnapshot,
 	DebugValueSnapshot,
 } from "./types";
@@ -549,6 +551,88 @@ export class NodeDebugAdapter implements DebugAdapter {
 		}
 	}
 
+	async runTo(input: DebugBreakpointInput): Promise<DebugStateSnapshot> {
+		if (!this.snapshot.target?.wsUrl || !this.snapshot.target.command?.length) {
+			throw new Error("No active debug target");
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		const scriptUrls = new Map<string, string>();
+		client.on("Debugger.scriptParsed", (params) => {
+			const parsed = params as { scriptId?: string; url?: string };
+			if (parsed.scriptId && parsed.url) {
+				scriptUrls.set(parsed.scriptId, parsed.url);
+			}
+		});
+		let breakpointId: string | undefined;
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Runtime.enable");
+			const fileUrl =
+				input.file.startsWith("file://")
+					? input.file
+					: pathToFileURL(resolve(input.file)).toString();
+			const result = (await client.send("Debugger.setBreakpointByUrl", {
+				lineNumber: input.line - 1,
+				...(input.column ? { columnNumber: input.column - 1 } : {}),
+				urlRegex: `${escapeRegex(fileUrl)}$`,
+			})) as { breakpointId: string };
+			breakpointId = result.breakpointId;
+			await client.send("Runtime.runIfWaitingForDebugger").catch(() => undefined);
+
+			for (let attempt = 0; attempt < 4; attempt++) {
+				const pausedWaiter = client.waitFor("Debugger.paused", 1500).catch(
+					() => null,
+				);
+				await client.send("Debugger.resume").catch(() => undefined);
+				const paused = (await pausedWaiter) as
+					| {
+							reason?: string;
+							hitBreakpoints?: string[];
+							callFrames?: Array<{
+								callFrameId?: string;
+								functionName?: string;
+								location?: {
+									scriptId?: string;
+									lineNumber?: number;
+									columnNumber?: number;
+								};
+								url?: string;
+							}>;
+						}
+					| null;
+				if (!paused?.callFrames?.[0]) {
+					break;
+				}
+
+				const nextSnapshot = this.snapshotFromPausedEvent(paused, scriptUrls);
+				const hitTarget = (paused.hitBreakpoints ?? []).includes(result.breakpointId);
+				if (!hitTarget) {
+					continue;
+				}
+
+				this.snapshot = {
+					...nextSnapshot,
+					target: this.snapshot.target,
+				};
+				return this.snapshot;
+			}
+
+			this.snapshot = {
+				...this.snapshot,
+				state: "running",
+			};
+			return this.snapshot;
+		} finally {
+			if (breakpointId) {
+				await client
+					.send("Debugger.removeBreakpoint", { breakpointId })
+					.catch(() => undefined);
+			}
+			client.disconnect();
+		}
+	}
+
 	async setBreakpoint(
 		input: DebugBreakpointInput,
 	): Promise<DebugBreakpointRef> {
@@ -583,6 +667,11 @@ export class NodeDebugAdapter implements DebugAdapter {
 								lineNumber: input.line - 1,
 								...(input.column ? { columnNumber: input.column - 1 } : {}),
 							},
+							...(input.message
+								? {
+										condition: `console.log(${JSON.stringify(input.message)}), false`,
+									}
+								: {}),
 						})) as {
 							breakpointId: string;
 						})
@@ -590,6 +679,11 @@ export class NodeDebugAdapter implements DebugAdapter {
 							lineNumber: input.line - 1,
 							...(input.column ? { columnNumber: input.column - 1 } : {}),
 							urlRegex: `${escapeRegex(fileUrl)}$`,
+							...(input.message
+								? {
+										condition: `console.log(${JSON.stringify(input.message)}), false`,
+									}
+								: {}),
 						})) as {
 							breakpointId: string;
 						});
@@ -600,6 +694,8 @@ export class NodeDebugAdapter implements DebugAdapter {
 				line: input.line,
 				column: input.column,
 				remoteId: result.breakpointId,
+				kind: input.message ? "logpoint" : "breakpoint",
+				message: input.message,
 			};
 			this.snapshot = {
 				...this.snapshot,
@@ -686,8 +782,97 @@ export class NodeDebugAdapter implements DebugAdapter {
 		return this.snapshot;
 	}
 
-	async step(_mode: "over" | "into" | "out"): Promise<DebugStateSnapshot> {
-		throw new Error("Step not implemented yet");
+	async step(mode: "over" | "into" | "out"): Promise<DebugStateSnapshot> {
+		if (!this.snapshot.target?.wsUrl) {
+			throw new Error("No active debug target");
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		const scriptUrls = new Map<string, string>();
+		client.on("Debugger.scriptParsed", (params) => {
+			const parsed = params as { scriptId?: string; url?: string };
+			if (parsed.scriptId && parsed.url) {
+				scriptUrls.set(parsed.scriptId, parsed.url);
+			}
+		});
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Runtime.enable");
+			await this.waitForPausedState(client).catch(() => null);
+			let latestSnapshot = this.snapshot;
+
+			for (let attempt = 0; attempt < 6; attempt++) {
+				const pausedWaiter = client.waitFor("Debugger.paused", 1000).catch(() => null);
+				if (mode === "into") {
+					await client.send("Debugger.stepInto");
+				} else if (mode === "out") {
+					await client.send("Debugger.stepOut");
+				} else {
+					await client.send("Debugger.stepOver");
+				}
+				const paused = (await pausedWaiter) as
+					| {
+							callFrames?: Array<{
+								callFrameId?: string;
+								functionName?: string;
+								location?: {
+									scriptId?: string;
+									lineNumber?: number;
+									columnNumber?: number;
+								};
+								url?: string;
+							}>;
+						}
+					| null;
+
+				if (!paused?.callFrames?.[0]) {
+					return latestSnapshot;
+				}
+
+				latestSnapshot = this.snapshotFromPausedEvent(paused, scriptUrls);
+				this.snapshot = latestSnapshot;
+				if (!this.isInternalDebugLocation(latestSnapshot.location?.file)) {
+					return latestSnapshot;
+				}
+			}
+
+			return latestSnapshot;
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async pause(): Promise<DebugStateSnapshot> {
+		if (!this.snapshot.target?.wsUrl) {
+			throw new Error("No active debug target");
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Runtime.enable");
+			await client.send("Debugger.pause").catch(() => undefined);
+			const paused = (await client.waitFor("Debugger.paused", 1000).catch(
+				() => null,
+			)) as
+				| {
+						callFrames?: Array<{
+							callFrameId?: string;
+							functionName?: string;
+							location?: { scriptId?: string; lineNumber?: number; columnNumber?: number };
+							url?: string;
+						}>;
+					}
+				| null;
+			if (!paused?.callFrames?.[0]) {
+				return this.snapshot;
+			}
+
+			this.snapshot = this.snapshotFromPausedEvent(paused);
+			return this.snapshot;
+		} finally {
+			client.disconnect();
+		}
 	}
 
 	async buildState(): Promise<DebugStateSnapshot> {
@@ -755,7 +940,12 @@ export class NodeDebugAdapter implements DebugAdapter {
 			})) as {
 				result?: Array<{
 					name?: string;
-					value?: { type?: string; value?: unknown; description?: string };
+					value?: {
+						type?: string;
+						value?: unknown;
+						description?: string;
+						objectId?: string;
+					};
 				}>;
 			};
 
@@ -764,6 +954,7 @@ export class NodeDebugAdapter implements DebugAdapter {
 				.map((prop, index) => ({
 					ref: `@v${index + 1}`,
 					name: String(prop.name),
+					id: prop.value?.objectId,
 					value:
 						prop.value?.description ??
 						(typeof prop.value?.value === "string"
@@ -771,6 +962,212 @@ export class NodeDebugAdapter implements DebugAdapter {
 							: String(prop.value?.value)),
 					scope: "local",
 				}));
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async getProperties(objectId: string): Promise<DebugValueSnapshot[]> {
+		if (!this.snapshot.target?.wsUrl) {
+			return [];
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Runtime.enable");
+			const props = (await client.send("Runtime.getProperties", {
+				objectId,
+				ownProperties: true,
+				generatePreview: true,
+			})) as {
+				result?: Array<{
+					name?: string;
+					value?: {
+						type?: string;
+						value?: unknown;
+						description?: string;
+						objectId?: string;
+					};
+				}>;
+			};
+
+			return (props.result ?? [])
+				.filter((prop) => prop.name && prop.value)
+				.map((prop, index) => ({
+					ref: `@v${index + 1}`,
+					name: String(prop.name),
+					id: prop.value?.objectId,
+					value:
+						prop.value?.description ??
+						(typeof prop.value?.value === "string"
+							? JSON.stringify(prop.value.value)
+							: String(prop.value?.value)),
+					scope: "property",
+				}));
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async getPropertiesFromExpression(expression: string): Promise<DebugValueSnapshot[]> {
+		if (!this.snapshot.target?.wsUrl) {
+			return [];
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Runtime.enable");
+			const paused = (await this.waitForPausedState(client)) as
+				| {
+						callFrames?: Array<{
+							callFrameId?: string;
+						}>;
+					}
+				| null;
+
+			const callFrameId = paused?.callFrames?.[0]?.callFrameId;
+			const evaluation = callFrameId
+				? ((await client.send("Debugger.evaluateOnCallFrame", {
+						callFrameId,
+						expression,
+						returnByValue: false,
+						generatePreview: true,
+					})) as {
+						result?: { objectId?: string };
+					})
+				: ((await client.send("Runtime.evaluate", {
+						expression,
+						returnByValue: false,
+						generatePreview: true,
+					})) as {
+						result?: { objectId?: string };
+					});
+
+			const objectId = evaluation.result?.objectId;
+			if (!objectId) {
+				return [];
+			}
+
+			const props = (await client.send("Runtime.getProperties", {
+				objectId,
+				ownProperties: true,
+				generatePreview: true,
+			})) as {
+				result?: Array<{
+					name?: string;
+					value?: {
+						type?: string;
+						value?: unknown;
+						description?: string;
+						objectId?: string;
+					};
+				}>;
+			};
+
+			return (props.result ?? [])
+				.filter((prop) => prop.name && prop.value)
+				.map((prop, index) => ({
+					ref: `@v${index + 1}`,
+					name: String(prop.name),
+					id: prop.value?.objectId,
+					value:
+						prop.value?.description ??
+						(typeof prop.value?.value === "string"
+							? JSON.stringify(prop.value.value)
+							: String(prop.value?.value)),
+					scope: "property",
+				}));
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async getConsole() {
+		if (!this.snapshot.target?.wsUrl) {
+			return [];
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		const entries: Array<{ level: string; text: string }> = [];
+		client.on("Runtime.consoleAPICalled", (params) => {
+			const payload = params as {
+				type?: string;
+				args?: Array<{ value?: unknown; description?: string }>;
+			};
+			const text = (payload.args ?? [])
+				.map((arg) =>
+					arg.description ??
+					(typeof arg.value === "string" ? arg.value : arg.value !== undefined ? String(arg.value) : ""),
+				)
+				.filter(Boolean)
+				.join(" ")
+				.trim();
+			if (!text) {
+				return;
+			}
+			entries.push({
+				level: payload.type ?? "log",
+				text,
+			});
+		});
+
+		try {
+			await client.send("Runtime.enable");
+			await Bun.sleep(250);
+			return entries;
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async getScripts() {
+		if (!this.snapshot.target?.wsUrl) {
+			return [];
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		const scripts = new Map<string, string>();
+		client.on("Debugger.scriptParsed", (params) => {
+			const payload = params as { scriptId?: string; url?: string };
+			if (!payload.url) {
+				return;
+			}
+			scripts.set(payload.scriptId ?? payload.url, payload.url);
+		});
+
+		try {
+			await client.send("Debugger.enable");
+			await Bun.sleep(150);
+			const collected = [...scripts.entries()].map(([id, url]) => ({ id, url }));
+			const targetFile = this.snapshot.target.command.at(-1);
+			if (targetFile) {
+				const targetUrl = pathToFileURL(resolve(targetFile)).toString();
+				if (!collected.some((script) => script.url === targetUrl)) {
+					collected.unshift({
+						id: "target",
+						url: targetUrl,
+					});
+				}
+			}
+			return collected;
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async setExceptionPauseMode(mode: DebugExceptionPauseMode) {
+		if (!this.snapshot.target?.wsUrl) {
+			return;
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Debugger.setPauseOnExceptions", {
+				state: mode,
+			});
 		} finally {
 			client.disconnect();
 		}
@@ -801,11 +1198,12 @@ export class NodeDebugAdapter implements DebugAdapter {
 					returnByValue: false,
 					generatePreview: true,
 				})) as {
-					result?: { value?: unknown; description?: string };
+					result?: { value?: unknown; description?: string; objectId?: string };
 				};
 
 				return {
 					ref: "@v1",
+					id: result.result?.objectId,
 					value:
 						result.result?.description ??
 						(typeof result.result?.value === "string"
@@ -819,11 +1217,62 @@ export class NodeDebugAdapter implements DebugAdapter {
 				returnByValue: false,
 				generatePreview: true,
 			})) as {
-				result?: { value?: unknown; description?: string };
+				result?: { value?: unknown; description?: string; objectId?: string };
 			};
 
 			return {
 				ref: "@v1",
+				id: result.result?.objectId,
+				value:
+					result.result?.description ??
+					(typeof result.result?.value === "string"
+						? JSON.stringify(result.result.value)
+						: String(result.result?.value)),
+			};
+		} finally {
+			client.disconnect();
+		}
+	}
+
+	async setValue(input: DebugSetInput): Promise<DebugEvalResult> {
+		if (!this.snapshot.target?.wsUrl) {
+			throw new Error("No active debug target");
+		}
+
+		const client = await DebugCdpClient.connect(this.snapshot.target.wsUrl);
+		try {
+			await client.send("Debugger.enable");
+			await client.send("Runtime.enable");
+			const paused = (await this.waitForPausedState(client)) as
+				| {
+						callFrames?: Array<{
+							callFrameId?: string;
+						}>;
+					}
+				| null;
+
+			const assignmentExpression = `${input.target} = (${input.value})`;
+			const callFrameId = paused?.callFrames?.[0]?.callFrameId;
+			const result = callFrameId
+				? ((await client.send("Debugger.evaluateOnCallFrame", {
+						callFrameId,
+						expression: assignmentExpression,
+						returnByValue: false,
+						generatePreview: true,
+					})) as {
+						result?: { value?: unknown; description?: string; objectId?: string };
+					})
+				: ((await client.send("Runtime.evaluate", {
+						expression: assignmentExpression,
+						returnByValue: false,
+						generatePreview: true,
+					})) as {
+						result?: { value?: unknown; description?: string; objectId?: string };
+					});
+
+			return {
+				ref: "@v1",
+				id: result.result?.objectId,
 				value:
 					result.result?.description ??
 					(typeof result.result?.value === "string"
@@ -853,6 +1302,7 @@ export class NodeDebugAdapter implements DebugAdapter {
 	private snapshotFromPausedEvent(
 		paused: {
 		callFrames?: Array<{
+			callFrameId?: string;
 			functionName?: string;
 			location?: { scriptId?: string; lineNumber?: number; columnNumber?: number };
 			url?: string;
@@ -860,7 +1310,14 @@ export class NodeDebugAdapter implements DebugAdapter {
 		},
 		scriptUrls?: Map<string, string>,
 	): DebugStateSnapshot {
-		const firstFrame = paused.callFrames?.[0];
+		const frames = paused.callFrames ?? [];
+		const firstFrame =
+			frames.find((frame) => {
+				const frameUrl =
+					frame.url ||
+					(frame.location?.scriptId ? scriptUrls?.get(frame.location.scriptId) : undefined);
+				return Boolean(frameUrl) && !String(frameUrl).startsWith("node:internal");
+			}) ?? frames[0];
 		const file =
 			firstFrame?.url ||
 			(firstFrame?.location?.scriptId
@@ -881,6 +1338,7 @@ export class NodeDebugAdapter implements DebugAdapter {
 			stack: [
 				{
 					ref: "@f0",
+					id: firstFrame?.callFrameId,
 					name: firstFrame?.functionName || "(anonymous)",
 					file,
 					line,
@@ -900,6 +1358,10 @@ export class NodeDebugAdapter implements DebugAdapter {
 		} catch {
 			return undefined;
 		}
+	}
+
+	private isInternalDebugLocation(file: string | undefined): boolean {
+		return Boolean(file) && String(file).startsWith("node:internal");
 	}
 
 	private exceptionFromPausedEvent(paused: {

@@ -20,6 +20,18 @@ const failureFixturePath = join(
 	dirname(fileURLToPath(import.meta.url)),
 	"fixtures/failure-app.js",
 );
+const propsFixturePath = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"fixtures/props-app.js",
+);
+const consoleFixturePath = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"fixtures/console-app.js",
+);
+const stepFixturePath = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"fixtures/step-app.js",
+);
 const failingBunFixturePath = join(
 	dirname(fileURLToPath(import.meta.url)),
 	"fixtures/failing-bun.fixture.ts",
@@ -130,6 +142,142 @@ describe("nooa debug node integration", () => {
 		}
 	});
 
+	test("pause transitions a real running node session into paused", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "node", fixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const paused = await execa(bunPath, [binPath, "debug", "pause", "--json"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+
+			expect(paused.exitCode).toBe(0);
+			const parsed = JSON.parse(paused.stdout) as {
+				mode?: string;
+				state?: string;
+				source?: string[];
+				stack?: Array<{ ref?: string; file?: string; line?: number }>;
+			};
+			expect(parsed.mode).toBe("pause");
+			expect(parsed.state).toBe("paused");
+			expect(parsed.stack?.[0]?.ref).toBe("@f0");
+			expect(parsed.stack?.[0]?.file).toContain("simple-app.js");
+			expect((parsed.stack?.[0]?.line ?? 0) > 0).toBe(true);
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("source returns the current snippet for a real paused node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "--brk", "node", fixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const source = await execa(bunPath, [binPath, "debug", "source", "--json"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+
+			expect(source.exitCode).toBe(0);
+			const parsed = JSON.parse(source.stdout) as {
+				mode?: string;
+				state?: string;
+				source?: string[];
+				stack?: Array<{ file?: string }>;
+			};
+			expect(parsed.mode).toBe("source");
+			expect(parsed.state).toBe("paused");
+			expect(parsed.source?.length).toBeGreaterThan(0);
+			expect(parsed.stack?.[0]?.file).toContain("simple-app.js");
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("source resolves @f0 for a real paused node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "--brk", "node", fixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			await execa(bunPath, [binPath, "debug", "state", "--json"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+
+			const source = await execa(
+				bunPath,
+				[binPath, "debug", "source", "@f0", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			expect(source.exitCode).toBe(0);
+			const parsed = JSON.parse(source.stdout) as {
+				mode?: string;
+				source?: string[];
+			};
+			expect(parsed.mode).toBe("source");
+			expect(parsed.source?.length).toBeGreaterThan(0);
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("continue transitions the stored session away from paused", async () => {
 		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
 		try {
@@ -194,6 +342,52 @@ describe("nooa debug node integration", () => {
 
 			expect(cont.exitCode).toBe(0);
 			expect(await waitForFile(outputPath, 1500)).toBe(true);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("run-to pauses a real node session at the requested location", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "--brk", "node", breakpointFixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const runTo = await execa(
+				bunPath,
+				[binPath, "debug", "run-to", `${breakpointFixturePath}:4`, "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			expect(runTo.exitCode).toBe(0);
+			const parsed = JSON.parse(runTo.stdout) as {
+				mode?: string;
+				state?: string;
+				stack?: Array<{ file?: string; line?: number }>;
+			};
+			expect(parsed.mode).toBe("run-to");
+			expect(parsed.state).toBe("paused");
+			expect(parsed.stack?.[0]?.file).toContain("breakpoint-app.js");
+			expect(parsed.stack?.[0]?.line).toBe(4);
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
@@ -462,6 +656,392 @@ describe("nooa debug node integration", () => {
 			};
 			expect(parsed.mode).toBe("eval");
 			expect(parsed.result?.value).toContain("2");
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("step into and out navigate a real paused node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "--brk", "node", stepFixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const runTo = await execa(
+				bunPath,
+				[binPath, "debug", "run-to", `${stepFixturePath}:7`, "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(runTo.exitCode).toBe(0);
+
+			const stepInto = await execa(
+				bunPath,
+				[binPath, "debug", "step", "into", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(stepInto.exitCode).toBe(0);
+			const into = JSON.parse(stepInto.stdout) as {
+				state?: string;
+				stack?: Array<{ file?: string; line?: number }>;
+			};
+			expect(into.state).toBe("paused");
+			expect(into.stack?.length).toBeGreaterThan(0);
+			expect(into.stack?.[0]?.file).toBeDefined();
+
+			const stepOut = await execa(
+				bunPath,
+				[binPath, "debug", "step", "out", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(stepOut.exitCode).toBe(0);
+			const out = JSON.parse(stepOut.stdout) as {
+				state?: string;
+				stack?: Array<{ file?: string; line?: number }>;
+			};
+			expect(out.state).toBe("paused");
+			expect(out.stack?.length).toBeGreaterThan(0);
+			expect(out.stack?.[0]?.file).toBeDefined();
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("props expands a real object ref after pause and eval", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "node", propsFixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const paused = await execa(bunPath, [binPath, "debug", "pause", "--json"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+			expect(paused.exitCode).toBe(0);
+
+			const evalResult = await execa(
+				bunPath,
+				[binPath, "debug", "eval", "globalThis.payload", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(evalResult.exitCode).toBe(0);
+			const evaluated = JSON.parse(evalResult.stdout) as {
+				result?: { ref?: string; value?: string };
+			};
+			expect(evaluated.result?.ref).toBeDefined();
+
+			const props = await execa(
+				bunPath,
+				[binPath, "debug", "props", evaluated.result?.ref ?? "@v1", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(props.exitCode).toBe(0);
+			const parsed = JSON.parse(props.stdout) as {
+				mode?: string;
+				vars?: Array<{ name?: string }>;
+			};
+			expect(parsed.mode).toBe("props");
+			expect(parsed.vars?.map((value) => value.name)).toContain("nested");
+			expect(parsed.vars?.map((value) => value.name)).toContain("count");
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("console returns structured runtime output for a real node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "node", consoleFixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const consoleResult = await execa(
+				bunPath,
+				[binPath, "debug", "console", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(consoleResult.exitCode).toBe(0);
+			const parsed = JSON.parse(consoleResult.stdout) as {
+				mode?: string;
+				console?: Array<{ level?: string; text?: string }>;
+			};
+			expect(parsed.mode).toBe("console");
+			expect(parsed.console?.length).toBeGreaterThan(0);
+			expect(parsed.console?.[0]?.level).toBe("log");
+			expect(parsed.console?.[0]?.text).toContain("tick");
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("scripts returns loaded script urls for a real node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "--brk", "node", fixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const scripts = await execa(
+				bunPath,
+				[binPath, "debug", "scripts", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(scripts.exitCode).toBe(0);
+			const parsed = JSON.parse(scripts.stdout) as {
+				mode?: string;
+				scripts?: Array<{ url?: string }>;
+			};
+			expect(parsed.mode).toBe("scripts");
+			expect(parsed.scripts?.some((script) => script.url?.includes("simple-app.js"))).toBe(
+				true,
+			);
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("exceptions reports when no exception has been captured in a session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "--brk", "node", fixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const exceptions = await execa(
+				bunPath,
+				[binPath, "debug", "exceptions", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(exceptions.exitCode).toBe(0);
+			const parsed = JSON.parse(exceptions.stdout) as {
+				mode?: string;
+				raw?: string;
+				exception?: { reason?: string };
+			};
+			expect(parsed.mode).toBe("exceptions");
+			expect(parsed.exception).toBeUndefined();
+			expect(parsed.raw).toContain("No exception");
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("catch stores exception pause mode for a real node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(
+				bunPath,
+				[binPath, "debug", "launch", "--brk", "node", fixturePath],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+
+			const catchResult = await execa(
+				bunPath,
+				[binPath, "debug", "catch", "all", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(catchResult.exitCode).toBe(0);
+			const parsed = JSON.parse(catchResult.stdout) as {
+				mode?: string;
+				raw?: string;
+			};
+			expect(parsed.mode).toBe("catch");
+			expect(parsed.raw).toContain("all");
+
+			const exceptions = await execa(
+				bunPath,
+				[binPath, "debug", "exceptions", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(exceptions.exitCode).toBe(0);
+			const exceptionState = JSON.parse(exceptions.stdout) as {
+				raw?: string;
+			};
+			expect(exceptionState.raw).toContain("catch=all");
+
+			await execa(bunPath, [binPath, "debug", "stop"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("set updates a real paused expression in a node session", async () => {
+		const root = await mkdtemp(join(tmpdir(), "nooa-debug-node-"));
+		try {
+			const env = { ...baseEnv, PWD: root, NOOA_CWD: root };
+
+			await execa(bunPath, [binPath, "debug", "launch", "node", propsFixturePath], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+
+			const pause = await execa(bunPath, [binPath, "debug", "pause", "--json"], {
+				cwd: root,
+				reject: false,
+				env,
+			});
+			expect(pause.exitCode).toBe(0);
+
+			const setResult = await execa(
+				bunPath,
+				[binPath, "debug", "set", "globalThis.payload.count", "7", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(setResult.exitCode).toBe(0);
+			const setParsed = JSON.parse(setResult.stdout) as {
+				mode?: string;
+				result?: { value?: string };
+			};
+			expect(setParsed.mode).toBe("set");
+			expect(setParsed.result?.value).toBe("7");
+
+			const evalResult = await execa(
+				bunPath,
+				[binPath, "debug", "eval", "globalThis.payload.count", "--json"],
+				{
+					cwd: root,
+					reject: false,
+					env,
+				},
+			);
+			expect(evalResult.exitCode).toBe(0);
+			const evalParsed = JSON.parse(evalResult.stdout) as {
+				result?: { value?: string };
+			};
+			expect(evalParsed.result?.value).toBe("7");
 
 			await execa(bunPath, [binPath, "debug", "stop"], {
 				cwd: root,

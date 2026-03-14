@@ -15,14 +15,25 @@ export type DebugAction =
 	| "status"
 	| "stop"
 	| "break"
+	| "break-toggle"
+	| "logpoint"
+	| "run-to"
 	| "break-ls"
 	| "break-rm"
 	| "continue"
 	| "step"
+	| "pause"
+	| "catch"
 	| "state"
+	| "source"
+	| "scripts"
+	| "console"
+	| "exceptions"
 	| "vars"
+	| "props"
 	| "stack"
 	| "eval"
+	| "set"
 	| "help";
 
 export const debugMeta: AgentDocMeta = {
@@ -51,14 +62,25 @@ Interactive session commands (experimental):
   status                        Show current session status
   stop                          Stop the active debug session
   break <file>:<line>           Set a breakpoint
+  break-toggle <file>:<line>    Toggle a breakpoint at a location
+  logpoint <file>:<line> <msg>  Set a non-pausing logpoint
+  run-to <file>:<line>          Run until a location and pause
   break-ls                      List breakpoints
   break-rm <BP#|all>            Remove breakpoints
   continue                      Resume execution
   step [over|into|out]          Step execution
+  pause                         Pause the active target
+  catch <none|uncaught|all>     Configure exception pause behavior
   state                         Show paused state snapshot
+  source                        Show the current source snippet
+  scripts                       Show loaded script URLs
+  console                       Show recent structured console output
+  exceptions                    Show the last captured exception
   vars                          Show local variables
+  props <@ref>                  Expand an object value ref
   stack                         Show call stack
   eval <expression>             Evaluate an expression in the paused frame
+  set <target> <value>          Assign a value in the paused frame or runtime
 
 Flags:
   --json                        Output JSON
@@ -86,6 +108,16 @@ SDK Usage:
   await debug.run({ action: "inspect-at", target: "src/app.ts:42", command: ["node", "app.js"] });
   await debug.run({ action: "inspect-on-failure", command: ["node", "app.js"] });
   await debug.run({ action: "inspect-test-failure", command: ["bun", "test", "path/to/test.ts"] });
+  await debug.run({ action: "pause" });
+  await debug.run({ action: "catch", target: "uncaught" });
+  await debug.run({ action: "break-toggle", target: "src/app.ts:42" });
+  await debug.run({ action: "logpoint", target: "src/app.ts:42", expression: "foo={foo}" });
+  await debug.run({ action: "run-to", target: "src/app.ts:42" });
+  await debug.run({ action: "source" });
+  await debug.run({ action: "console" });
+  await debug.run({ action: "exceptions" });
+  await debug.run({ action: "props", target: "@v2" });
+  await debug.run({ action: "set", target: "globalThis.payload.count", expression: "7" });
   await debug.run({ action: "help" });
 `;
 
@@ -105,6 +137,8 @@ export const debugOutputFields = [
 	{ name: "runtime", type: "string" },
 	{ name: "state", type: "string" },
 	{ name: "source", type: "array" },
+	{ name: "scripts", type: "array" },
+	{ name: "console", type: "array" },
 	{ name: "vars", type: "array" },
 	{ name: "stack", type: "array" },
 	{ name: "breakpoints", type: "string" },
@@ -135,8 +169,24 @@ export const debugExamples = [
 		output: "Start an experimental interactive debug session.",
 	},
 	{
+		input: "nooa debug run-to src/app.ts:42",
+		output: "Run an interactive session until a location and pause there.",
+	},
+	{
+		input: "nooa debug break-toggle src/app.ts:42",
+		output: "Toggle a breakpoint at a source location.",
+	},
+	{
+		input: 'nooa debug logpoint src/app.ts:42 "foo={foo}"',
+		output: "Emit a structured log at a location without pausing execution.",
+	},
+	{
 		input: "nooa debug state",
 		output: "Show the current paused source, locals, and stack.",
+	},
+	{
+		input: 'nooa debug set globalThis.payload.count 7',
+		output: "Assign a new runtime value in the current paused context.",
 	},
 ];
 
@@ -144,6 +194,7 @@ export const debugErrors = [
 	{ code: "debug.missing_subcommand", message: "Missing subcommand." },
 	{ code: "debug.no_active_session", message: "No active debug session." },
 	{ code: "debug.invalid_target", message: "Unsupported or missing runtime command." },
+	{ code: "debug.invalid_input", message: "Missing or invalid command input." },
 	{ code: "debug.launch_failed", message: "Failed to launch debug target." },
 	{ code: "debug.invalid_breakpoint", message: "Invalid breakpoint target." },
 ];
@@ -171,6 +222,8 @@ export interface DebugRunResult {
 	runtime?: string;
 	state?: string;
 	source?: string[];
+	scripts?: Array<{ id?: string; url: string }>;
+	console?: Array<{ level: string; text: string }>;
 	vars?: Array<{ ref: string; name: string; value: string; scope?: string }>;
 	stack?: Array<{ ref: string; name: string; file: string; line: number; column?: number }>;
 	breakpoints?: Array<{ ref: string; file: string; line: number; column?: number }>;
@@ -239,10 +292,26 @@ const debugBuilder = new CommandBuilder<DebugRunInput, DebugRunResult>()
 								? positionals.slice(2)
 								: undefined;
 		const target =
-			action === "break" || action === "break-rm" || action === "inspect-at"
+			action === "break" ||
+			action === "break-toggle" ||
+			action === "logpoint" ||
+			action === "run-to" ||
+			action === "break-rm" ||
+			action === "inspect-at" ||
+			action === "props" ||
+			action === "step" ||
+			action === "catch" ||
+			action === "set"
 				? positionals[2]
 				: undefined;
-		const expression = action === "eval" ? positionals.slice(2).join(" ") : undefined;
+		const expression =
+			action === "eval"
+				? positionals.slice(2).join(" ")
+				: action === "logpoint"
+					? positionals.slice(3).join(" ")
+					: action === "set"
+						? positionals.slice(3).join(" ")
+					: undefined;
 
 		return {
 			action,
@@ -288,10 +357,22 @@ const debugBuilder = new CommandBuilder<DebugRunInput, DebugRunResult>()
 			return;
 		}
 
-		if (output.mode === "break" && output.breakpoints?.[0]) {
+		if ((output.mode === "break" || output.mode === "break-toggle") && output.breakpoints) {
+			if (output.mode === "break-toggle" && output.raw) {
+				console.log(output.raw);
+				return;
+			}
 			const last = output.breakpoints[output.breakpoints.length - 1];
 			console.log(
 				`${last?.ref} set at ${last?.file}:${last?.line}${last?.column ? `:${last.column}` : ""}`,
+			);
+			return;
+		}
+
+		if (output.mode === "logpoint" && output.breakpoints?.[0]) {
+			const last = output.breakpoints[output.breakpoints.length - 1];
+			console.log(
+				`${last?.ref} logpoint set at ${last?.file}:${last?.line}${last?.column ? `:${last.column}` : ""}`,
 			);
 			return;
 		}
@@ -312,6 +393,53 @@ const debugBuilder = new CommandBuilder<DebugRunInput, DebugRunResult>()
 		if (output.mode === "eval" && output.result) {
 			console.log(`${output.result.ref}  ${output.result.value}`);
 			return;
+		}
+
+		if (output.mode === "set" && output.result) {
+			console.log(`${output.target ? `${output.target.command.at(-1) ?? "set"} ` : ""}${output.result.ref}  ${output.result.value}`);
+			return;
+		}
+
+		if ((output.mode === "vars" || output.mode === "props") && output.vars?.length) {
+			for (const value of output.vars) {
+				console.log(`${value.ref}  ${value.name} = ${value.value}`);
+			}
+			return;
+		}
+
+		if (output.mode === "console" && output.console?.length) {
+			for (const entry of output.console) {
+				console.log(`[${entry.level}] ${entry.text}`);
+			}
+			return;
+		}
+
+		if (output.mode === "scripts" && output.scripts?.length) {
+			for (const script of output.scripts) {
+				console.log(script.url);
+			}
+			return;
+		}
+
+		if (
+			(output.mode === "state" ||
+				output.mode === "pause" ||
+				output.mode === "source") &&
+			output.source?.length
+		) {
+			for (const line of output.source) {
+				console.log(line);
+			}
+			return;
+		}
+
+		if (output.mode === "exceptions" && output.raw) {
+			console.log(output.raw);
+			return;
+		}
+
+		if (output.mode === "catch" && output.raw) {
+			console.log(output.raw);
 		}
 	});
 

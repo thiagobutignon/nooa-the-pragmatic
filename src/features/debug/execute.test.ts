@@ -178,4 +178,326 @@ describe("debug execute", () => {
 
 		await cleanupRoots();
 	});
+
+	test("pause persists a running session as paused", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: false,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const result = await runDebug(
+			{
+				action: "pause",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("pause");
+			expect(result.data.state).toBe("paused");
+			expect(result.data.source?.length).toBeGreaterThan(0);
+			expect(result.data.stack?.[0]?.ref).toBe("@f0");
+		}
+
+		await cleanupRoots();
+	});
+
+	test("source returns the current paused source snippet", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const result = await runDebug(
+			{
+				action: "source",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("source");
+			expect(result.data.state).toBe("paused");
+			expect(result.data.source?.[0]).toContain("const foo");
+			expect(result.data.stack?.[0]?.ref).toBe("@f0");
+		}
+
+		await cleanupRoots();
+	});
+
+	test("source resolves a frame ref target", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const stateResult = await runDebug(
+			{
+				action: "state",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+		expect(stateResult.ok).toBe(true);
+
+		const result = await runDebug(
+			{
+				action: "source",
+				target: "@f0",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("source");
+			expect(result.data.source?.[0]).toContain("const foo");
+		}
+
+		await cleanupRoots();
+	});
+
+	test("scripts returns known loaded scripts for a session", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const result = await runDebug(
+			{
+				action: "scripts",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("scripts");
+			expect(result.data.scripts?.[0]?.url).toContain("app.js");
+		}
+
+		await cleanupRoots();
+	});
+
+	test("props expands object refs captured from vars", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const varsResult = await runDebug(
+			{
+				action: "vars",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(varsResult.ok).toBe(true);
+		if (varsResult.ok) {
+			expect(varsResult.data.vars?.find((value) => value.name === "bar")?.ref).toBe(
+				"@v2",
+			);
+		}
+
+		const propsResult = await runDebug(
+			{
+				action: "props",
+				target: "@v2",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(propsResult.ok).toBe(true);
+		if (propsResult.ok) {
+			expect(propsResult.data.mode).toBe("props");
+			expect(propsResult.data.vars?.map((value) => value.name)).toEqual([
+				"nested",
+				"count",
+			]);
+		}
+
+		await cleanupRoots();
+	});
+
+	test("console returns the latest structured console entries for a session", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const result = await runDebug(
+			{
+				action: "console",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("console");
+			expect(result.data.console?.[0]?.level).toBe("log");
+			expect(result.data.console?.[0]?.text).toContain("fake console");
+		}
+
+		await cleanupRoots();
+	});
+
+	test("exceptions returns no exception when nothing has been captured", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const result = await runDebug(
+			{
+				action: "exceptions",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("exceptions");
+			expect(result.data.exception).toBeUndefined();
+			expect(result.data.raw).toContain("No exception");
+		}
+
+		await cleanupRoots();
+	});
+
+	test("catch stores the requested exception pause mode in the session", async () => {
+		const root = await makeRoot();
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		const result = await runDebug(
+			{
+				action: "catch",
+				target: "all",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("catch");
+			expect(result.data.raw).toContain("all");
+		}
+
+		const exceptions = await runDebug(
+			{
+				action: "exceptions",
+				cwd: root,
+			},
+			() => createFakeDebugAdapter("node"),
+		);
+
+		expect(exceptions.ok).toBe(true);
+		if (exceptions.ok) {
+			expect(exceptions.data.raw).toContain("all");
+		}
+
+		await cleanupRoots();
+	});
+
+	test("set updates a paused expression and returns the new value", async () => {
+		const root = await makeRoot();
+		const adapter = createFakeDebugAdapter("node");
+
+		await runDebug(
+			{
+				action: "launch",
+				command: ["node", "app.js"],
+				brk: true,
+				cwd: root,
+			},
+			() => adapter,
+		);
+
+		const result = await runDebug(
+			{
+				action: "set",
+				target: "bar.count",
+				expression: "7",
+				cwd: root,
+			},
+			() => adapter,
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.data.mode).toBe("set");
+			expect(result.data.result?.value).toBe("7");
+		}
+
+		await cleanupRoots();
+	});
 });

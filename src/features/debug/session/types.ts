@@ -32,7 +32,21 @@ export type DebugBreakpointRef = {
 	line: number;
 	column?: number;
 	remoteId?: string;
+	kind?: "breakpoint" | "logpoint";
+	message?: string;
 };
+
+export type DebugConsoleRef = {
+	level: string;
+	text: string;
+};
+
+export type DebugScriptRef = {
+	id?: string;
+	url: string;
+};
+
+export type DebugExceptionPauseMode = "none" | "uncaught" | "all";
 
 export type DebugSessionRefs = {
 	frames: DebugFrameRef[];
@@ -49,6 +63,13 @@ export type DebugSessionRecord = {
 	target?: DebugTarget;
 	location?: DebugLocation;
 	breakpoints: DebugBreakpointRef[];
+	exceptionPauseMode?: DebugExceptionPauseMode;
+	exception?: {
+		reason: string;
+		message?: string;
+	};
+	console?: DebugConsoleRef[];
+	scripts?: DebugScriptRef[];
 	refs: DebugSessionRefs;
 };
 

@@ -64,6 +64,57 @@ describe("fake debug adapter", () => {
 		expect(snapshot.stack?.[0]?.ref).toBe("@f0");
 	});
 
+	test("pause transitions a running session into paused state", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: false });
+
+		const snapshot = await adapter.pause();
+		expect(snapshot.state).toBe("paused");
+		expect(snapshot.location?.line).toBe(2);
+		expect(snapshot.source?.length).toBeGreaterThan(0);
+	});
+
+	test("getProperties expands nested values by object id", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: true });
+
+		const vars = await adapter.getVars();
+		const bar = vars.find((value) => value.name === "bar");
+		expect(bar?.id).toBe("obj:bar");
+
+		const props = await adapter.getProperties(bar?.id ?? "");
+		expect(props).toHaveLength(2);
+		expect(props[0]?.name).toBe("nested");
+		expect(props[0]?.scope).toBe("local");
+	});
+
+	test("getPropertiesFromExpression expands nested values on one call", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: true });
+
+		const props = await adapter.getPropertiesFromExpression("bar");
+		expect(props).toHaveLength(2);
+		expect(props[1]?.name).toBe("count");
+	});
+
+	test("getConsole returns recent fake console output", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: true });
+
+		const entries = await adapter.getConsole();
+		expect(entries[0]?.level).toBe("log");
+		expect(entries[0]?.text).toContain("fake console");
+	});
+
+	test("getScripts returns loaded fake scripts", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: true });
+
+		const scripts = await adapter.getScripts();
+		expect(scripts[0]?.url).toContain("app.js");
+		expect(scripts.length).toBeGreaterThan(1);
+	});
+
 	test("eval returns a compact value payload", async () => {
 		const adapter = createFakeDebugAdapter("node");
 		await adapter.launch({ command: ["node", "app.js"], brk: true });
@@ -71,6 +122,30 @@ describe("fake debug adapter", () => {
 		const result = await adapter.evaluate({ expression: "typeof foo" });
 		expect(result.ref).toBe("@v3");
 		expect(result.value).toBe('"fake:typeof foo"');
+	});
+
+	test("eval exposes expandable object refs when available", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: true });
+
+		const result = await adapter.evaluate({ expression: "bar" });
+		expect(result.id).toBe("obj:bar");
+		expect(result.value).toBe("{ nested: true }");
+	});
+
+	test("setValue updates a tracked expression and returns the new value", async () => {
+		const adapter = createFakeDebugAdapter("node");
+		await adapter.launch({ command: ["node", "app.js"], brk: true });
+
+		const result = await adapter.setValue({
+			target: "bar.count",
+			value: "7",
+		});
+
+		expect(result.value).toBe("7");
+
+		const next = await adapter.evaluate({ expression: "bar.count" });
+		expect(next.value).toBe("7");
 	});
 
 	test("stop resets the adapter to idle", async () => {
