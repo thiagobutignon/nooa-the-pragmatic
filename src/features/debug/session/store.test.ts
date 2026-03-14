@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
 	type DebugSessionRecord,
@@ -35,6 +35,16 @@ describe("debug session store", () => {
 
 	test("loadDebugSessions returns empty object when state file does not exist", async () => {
 		const root = await makeRoot();
+		const state = await loadDebugSessions(root);
+		expect(state.sessions).toEqual({});
+	});
+
+	test("loadDebugSessions returns empty object when state file is invalid JSON", async () => {
+		const root = await makeRoot();
+		const debugDir = join(root, ".nooa", "debug");
+		await mkdir(debugDir, { recursive: true });
+		await writeFile(join(debugDir, "sessions.json"), "template");
+
 		const state = await loadDebugSessions(root);
 		expect(state.sessions).toEqual({});
 	});

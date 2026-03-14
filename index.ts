@@ -1,10 +1,87 @@
 #!/usr/bin/env bun
+import { access } from "node:fs/promises";
+import { constants } from "node:fs";
 import { parseArgs } from "node:util";
+import type { Command } from "./src/core/command";
+import type { EventBus } from "./src/core/event-bus";
+
+type MainDeps = {
+	createBus: () => EventBus;
+	loadCommandByName: (
+		featuresDir: string,
+		name: string,
+	) => Promise<Command | undefined>;
+	loadCommands: (featuresDir: string) => Promise<{
+		get: (name: string) => Command | undefined;
+		list: () => Command[];
+	}>;
+	runWithContext: (
+		context: Record<string, unknown>,
+		fn: () => Promise<void>,
+	) => Promise<void>;
+	createTraceId: () => string;
+	autoReflect: (
+		commandName: string,
+		args: string[],
+		result: unknown,
+	) => Promise<void>;
+	openAliasDb: (path: string) => { close: () => void };
+	createAliasRegistry: (
+		db: ReturnType<MainDeps["openAliasDb"]>,
+	) => { aliasGet: (name: string) => Promise<{ command: string; args?: string[] } | undefined> };
+};
+
+async function resolveMainDeps(
+	overrides: Partial<MainDeps> = {},
+): Promise<MainDeps> {
+	const { EventBus } = await import("./src/core/event-bus.js");
+	const { loadCommandByName, loadCommands } = await import(
+		"./src/core/registry.js"
+	);
+	const { logger, createTraceId } = await import("./src/core/logger.js");
+	const { autoReflect } = await import("./src/core/reflection/hook.ts");
+	const { Database } = await import("bun:sqlite");
+	const { Registry: McpRegistry } = await import("./src/core/mcp/Registry.js");
+
+	return {
+		createBus: () => new EventBus(),
+		loadCommandByName,
+		loadCommands,
+		runWithContext: (context, fn) => logger.runWithContext(context, fn),
+		createTraceId,
+		autoReflect,
+		openAliasDb: (path) => new Database(path),
+		createAliasRegistry: (db) => new McpRegistry(db),
+		...overrides,
+	};
+}
+
+async function resolveFeaturesDir(): Promise<string> {
+	const { join } = await import("node:path");
+	const candidates = [
+		join(import.meta.dir, "src/features"),
+		join(process.cwd(), "src/features"),
+	];
+
+	for (const candidate of candidates) {
+		try {
+			await access(candidate, constants.F_OK);
+			return candidate;
+		} catch {
+			continue;
+		}
+	}
+
+	return candidates[0];
+}
 
 // ... existing main function signature ...
 export async function main(
 	args: string[] = typeof Bun !== "undefined" ? Bun.argv.slice(2) : [],
+	depsOverrides: Partial<MainDeps> = {},
 ) {
+	const deps = await resolveMainDeps(depsOverrides);
+
 	// Step 1: Parse global flags and subcommand
 	const { values, positionals } = parseArgs({
 		args,
@@ -40,78 +117,50 @@ export async function main(
 		allowPositionals: true,
 	});
 
-	const { EventBus } = await import("./src/core/event-bus.js");
-	const bus = new EventBus();
+	const bus = deps.createBus();
 	bus.on("cli.error", (payload) => {
 		if (values.json) console.log(JSON.stringify(payload, null, 2));
 	});
 
-	// Initialize Reflection Engine (Background)
-	// Initialize Reflection Engine (Background)
-	// Dynamic Command Registry
-	const { loadCommands } = await import("./src/core/registry.js");
-	const { join } = await import("node:path");
-	const { Database } = await import("bun:sqlite");
-	const { Registry: McpRegistry } = await import("./src/core/mcp/Registry.js");
-	// Ensure we look in src/features relative to the current file or process
-	const featuresDir = join(import.meta.dir, "src/features");
-	const commandRegistry = await loadCommands(featuresDir);
-
-	const dbPath = process.env.NOOA_DB_PATH || "nooa.db";
-	const aliasDb = new Database(dbPath);
-	const aliasRegistry = new McpRegistry(aliasDb);
-
+	const featuresDir = await resolveFeaturesDir();
 	const subcommand = positionals[0];
-	const registeredCmd = subcommand
-		? commandRegistry.get(subcommand)
+	const directCommand = subcommand
+		? await deps.loadCommandByName(featuresDir, subcommand)
 		: undefined;
 
-	try {
-		const aliasEntry = subcommand
-			? await aliasRegistry.aliasGet(subcommand)
-			: undefined;
-		if (aliasEntry) {
-			const aliasArgs = [
-				aliasEntry.command,
-				...(aliasEntry.args ?? []),
-				...positionals.slice(1),
-			];
-			return main(aliasArgs);
-		}
+	const executeCommand = async (commandName: string, command: Command) => {
+		const traceId = deps.createTraceId();
 
-		if (registeredCmd && subcommand) {
-			const { logger, createTraceId } = await import("./src/core/logger.js");
-			const traceId = createTraceId();
+		await deps.runWithContext(
+			{ trace_id: traceId, command: commandName },
+			async () => {
+				const result: unknown = await command.execute({
+					args: positionals,
+					values,
+					rawArgs: args,
+					bus,
+				});
 
-			await logger.runWithContext(
-				{ trace_id: traceId, command: subcommand },
-				async () => {
-					const result: unknown = await registeredCmd.execute({
-						args: positionals,
-						values,
-						rawArgs: args,
-						bus,
-					});
+				if (process.env.NOOA_DISABLE_REFLECTION !== "1") {
+					await deps.autoReflect(commandName, args, result);
+				}
+			},
+		);
+	};
 
-					// Auto-Reflection Hook (Lightweight Observation)
-					if (process.env.NOOA_DISABLE_REFLECTION !== "1") {
-						const { autoReflect } = await import(
-							"./src/core/reflection/hook.ts"
-						);
-						await autoReflect(subcommand, args, result);
-					}
-				},
-			);
-			return;
-		}
+	if (directCommand && subcommand) {
+		await executeCommand(subcommand, directCommand);
+		return;
+	}
 
-		if (values.help || !subcommand) {
-			const commands = commandRegistry.list();
-			const subcommandHelp = commands
-				.map((cmd) => `  ${cmd.name.padEnd(25)} ${cmd.description || ""}`)
-				.join("\n");
+	if (values.help || !subcommand) {
+		const commandRegistry = await deps.loadCommands(featuresDir);
+		const commands = commandRegistry.list();
+		const subcommandHelp = commands
+			.map((cmd) => `  ${cmd.name.padEnd(25)} ${cmd.description || ""}`)
+			.join("\n");
 
-			console.log(`
+		console.log(`
 Usage: nooa [flags] <subcommand> [args]
 
 Subcommands:
@@ -122,11 +171,33 @@ Flags:
   -v, --version          Show version.
   -h, --help             Show help.
 `);
-			return;
+		return;
+	}
+
+	if (values.version) {
+		console.log("nooa v0.0.1");
+		return;
+	}
+
+	const dbPath = process.env.NOOA_DB_PATH || "nooa.db";
+	const aliasDb = deps.openAliasDb(dbPath);
+
+	try {
+		const aliasRegistry = deps.createAliasRegistry(aliasDb);
+		const aliasEntry = await aliasRegistry.aliasGet(subcommand);
+		if (aliasEntry) {
+			const aliasArgs = [
+				aliasEntry.command,
+				...(aliasEntry.args ?? []),
+				...positionals.slice(1),
+			];
+			return main(aliasArgs, depsOverrides);
 		}
 
-		if (values.version) {
-			console.log("nooa v0.0.1");
+		const commandRegistry = await deps.loadCommands(featuresDir);
+		const registeredCmd = commandRegistry.get(subcommand);
+		if (registeredCmd) {
+			await executeCommand(subcommand, registeredCmd);
 			return;
 		}
 

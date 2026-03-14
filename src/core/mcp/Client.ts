@@ -28,14 +28,7 @@ interface JsonRpcResponse {
 export class Client {
 	private process?: ChildProcess;
 	private requestId = 0;
-	private pendingRequests = new Map<
-		number,
-		{
-			resolve: (value: unknown) => void;
-			reject: (error: Error) => void;
-			timer: ReturnType<typeof setTimeout>;
-		}
-	>();
+	private pendingRequests = new Map<number, PendingRequest>();
 	private readline?: ReturnType<typeof createInterface>;
 
 	constructor(private config: ClientConfig) {}
@@ -48,6 +41,15 @@ export class Client {
 		this.process = spawn(this.config.command, this.config.args, {
 			stdio: ["pipe", "pipe", "inherit"],
 			env: { ...process.env, ...this.config.env },
+		});
+
+		this.process.once("exit", () => {
+			this.handleShutdown("Client process exited");
+		});
+		this.process.once("error", (error) => {
+			this.handleShutdown(
+				error instanceof Error ? error.message : "Client process error",
+			);
 		});
 
 		if (!this.process.stdout) {
@@ -92,11 +94,11 @@ export class Client {
 	async stop(): Promise<void> {
 		if (!this.process) return;
 
+		this.rejectPendingRequests("Client stopped");
 		this.readline?.close();
 		this.process.kill();
 		this.process = undefined;
 		this.readline = undefined;
-		this.pendingRequests.clear();
 	}
 
 	isRunning(): boolean {
@@ -188,10 +190,30 @@ export class Client {
 			this.process?.stdin?.write(`${requestLine}\n`);
 		});
 	}
+
+	private rejectPendingRequests(message: string): void {
+		for (const [id, pending] of this.pendingRequests.entries()) {
+			clearTimeout(pending.timer);
+			this.pendingRequests.delete(id);
+			pending.reject(new Error(message));
+		}
+	}
+
+	private handleShutdown(message: string): void {
+		this.rejectPendingRequests(message);
+		this.process = undefined;
+		this.readline = undefined;
+	}
 }
 
 export interface CallOptions {
 	retries?: number;
 	timeout?: number;
 	backoff?: number;
+}
+
+interface PendingRequest {
+	resolve: (value: unknown) => void;
+	reject: (error: Error) => void;
+	timer: ReturnType<typeof setTimeout>;
 }

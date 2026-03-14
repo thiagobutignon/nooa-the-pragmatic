@@ -231,17 +231,33 @@ export class CronDaemon {
 			return current;
 		}
 		await this.ensurePidDirectory();
-		const child = Bun.spawn(["bun", entrypoint, "cron", "daemon-run"], {
-			cwd: this.workspace,
-			env: process.env,
-			stdin: "ignore",
-			stdout: "ignore",
-			stderr: "ignore",
-			detached: true,
-		});
-		child.unref();
-		await writeFile(this.pidPath, String(child.pid), "utf8");
-		return { running: true, pid: child.pid };
+		const launcher = Bun.spawn(
+			[
+				"sh",
+				"-lc",
+				`nohup bun ${quoteForShell(entrypoint)} cron daemon-run >/dev/null 2>&1 & echo $!`,
+			],
+			{
+				cwd: this.workspace,
+				env: process.env,
+				stdin: "ignore",
+				stdout: "pipe",
+				stderr: "ignore",
+			},
+		);
+		const [pidText, exitCode] = await Promise.all([
+			new Response(launcher.stdout).text(),
+			launcher.exited,
+		]);
+		if (exitCode !== 0) {
+			return { running: false, pid: null };
+		}
+		const pid = Number(pidText.trim());
+		if (!Number.isInteger(pid) || pid <= 0) {
+			return { running: false, pid: null };
+		}
+		await writeFile(this.pidPath, String(pid), "utf8");
+		return await this.waitForDaemonStart(pid);
 	}
 
 	async stop() {
@@ -273,4 +289,25 @@ export class CronDaemon {
 		process.off("SIGTERM", stop);
 		process.off("SIGINT", stop);
 	}
+
+	private async waitForDaemonStart(pid: number): Promise<{
+		running: boolean;
+		pid: number | null;
+	}> {
+		const deadline = Date.now() + 1_000;
+		while (Date.now() < deadline) {
+			const status = await this.status();
+			if (status.running && status.pid === pid) {
+				return status;
+			}
+			await Bun.sleep(25);
+		}
+
+		await rm(this.pidPath, { force: true });
+		return { running: false, pid: null };
+	}
+}
+
+function quoteForShell(value: string): string {
+	return `'${value.replaceAll("'", `'\"'\"'`)}'`;
 }

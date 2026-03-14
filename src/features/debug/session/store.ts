@@ -30,7 +30,11 @@ export async function loadDebugSessions(
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		if (message.toLowerCase().includes("no such file")) {
+		const normalized = message.toLowerCase();
+		if (
+			normalized.includes("no such file") ||
+			normalized.includes("json parse error")
+		) {
 			return createEmptyState();
 		}
 		throw error;

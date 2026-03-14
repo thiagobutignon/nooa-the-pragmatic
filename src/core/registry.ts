@@ -21,6 +21,36 @@ export class CommandRegistry {
 	}
 }
 
+async function importCommandModule(
+	featuresDir: string,
+	featureName: string,
+): Promise<Command | undefined> {
+	const cliPath = join(featuresDir, featureName, "cli.ts");
+	try {
+		await access(cliPath, constants.F_OK);
+	} catch {
+		return undefined;
+	}
+
+	try {
+		const module = await import(cliPath);
+		return module.default?.name ? (module.default as Command) : undefined;
+	} catch (e) {
+		if (e instanceof Error && "code" in e && e.code === "ENOENT") {
+			return undefined;
+		}
+		console.error(`Error loading command from ${featureName}:`, e);
+		return undefined;
+	}
+}
+
+export async function loadCommandByName(
+	featuresDir: string,
+	name: string,
+): Promise<Command | undefined> {
+	return importCommandModule(featuresDir, name);
+}
+
 export async function loadCommands(
 	featuresDir: string,
 ): Promise<CommandRegistry> {
@@ -37,23 +67,9 @@ export async function loadCommands(
 
 	for (const entry of entries) {
 		if (entry.isDirectory()) {
-			const cliPath = join(featuresDir, entry.name, "cli.ts");
-			try {
-				await access(cliPath, constants.F_OK);
-			} catch {
-				continue;
-			}
-
-			try {
-				const module = await import(cliPath);
-				if (module.default?.name) {
-					registry.register(module.default);
-				}
-			} catch (e) {
-				if (e instanceof Error && "code" in e && e.code === "ENOENT") {
-					continue;
-				}
-				console.error(`Error loading command from ${entry.name}:`, e);
+			const command = await importCommandModule(featuresDir, entry.name);
+			if (command) {
+				registry.register(command);
 			}
 		}
 	}

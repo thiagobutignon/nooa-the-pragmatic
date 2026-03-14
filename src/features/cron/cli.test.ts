@@ -16,6 +16,7 @@ describe("nooa cron CLI", () => {
 	const runCron = async (extraArgs: string[]) => {
 		return await execa("bun", [binPath, "cron", ...extraArgs], {
 			reject: false,
+			cleanup: false,
 			env: {
 				...baseEnv,
 				NOOA_DB_PATH: dbPath,
@@ -24,6 +25,22 @@ describe("nooa cron CLI", () => {
 				NOOA_HEARTBEAT_ENABLED: "0",
 			},
 		});
+	};
+
+	const waitForDaemonRunning = async () => {
+		const deadline = Date.now() + 1_000;
+		while (Date.now() < deadline) {
+			const status = await runCron(["--daemon", "status", "--json"]);
+			if (status.exitCode === 0) {
+				const payload = JSON.parse(status.stdout);
+				if (payload.daemon.running) {
+					return status;
+				}
+			}
+			await Bun.sleep(25);
+		}
+
+		return await runCron(["--daemon", "status", "--json"]);
 	};
 
 	beforeEach(async () => {
@@ -138,7 +155,7 @@ describe("nooa cron CLI", () => {
 		const startPayload = JSON.parse(start.stdout);
 		expect(startPayload.daemon.running).toBe(true);
 
-		const statusAfter = await runCron(["--daemon", "status", "--json"]);
+		const statusAfter = await waitForDaemonRunning();
 		expect(statusAfter.exitCode).toBe(0);
 		const afterPayload = JSON.parse(statusAfter.stdout);
 		expect(afterPayload.daemon.running).toBe(true);

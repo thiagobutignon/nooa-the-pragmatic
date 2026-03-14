@@ -1,5 +1,7 @@
-import { expect, spyOn, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
+import { createInterface } from "node:readline";
+import { PassThrough } from "node:stream";
 import { Client } from "./Client";
 
 class StubClient extends Client {
@@ -70,24 +72,65 @@ test("Real Client flow with mock process", async () => {
 	const client = new Client({ command: "dummy", args: [] });
 
 	const mockStdin = { write: () => true };
-	const mockStdout = new EventEmitter();
-	const mockProcess = {
+	const mockStdout = new PassThrough();
+	const mockProcess = Object.assign(new EventEmitter(), {
 		stdin: mockStdin,
 		stdout: mockStdout,
 		kill: () => {},
 		killed: false,
-		on: () => {},
+	});
+
+	const writes: string[] = [];
+	mockStdin.write = (chunk: string) => {
+		writes.push(chunk);
+		return true;
 	};
 
-	const _spawnSpy = spyOn(keyModule(), "spawn").mockReturnValue(
-		mockProcess as unknown,
+	const readline = createInterface({ input: mockStdout });
+	(client as unknown).process = mockProcess;
+	(client as unknown).readline = readline;
+	readline.on("line", (line) => {
+		const response = JSON.parse(line) as { id: number; result?: unknown };
+		const pendingRequests = (client as unknown).pendingRequests as Map<
+			number,
+			{
+				resolve: (value: unknown) => void;
+				reject: (error: Error) => void;
+				timer: ReturnType<typeof setTimeout>;
+			}
+		>;
+		const pending = pendingRequests.get(response.id);
+		if (pending) {
+			clearTimeout(pending.timer);
+			pendingRequests.delete(response.id);
+			pending.resolve(response.result);
+		}
+	});
+
+	const pending = (client as unknown).sendRequest("test", {}) as Promise<unknown>;
+	mockStdout.write(
+		`${JSON.stringify({ jsonrpc: "2.0", id: 1, result: { ok: true } })}\n`,
 	);
+	await expect(pending).resolves.toEqual({ ok: true });
+	expect(writes.length).toBe(1);
+});
+
+test("stop rejects pending requests and clears their timers", async () => {
+	const client = new Client({ command: "dummy", args: [] });
+
+	const mockStdin = { write: () => true };
+	const mockStdout = new EventEmitter();
+	const mockProcess = Object.assign(new EventEmitter(), {
+		stdin: mockStdin,
+		stdout: mockStdout,
+		kill: () => {},
+		killed: false,
+	});
 
 	(client as unknown).process = mockProcess;
 
-	const _promise = (client as unknown).sendRequest("test", {});
-});
+	const pending = (client as unknown).sendRequest("test", {}, 1000) as Promise<unknown>;
+	await client.stop();
 
-function keyModule() {
-	return require("node:child_process");
-}
+	await expect(pending).rejects.toThrow("Client stopped");
+});
