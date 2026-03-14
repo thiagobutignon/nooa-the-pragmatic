@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
 	DebugRuntime,
@@ -43,8 +43,11 @@ export async function loadDebugSessions(
 
 async function saveDebugSessions(root: string, state: DebugSessionsState) {
 	const dir = join(root, ".nooa", "debug");
+	const filePath = getDebugSessionsPath(root);
+	const tempPath = `${filePath}.tmp`;
 	await mkdir(dir, { recursive: true });
-	await writeFile(getDebugSessionsPath(root), JSON.stringify(state, null, 2));
+	await writeFile(tempPath, JSON.stringify(state, null, 2), "utf8");
+	await rename(tempPath, filePath);
 }
 
 export async function loadDebugSession(
